@@ -17,16 +17,14 @@ class TestViewModel : ViewModel() {
 
     var totalItemsCount = TOTAL_ITEMS_COUNT
 
-    val pagingFlow by lazy {
-        buildPagingFlow(
-            PagingFlowConfiguration(
-                LoadParams(EXAMPLE_LOAD_SIZE, 0),
-                maxPagesCount = REMOVE_PAGE_OFFSET
-            )
-        ) {
-            addDataSource(TestDataSource(totalItemsCount, true))
-            loadNextPage()
-        }
+    val pagingFlow = buildPagingFlow(
+        PagingFlowConfiguration(
+            LoadParams(EXAMPLE_LOAD_SIZE, 0),
+            maxPagesCount = REMOVE_PAGE_OFFSET
+        )
+    ) {
+        addDataSource(TestDataSource(totalItemsCount, true))
+        loadNextPage()
     }
     val pagingDataPresenter = pagingFlow.pagingDataPresenter()
 }
