@@ -7,5 +7,5 @@ import ru.snowmaze.pagingflow.LoadResult
  */
 abstract class PagingUnhandledErrorsHandler<PagingStatus : Any> {
 
-    abstract fun handle(throwable: Throwable): LoadResult.Failure<*, *, PagingStatus>
+    abstract fun handle(throwable: Throwable): LoadResult.Failure<Any, Any, PagingStatus>
 }
