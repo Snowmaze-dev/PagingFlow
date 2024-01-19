@@ -38,10 +38,12 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         MutableStateFlow<PagingStatus<SourcePagingStatus>>(PagingStatus.Success(hasNextPage = true))
     val upPagingStatus = _upPagingStatus.asStateFlow()
     val downPagingStatus = _downPagingStatus.asStateFlow()
-    val isLoading get() = upPagingStatus is PagingStatus.Loading<*> ||
-            downPagingStatus is PagingStatus.Loading<*>
+    val isLoading
+        get() = upPagingStatus is PagingStatus.Loading<*> ||
+                downPagingStatus is PagingStatus.Loading<*>
 
-    override val pagingUnhandledErrorsHandler = DefaultPagingUnhandledErrorsHandler<SourcePagingStatus>()
+    override val pagingUnhandledErrorsHandler =
+        DefaultPagingUnhandledErrorsHandler<SourcePagingStatus>()
 
     private val dataSources = DataSources<Key, Data, SourcePagingStatus>()
     private val dataPages = mutableListOf<DataPage<Key, Data, SourcePagingStatus>>()
@@ -111,8 +113,9 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         )
         val result = try {
             dataSource.load(nextLoadParams)
-        } catch (e: Exception) {
-            val errorHandler = (dataSource.pagingUnhandledErrorsHandler ?: pagingUnhandledErrorsHandler)
+        } catch (e: Throwable) {
+            val errorHandler =
+                (dataSource.pagingUnhandledErrorsHandler ?: pagingUnhandledErrorsHandler)
             errorHandler.handle(e)
         }
         val status = when (result) {
@@ -123,7 +126,7 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
 
             is LoadResult.Failure -> PagingStatus.Failure(
                 sourcePagingStatus = result.status,
-                error = result.exception
+                throwable = result.throwable
             )
         }
         if (isPaginationDown) _downPagingStatus.value = status

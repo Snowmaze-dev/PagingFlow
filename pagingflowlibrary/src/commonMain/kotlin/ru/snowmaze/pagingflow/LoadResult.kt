@@ -44,7 +44,7 @@ sealed class LoadResult<Key : Any, Data : Any, SourcePagingStatus : Any> {
     data class Failure<Key : Any, Data : Any, PagingStatus : Any>(
         override val status: PagingStatus? = null,
         override val additionalData: PagingParams? = null,
-        val exception: Exception
+        val throwable: Throwable
     ) : LoadResult<Key, Data, PagingStatus>()
 }
 

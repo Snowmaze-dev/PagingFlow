@@ -115,7 +115,7 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
 
             is LoadResult.Failure<*, *, PagingStatus> -> LoadNextPageResult.Failure(
                 additionalData = additionalData ?: PagingParams(),
-                exception = loadData.exception
+                throwable = loadData.throwable
             )
         }
     }

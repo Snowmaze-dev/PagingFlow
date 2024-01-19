@@ -16,6 +16,6 @@ sealed class LoadNextPageResult<Key, Data> {
 
     data class Failure<Key : Any, Data : Any>(
         override val additionalData: PagingParams,
-        val exception: Exception? = null
+        val throwable: Throwable
     ) : LoadNextPageResult<Key, Data>()
 }

@@ -9,7 +9,7 @@ sealed class PagingStatus<SourcePagingStatus : Any>(val hasNextPage: Boolean) {
 
     class Failure<SourcePagingStatus : Any>(
         val sourcePagingStatus: SourcePagingStatus? = null,
-        val error: Exception
+        val throwable: Throwable
     ) : PagingStatus<SourcePagingStatus>(true)
 
     class Loading<SourcePagingStatus : Any> : PagingStatus<SourcePagingStatus>(true)
