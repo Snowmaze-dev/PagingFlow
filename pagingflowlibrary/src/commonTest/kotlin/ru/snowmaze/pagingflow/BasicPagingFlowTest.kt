@@ -4,6 +4,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
+import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals

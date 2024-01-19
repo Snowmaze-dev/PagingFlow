@@ -1,7 +1,7 @@
 package ru.snowmaze.pagingflow.sources
 
 import ru.snowmaze.pagingflow.LoadParams
-import ru.snowmaze.pagingflow.LoadResult
+import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.errorshandler.PagingUnhandledErrorsHandler
 
 /**

@@ -1,7 +1,7 @@
 package ru.snowmaze.pagingflow.samples
 
 import ru.snowmaze.pagingflow.LoadParams
-import ru.snowmaze.pagingflow.simpleResult
+import ru.snowmaze.pagingflow.result.simpleResult
 import ru.snowmaze.pagingflow.sources.SegmentedDataSource
 
 class TestDataSource(

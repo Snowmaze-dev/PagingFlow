@@ -1,6 +1,7 @@
-package ru.snowmaze.pagingflow
+package ru.snowmaze.pagingflow.result
 
 import kotlinx.coroutines.flow.Flow
+import ru.snowmaze.pagingflow.UpdatableData
 import ru.snowmaze.pagingflow.params.PagingParams
 
 sealed class LoadNextPageResult<Key, Data> {

@@ -11,6 +11,8 @@ import ru.snowmaze.pagingflow.sources.ConcatDataSourceConfig
 import ru.snowmaze.pagingflow.sources.DataSource
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.mappingPresenter
+import ru.snowmaze.pagingflow.result.LoadNextPageResult
+import ru.snowmaze.pagingflow.result.LoadResult
 
 /**
  * Main class of library which holds state of pagination

@@ -2,6 +2,7 @@ package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
+import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import kotlin.test.assertEquals
 
 val testDispatcher = UnconfinedTestDispatcher()

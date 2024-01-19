@@ -1,9 +1,9 @@
 package ru.snowmaze.pagingflow.sources
 
 import ru.snowmaze.pagingflow.LoadParams
-import ru.snowmaze.pagingflow.LoadResult
+import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.PaginationDirection
-import ru.snowmaze.pagingflow.mapSuccess
+import ru.snowmaze.pagingflow.result.mapSuccess
 
 abstract class SegmentedDataSource<Data : Any, PagingStatus : Any> :
     DataSource<Int, Data, PagingStatus> {

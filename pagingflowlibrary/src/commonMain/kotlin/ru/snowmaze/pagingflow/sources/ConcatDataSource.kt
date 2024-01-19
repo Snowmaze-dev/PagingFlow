@@ -8,7 +8,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import ru.snowmaze.pagingflow.LoadParams
-import ru.snowmaze.pagingflow.LoadResult
+import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.PagingStatus
 import ru.snowmaze.pagingflow.UpdatableData
@@ -19,7 +19,7 @@ import ru.snowmaze.pagingflow.internal.DataSources
 import ru.snowmaze.pagingflow.params.DataKey
 import ru.snowmaze.pagingflow.params.DefaultKeys
 import ru.snowmaze.pagingflow.params.PagingParams
-import ru.snowmaze.pagingflow.simpleResult
+import ru.snowmaze.pagingflow.result.simpleResult
 
 class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
     private val concatDataSourceConfig: ConcatDataSourceConfig<Key>

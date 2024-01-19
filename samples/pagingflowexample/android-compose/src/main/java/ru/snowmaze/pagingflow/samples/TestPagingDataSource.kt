@@ -23,7 +23,7 @@ class TestPagingDataSource(private val itemsCount: Int) : PagingSource<Int, Stri
                 params.loadSize,
                 position
             )
-        ) as ru.snowmaze.pagingflow.LoadResult.Success
+        ) as ru.snowmaze.pagingflow.result.LoadResult.Success
         return LoadResult.Page(
             result.dataFlow!!.first().data,
             prevKey = params.key?.minus(params.loadSize)?.takeIf { it >= 0 },
