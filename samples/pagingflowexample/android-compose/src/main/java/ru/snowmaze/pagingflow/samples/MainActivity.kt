@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -21,7 +22,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.collectAsLazyPagingItems
-import ru.snowmaze.pagingflow.PagingTrigger
+import ru.snowmaze.pagingflow.utils.PagingTrigger
 import ru.snowmaze.pagingflow.samples.TestViewModel.Companion.PREFETCH_DISTANCE
 import ru.snowmaze.pagingflow.samples.ui.theme.TestComposeAppTheme
 
@@ -33,7 +34,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             TestComposeAppTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    PagingList(innerPadding)
+                    List(innerPadding)
                 }
             }
         }
@@ -46,18 +47,19 @@ fun List(innerPadding: PaddingValues) {
     val scope = rememberCoroutineScope()
     val pagingTrigger = remember {
         PagingTrigger(
-            pagingFlowProvider = { model.pagingFlow },
-            prefetchDistance = PREFETCH_DISTANCE
+            pagingFlow = { model.pagingFlow },
+            prefetchDistance = PREFETCH_DISTANCE,
+            itemCount = { model.pagingDataPresenter.dataFlow.value.size }
         )
     }
     val lazyListState = rememberLazyListState()
-    val items by model.pagingFlow.dataFlow.collectAsState()
+    val items by model.pagingDataPresenter.dataFlow.collectAsState()
     Log.d("MyActivity", "items $items")
     LazyColumn(
-        state = lazyListState, contentPadding = innerPadding
+        modifier = Modifier.fillMaxWidth(), state = lazyListState, contentPadding = innerPadding
     ) {
         itemsIndexed(items) { index, item ->
-            TestItem(item)
+            if (item != null) TestItem(item)
 //                            pagingTrigger.onItemVisible(index)
             pagingTrigger.launchedHandleLazyListState(lazyListState)
         }
@@ -70,10 +72,10 @@ fun PagingList(innerPadding: PaddingValues) {
     val model = androidx.lifecycle.viewmodel.compose.viewModel<TestPagingViewModel>()
     val items = model.flow.collectAsLazyPagingItems()
     Log.d("MyActivity", "items $items")
+    items.loadState.prepend
     LazyColumn(
         state = lazyListState, contentPadding = innerPadding
     ) {
-        items.itemSnapshotList
         Log.d("MyActivity", "items ${items.itemSnapshotList}")
         items(items.itemCount) { index ->
             val item = items[index] ?: return@items
@@ -86,7 +88,7 @@ fun PagingList(innerPadding: PaddingValues) {
 @Composable
 fun TestItem(item: String) {
     Text(
-        modifier = Modifier.padding(top = 4.dp, start = 8.dp, end = 8.dp),
+        modifier = Modifier.padding(top = 4.dp, start = 8.dp, end = 8.dp, bottom = 20.dp),
         text = item
     )
 }

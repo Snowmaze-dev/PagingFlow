@@ -1,4 +1,3 @@
 package ru.snowmaze.pagingflow
 
-class DefaultPagingStatus(val status: String) {
-}
+class DefaultPagingStatus(val status: String, val hasNext: Boolean = true)

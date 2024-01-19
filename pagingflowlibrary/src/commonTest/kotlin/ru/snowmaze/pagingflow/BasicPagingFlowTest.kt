@@ -1,58 +1,54 @@
 package ru.snowmaze.pagingflow
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.emitAll
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.runBlocking
-import kotlinx.datetime.Clock
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.runTest
+import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
+import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class BasicPagingFlowTest {
 
-    val loadSize = Random.nextInt(5, 30)
+    val pageSize = Random.nextInt(5, 30)
 
+    @OptIn(ExperimentalCoroutinesApi::class)
     private val basePagingFlowConfiguration = PagingFlowConfiguration(
-        defaultParams = LoadParams(loadSize, 0),
-        removePagesOffset = null,
-        mainDispatcher = Dispatchers.Unconfined,
-        processingDispatcher = Dispatchers.Unconfined
+        defaultParams = LoadParams(pageSize, 0),
+        maxPagesCount = null,
+        mainDispatcher = testDispatcher,
+        processingDispatcher = testDispatcher
     )
 
     @Test
-    fun testFlow() = runBlocking(Dispatchers.Default.limitedParallelism(1)) {
-        val otherFlow = flow {
-            emit(6)
-        }
-        val flow = flow<Int> {
-            emit(5)
-            delay(500)
-            emitAll(otherFlow)
-        }
-        var lastTime = Clock.System.now().toEpochMilliseconds()
-        flow.collect {
-            val timeDiff = Clock.System.now().toEpochMilliseconds() - lastTime
-            println("timeDiff:$timeDiff flowValue:$it")
-            lastTime = Clock.System.now().toEpochMilliseconds()
-        }
-    }
-
-    @Test
-    fun basePaginationUseCaseTest() = runBlocking {
+    fun basePaginationUseCaseTest() = runTest {
         val totalCount = Random.nextInt(80, 1000)
         val testDataSource = TestDataSource(totalCount)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
             addDataSource(testDataSource)
         }
+        val presenter = pagingFlow.pagingDataPresenter(throttleDurationMs = 0)
 
-        pagingFlow.testLoadEverything(listOf(testDataSource), loadSize)
-        invalidateAndCheckLoadingRight(pagingFlow, testDataSource)
+        pagingFlow.testLoadEverything(listOf(testDataSource), pageSize, pagingPresenter = presenter)
+        invalidateAndCheckLoadingRight(pagingFlow, testDataSource, pagingDataPresenter = presenter)
     }
 
     @Test
-    fun baseThreeSourcesPaginationUseCaseTest() = runBlocking {
+    fun paginationErrorTest() = runTest {
+        val totalCount = Random.nextInt(80, 1000)
+        val testDataSource = TestDataSource(totalCount)
+        val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
+            addDataSource(testDataSource)
+        }
+        testDataSource.currentException = IllegalArgumentException()
+        val result = pagingFlow.loadNextPageWithResult()
+        assertTrue(result is LoadNextPageResult.Failure<Int, String>)
+        assertTrue(pagingFlow.downPagingStatus.value is PagingStatus.Failure<DefaultPagingStatus>)
+    }
+
+    @Test
+    fun baseThreeSourcesPaginationUseCaseTest() = runTest {
         val firstTestDataSource = TestDataSource(Random.nextInt(80, 500))
         val secondTestDataSource = TestDataSource(Random.nextInt(80, 500))
         val thirdTestDataSource = TestDataSource(Random.nextInt(80, 500))
@@ -61,21 +57,24 @@ class BasicPagingFlowTest {
             addDataSource(secondTestDataSource)
             addDataSource(thirdTestDataSource)
         }
+        val presenter = pagingFlow.pagingDataPresenter(throttleDurationMs = 0)
 
         pagingFlow.testLoadEverything(
             listOf(firstTestDataSource, secondTestDataSource, thirdTestDataSource),
-            loadSize
+            pageSize,
+            pagingPresenter = presenter
         )
-        invalidateAndCheckLoadingRight(pagingFlow, firstTestDataSource)
+        invalidateAndCheckLoadingRight(pagingFlow, firstTestDataSource, presenter)
     }
 
     private suspend fun invalidateAndCheckLoadingRight(
         pagingFlow: PagingFlow<Int, String, DefaultPagingStatus>,
-        firstSource: TestDataSource
+        firstSource: TestDataSource,
+        pagingDataPresenter: PagingDataPresenter<Int, String>
     ) {
         pagingFlow.invalidate()
         val resultAfterValidate = pagingFlow.loadNextPageWithResult()
         assertEquals(true, resultAfterValidate.asSuccess().hasNext)
-        assertEquals(firstSource.getItems(loadSize), pagingFlow.dataFlow.value)
+        assertEquals(firstSource.getItems(pageSize), pagingDataPresenter.dataFlow.value)
     }
 }

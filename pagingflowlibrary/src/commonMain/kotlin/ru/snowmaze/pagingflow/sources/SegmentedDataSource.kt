@@ -5,19 +5,19 @@ import ru.snowmaze.pagingflow.LoadResult
 import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.mapSuccess
 
-abstract class SegmentedIntDataSource<Data : Any, PagingStatus : Any> :
+abstract class SegmentedDataSource<Data : Any, PagingStatus : Any> :
     DataSource<Int, Data, PagingStatus> {
 
     abstract val totalCount: Int
 
-    override suspend fun loadData(loadParams: LoadParams<Int>): LoadResult<Int, Data, PagingStatus> {
+    override suspend fun load(loadParams: LoadParams<Int>): LoadResult<Int, Data, PagingStatus> {
         val startIndex = loadParams.key ?: 0
-        val loadSize = (totalCount - startIndex).coerceAtMost(loadParams.loadSize)
+        val pageSize = (totalCount - startIndex).coerceAtMost(loadParams.pageSize)
         val isDown = loadParams.paginationDirection == PaginationDirection.DOWN
-        val endIndex = startIndex + loadSize
+        val endIndex = startIndex + pageSize
         val howManyLeft = if (isDown) totalCount - endIndex else startIndex
         val nextPageKey = if (howManyLeft == 0) null
-        else if (isDown) endIndex else startIndex - loadSize
+        else if (isDown) endIndex else startIndex - pageSize
         return loadData(loadParams, startIndex, endIndex).mapSuccess { result ->
             if (result.nextNextPageKey == null) result.copy(nextNextPageKey = nextPageKey)
             else result

@@ -1,79 +1,95 @@
 package ru.snowmaze.pagingflow
 
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.runTest
+import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class PagingBothDirectionsTest {
 
-    val loadSize = 10
+    val pageSize = 20
     val removePagesOffset = 4
-    val totalCount = loadSize * (removePagesOffset + 3)
+    val totalCount = 10000
 
     private val basePagingFlowConfiguration = PagingFlowConfiguration(
-        defaultParams = LoadParams(loadSize, 0),
-        removePagesOffset = removePagesOffset,
-        mainDispatcher = Dispatchers.Unconfined,
-        processingDispatcher = Dispatchers.Unconfined,
-        shouldFillRemovedPagesWithNulls = false
+        defaultParams = LoadParams(pageSize, 0),
+        maxPagesCount = removePagesOffset,
+        mainDispatcher = testDispatcher,
+        processingDispatcher = testDispatcher,
+        enableDroppedPagesNullPlaceholders = false
     )
 
     @Test
-    fun loadBothDirectionsTest() = runBlocking {
+    fun loadBothDirectionsTest() = runTest {
         val testDataSource = TestDataSource(totalCount)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
             addDataSource(testDataSource)
         }
-        pagingFlow.testLoadEverything(listOf(testDataSource), loadSize, shouldTestItems = false)
+        val presenter = pagingFlow.pagingDataPresenter(throttleDurationMs = 0)
+        pagingFlow.testLoadEverything(
+            listOf(testDataSource), pageSize,
+            shouldTestItems = false,
+            pagingPresenter = presenter
+        )
 
         assertEquals(removePagesOffset, pagingFlow.currentPagesCount)
-        var loadedData = pagingFlow.dataFlow.value
+        var loadedData = presenter.dataFlow.value
+        val allItems = testDataSource.getItems(totalCount)
         assertEquals(
-            testDataSource.getItems(totalCount).takeLast(loadSize * removePagesOffset),
+            allItems.takeLast(pageSize * removePagesOffset),
             loadedData
         )
-        println(pagingFlow.loadNextPageWithResult(PaginationDirection.UP))
-        loadedData = pagingFlow.dataFlow.value
-        assertEquals(testDataSource.getItems(loadSize * removePagesOffset), loadedData)
-        repeat(removePagesOffset) {
-            pagingFlow.loadNextPageWithResult(PaginationDirection.UP)
+
+        var hasNext = true
+        var countOfPages = 0
+        while (hasNext) {
+            hasNext = pagingFlow.loadNextPageWithResult(PaginationDirection.UP).asSuccess().hasNext
+            countOfPages++
+            loadedData = presenter.dataFlow.value
+            val (startIndex, endIndex) = getItemsWithPagesOffset(countOfPages)
+            assertEquals(
+                allItems.subList(startIndex, endIndex),
+                loadedData
+            )
         }
-        println("loadNextPageWithResult ${pagingFlow.dataFlow.value}")
-        assertEquals(testDataSource.getItems(loadSize * removePagesOffset), loadedData)
+        loadedData = presenter.dataFlow.value
+        assertEquals(testDataSource.getItems(pageSize * removePagesOffset), loadedData)
         assertEquals(
             false,
             pagingFlow.loadNextPageWithResult(PaginationDirection.UP).asSuccess().hasNext
         )
     }
 
+    fun getItemsWithPagesOffset(pagesOffset: Int): Pair<Int, Int> {
+        val startIndex = totalCount - (pageSize * (removePagesOffset + pagesOffset))
+        val endIndex = totalCount - (pagesOffset * pageSize)
+        return startIndex to endIndex
+    }
+
     @Test
-    fun loadBothDirectionsWithNullsTest() = runBlocking {
+    fun loadBothDirectionsWithNullsTest() = runTest {
         val testDataSource = TestDataSource(totalCount)
         val pagingFlow = buildPagingFlow(
             basePagingFlowConfiguration.copy(
-                shouldFillRemovedPagesWithNulls = true
+                enableDroppedPagesNullPlaceholders = true
             )
         ) {
             addDataSource(testDataSource)
         }
-        val removePagesOffsetSize = removePagesOffset * loadSize
-        pagingFlow.testLoadEverything(listOf(testDataSource), loadSize, shouldTestItems = false)
-
-        assertEquals(totalCount / loadSize, pagingFlow.currentPagesCount)
-        val loadedData = pagingFlow.dataFlow.value
-        println("$loadedData")
-        val allItems = testDataSource.getItems(totalCount)
-        assertEquals(
-            buildListOfNulls(totalCount - removePagesOffsetSize) + allItems.takeLast(removePagesOffsetSize),
-            loadedData
+        val presenter = pagingFlow.pagingDataPresenter(throttleDurationMs = 0)
+        pagingFlow.testLoadEverything(
+            listOf(testDataSource),
+            pageSize,
+            shouldTestItems = false,
+            pagingPresenter = presenter
         )
-        val result = pagingFlow.loadNextPageWithResult(paginationDirection = PaginationDirection.UP)
-        println("${pagingFlow.dataFlow.value}")
+
+        assertEquals(totalCount / pageSize, pagingFlow.currentPagesCount)
+        var loadedData = presenter.dataFlow.value
         assertEquals(
-            allItems.take(removePagesOffsetSize),
-            pagingFlow.dataFlow.value
+            buildListOfNulls(totalCount - (pageSize * removePagesOffset)) +
+                    testDataSource.getItems(totalCount).takeLast(pageSize * removePagesOffset),
+            loadedData
         )
     }
 

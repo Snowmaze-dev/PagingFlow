@@ -18,7 +18,7 @@ class TestPagingDataSource(private val itemsCount: Int) : PagingSource<Int, Stri
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, String> {
         val position = params.key ?: 0
-        val result = testDataSource.loadData(
+        val result = testDataSource.load(
             LoadParams(
                 params.loadSize,
                 position

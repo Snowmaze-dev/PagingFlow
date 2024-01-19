@@ -1,85 +1,128 @@
 package ru.snowmaze.pagingflow
 
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.invoke
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import ru.snowmaze.pagingflow.diff.DataChangedCallback
+import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.sources.ConcatDataSource
 import ru.snowmaze.pagingflow.sources.ConcatDataSourceConfig
-import ru.snowmaze.pagingflow.sources.ConcatSourceData
 import ru.snowmaze.pagingflow.sources.DataSource
+import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
+import ru.snowmaze.pagingflow.presenters.mappingPresenter
 
-// так и с маппингом в уже готовые output данные
-// сделать возможность маппить данные внутри
-// TODO
+/**
+ * Main class of library which holds state of pagination
+ * You can create it using [buildPagingFlow]
+ * To get current list of pagination you need to create presenter which will present list
+ * You can use extension [pagingDataPresenter] on paging flow to get simply presenter
+ * You can also create mapping presenter with [mappingPresenter]
+ */
 class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
-    private val concatDataSource: SourcesChainSource<Key, Data, PagingStatus>,
-    private val pagingFlowConfiguration: PagingFlowConfiguration<Key>
+    private val concatDataSource: ConcatDataSource<Key, Data, PagingStatus>,
+    val pagingFlowConfiguration: PagingFlowConfiguration<Key>
 ) {
 
     private val loadMutex = Mutex()
-    val pagingStatus get() = concatDataSource.pagingStatus
+    val upPagingStatus get() = concatDataSource.upPagingStatus
+    val downPagingStatus get() = concatDataSource.downPagingStatus
     val isLoading get() = loadMutex.isLocked
 
     val currentPagesCount get() = concatDataSource.currentPagesCount
-    val dataFlow: StateFlow<List<Data?>> = concatDataSource.dataFlow
     private val defaultParams = pagingFlowConfiguration.defaultParams
 
+    /**
+     * @see [ConcatDataSource.addDataSource]
+     */
     fun addDataSource(dataSource: DataSource<Key, Data, PagingStatus>) {
         concatDataSource.addDataSource(dataSource)
     }
 
+    /**
+     * @see [ConcatDataSource.removeDataSource]
+     */
     fun removeDataSource(dataSource: DataSource<Key, Data, PagingStatus>) {
         concatDataSource.removeDataSource(dataSource)
     }
 
-    fun loadNextPage(
-        paginationDirection: PaginationDirection = defaultParams.paginationDirection
-    ) = pagingFlowConfiguration.coroutineScope.launch {
-        loadNextPageWithResult(paginationDirection)
+    /**
+     * @see [ConcatDataSource.addDataChangedCallback]
+     */
+    fun addDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
+        concatDataSource.addDataChangedCallback(callback)
     }
 
+    /**
+     * @see [ConcatDataSource.removeDataChangedCallback]
+     */
+    fun removeDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
+        concatDataSource.removeDataChangedCallback(callback)
+    }
+
+    /**
+     * Loads next page async
+     * @see loadNextPageInternal
+     */
+    fun loadNextPage(
+        paginationDirection: PaginationDirection = defaultParams.paginationDirection,
+        pagingParams: PagingParams? = null
+    ) = pagingFlowConfiguration.coroutineScope.launch {
+        loadNextPageWithResult(paginationDirection, pagingParams)
+    }
+
+    /**
+     * Loads next page sync
+     * @see loadNextPageInternal
+     */
     suspend fun loadNextPageWithResult(
-        paginationDirection: PaginationDirection = defaultParams.paginationDirection
+        paginationDirection: PaginationDirection = defaultParams.paginationDirection,
+        pagingParams: PagingParams? = null
     ) = loadMutex.withLock {
         pagingFlowConfiguration.processingDispatcher {
-            loadNextPageInternal(paginationDirection)
+            loadNextPageInternal(paginationDirection, pagingParams)
         }
     }
 
-    fun trimPages() {
-
-    }
-
-    @Suppress("UNCHECKED_CAST")
+    /**
+     * Loads next page from [ConcatDataSource]
+     * @param paginationDirection direction of loading
+     * @param pagingParams params which will be supplied to data source, you can use them to specify custom values
+     * @return [LoadNextPageResult] of loading next page of data in given direction
+     */
     private suspend fun loadNextPageInternal(
-        paginationDirection: PaginationDirection
+        paginationDirection: PaginationDirection,
+        pagingParams: PagingParams? = null
     ): LoadNextPageResult<Key, Data> {
 
-        // TODO сделать поддержку передачи ключей пагинации тут nextPageKey
-        val loadData = concatDataSource.loadData(
+        val loadData = concatDataSource.load(
             pagingFlowConfiguration.defaultParams.copy(
-                paginationDirection = paginationDirection
+                paginationDirection = paginationDirection,
+                pagingParams = pagingParams ?: pagingFlowConfiguration.defaultParams.pagingParams
             )
         )
-        val additionalData = loadData.additionalData as? ConcatSourceData<Key>
+        val result = loadData.additionalData?.getOrNull(
+            ConcatDataSource.concatDataSourceResultKey<Key>()
+        )
+        val additionalData = result?.additionalData ?: loadData.additionalData
         return when (loadData) {
             is LoadResult.Success<Key, Data, PagingStatus> -> LoadNextPageResult.Success(
-                currentKey = additionalData?.currentKey,
+                currentKey = result?.currentKey,
                 dataFlow = loadData.dataFlow,
                 hasNext = loadData.nextNextPageKey != null,
-                additionalData = if (additionalData == null) additionalData
-                else additionalData.additionalData
+                additionalData = additionalData ?: PagingParams()
             )
 
             is LoadResult.Failure<*, *, PagingStatus> -> LoadNextPageResult.Failure(
-                additionalData = additionalData,
+                additionalData = additionalData ?: PagingParams(),
                 exception = loadData.exception
             )
         }
     }
 
+    /**
+     * @see [ConcatDataSource.invalidate]
+     */
     suspend fun invalidate() = concatDataSource.invalidate()
 }
 
@@ -90,11 +133,11 @@ fun <Key : Any, Data : Any, PagingStatus : Any> buildPagingFlow(
     ConcatDataSource(
         ConcatDataSourceConfig(
             defaultParams = configuration.defaultParams,
-            removePagesOffset = configuration.removePagesOffset,
+            removePagesOffset = configuration.maxPagesCount,
             mainDispatcher = configuration.mainDispatcher,
             processingDispatcher = configuration.processingDispatcher,
             coroutineScope = configuration.coroutineScope,
-            shouldFillRemovedPagesWithNulls = configuration.shouldFillRemovedPagesWithNulls
+            shouldFillRemovedPagesWithNulls = configuration.enableDroppedPagesNullPlaceholders
         )
     ), configuration
 ).apply(builder)

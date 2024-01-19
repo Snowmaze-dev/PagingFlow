@@ -1,16 +1,21 @@
 package ru.snowmaze.pagingflow
 
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
 import kotlin.test.assertEquals
+
+val testDispatcher = UnconfinedTestDispatcher()
 
 suspend fun PagingFlow<Int, String, DefaultPagingStatus>.testLoadEverything(
     dataSources: List<TestDataSource>,
-    loadSize: Int,
-    shouldTestItems: Boolean = true
+    pageSize: Int,
+    shouldTestItems: Boolean = true,
+    pagingPresenter: PagingDataPresenter<Int, String>
 ) {
     var dataSourceIndex = 0
     var currentDataSource = dataSources[dataSourceIndex]
     var currentSourceLoadedCount = 0
-    var currentLoadSize = currentDataSource.defaultLoadParams?.loadSize ?: loadSize
+    var currentLoadSize = currentDataSource.defaultLoadParams?.pageSize ?: pageSize
     var currentTotalCount = currentDataSource.totalCount
     val loadingSources = mutableListOf(currentDataSource)
 
@@ -18,7 +23,7 @@ suspend fun PagingFlow<Int, String, DefaultPagingStatus>.testLoadEverything(
         val result = loadNextPageWithResult()
         currentSourceLoadedCount += currentLoadSize
         assertEquals(currentTotalCount != currentSourceLoadedCount, result.asSuccess().hasNext)
-        currentLoadSize = (currentTotalCount - currentSourceLoadedCount).coerceAtMost(loadSize)
+        currentLoadSize = (currentTotalCount - currentSourceLoadedCount).coerceAtMost(pageSize)
         if (shouldTestItems) assertEquals(
             loadingSources.mapIndexed { index, testDataSource ->
                 testDataSource.getItems(
@@ -27,13 +32,13 @@ suspend fun PagingFlow<Int, String, DefaultPagingStatus>.testLoadEverything(
                     } else testDataSource.totalCount
                 )
             }.flatten(),
-            dataFlow.value
+            pagingPresenter.dataFlow.value
         )
         if (currentLoadSize == 0) {
             currentDataSource = dataSources.getOrNull(++dataSourceIndex) ?: break
             currentSourceLoadedCount = 0
             currentTotalCount = currentDataSource.totalCount
-            currentLoadSize = currentDataSource.defaultLoadParams?.loadSize ?: loadSize
+            currentLoadSize = currentDataSource.defaultLoadParams?.pageSize ?: pageSize
             loadingSources += currentDataSource
         }
     }

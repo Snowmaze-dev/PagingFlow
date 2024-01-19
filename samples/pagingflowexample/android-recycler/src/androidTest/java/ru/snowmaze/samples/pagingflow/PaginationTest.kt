@@ -16,7 +16,6 @@ import org.junit.Rule
 import org.junit.Test
 import ru.snowmaze.pagingflow.samples.MainActivity
 import ru.snowmaze.pagingflow.samples.TestViewModel.Companion.EXAMPLE_LOAD_SIZE
-import ru.snowmaze.pagingflow.samples.TestViewModel.Companion.PREFETCH_DISTANCE
 import ru.snowmaze.pagingflow.samples.TestViewModel.Companion.REMOVE_PAGE_OFFSET
 import java.util.concurrent.TimeUnit
 

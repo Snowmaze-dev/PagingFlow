@@ -10,7 +10,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
-import ru.snowmaze.pagingflow.PagingTrigger
+import ru.snowmaze.pagingflow.utils.PagingTrigger
 
 @Composable
 inline fun <reified VM : dev.icerock.moko.mvvm.viewmodel.ViewModel> viewModel(

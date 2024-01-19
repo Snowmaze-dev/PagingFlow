@@ -1,14 +1,13 @@
 package ru.snowmaze.pagingflow.samples
 
-import ru.snowmaze.pagingflow.DefaultPagingStatus
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.simpleResult
-import ru.snowmaze.pagingflow.sources.SegmentedIntDataSource
+import ru.snowmaze.pagingflow.sources.SegmentedDataSource
 
 class TestDataSource(
     override val totalCount: Int,
     val withDelay: Boolean = false
-) : SegmentedIntDataSource<String, DefaultPagingStatus>() {
+) : SegmentedDataSource<String, Any>() {
 
     private val items = buildList {
         repeat(totalCount) {

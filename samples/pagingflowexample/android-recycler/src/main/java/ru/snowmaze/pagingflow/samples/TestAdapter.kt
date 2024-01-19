@@ -1,6 +1,5 @@
 package ru.snowmaze.pagingflow.samples
 
-import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
@@ -8,7 +7,7 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.updatePadding
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
-import ru.snowmaze.pagingflow.PagingTrigger
+import ru.snowmaze.pagingflow.utils.PagingTrigger
 
 class TestAdapter(
     private val pagingTrigger: PagingTrigger

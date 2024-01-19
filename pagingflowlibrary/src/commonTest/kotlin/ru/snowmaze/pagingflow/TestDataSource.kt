@@ -1,10 +1,10 @@
 package ru.snowmaze.pagingflow
 
-import ru.snowmaze.pagingflow.sources.SegmentedIntDataSource
+import ru.snowmaze.pagingflow.sources.SegmentedDataSource
 
 class TestDataSource(
     override val totalCount: Int
-) : SegmentedIntDataSource<String, DefaultPagingStatus>() {
+) : SegmentedDataSource<String, DefaultPagingStatus>() {
 
     var currentStatus: DefaultPagingStatus? = null
     var currentException: Exception? = null

@@ -4,6 +4,7 @@ import dev.icerock.moko.mvvm.viewmodel.ViewModel
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.PagingFlowConfiguration
 import ru.snowmaze.pagingflow.buildPagingFlow
+import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 
 class TestViewModel : ViewModel() {
 
@@ -20,11 +21,12 @@ class TestViewModel : ViewModel() {
         buildPagingFlow(
             PagingFlowConfiguration(
                 LoadParams(EXAMPLE_LOAD_SIZE, 0),
-                removePagesOffset = REMOVE_PAGE_OFFSET
+                maxPagesCount = REMOVE_PAGE_OFFSET
             )
         ) {
             addDataSource(TestDataSource(totalItemsCount, true))
             loadNextPage()
         }
     }
+    val pagingDataPresenter = pagingFlow.pagingDataPresenter()
 }
