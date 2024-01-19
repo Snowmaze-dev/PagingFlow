@@ -49,7 +49,7 @@ val pagingDataPresenter = pagingFlow.pagingDataPresenter()
 
 ### Submitting data in android
 ```kotlin
-viewLifecycleOwner.launch {
+viewLifecycleOwner.coroutineScope.launch {
    viewModel.pagingDataPresenter.dataFlow.collect { dataList ->
        adapter.submit(dataList)
    }
