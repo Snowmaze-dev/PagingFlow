@@ -10,7 +10,7 @@ import ru.snowmaze.pagingflow.sources.ConcatDataSource
 import ru.snowmaze.pagingflow.sources.ConcatDataSourceConfig
 import ru.snowmaze.pagingflow.sources.DataSource
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
-import ru.snowmaze.pagingflow.presenters.mappingPresenter
+import ru.snowmaze.pagingflow.presenters.mappingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import ru.snowmaze.pagingflow.result.LoadResult
 
@@ -19,7 +19,7 @@ import ru.snowmaze.pagingflow.result.LoadResult
  * You can create it using [buildPagingFlow]
  * To get current list of pagination you need to create presenter which will present list
  * You can use extension [pagingDataPresenter] on paging flow to get simply presenter
- * You can also create mapping presenter with [mappingPresenter]
+ * You can also create mapping presenter with [mappingDataPresenter]
  */
 class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
     private val concatDataSource: ConcatDataSource<Key, Data, PagingStatus>,

@@ -47,12 +47,12 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
 
     private val dataSources = DataSources<Key, Data, SourcePagingStatus>()
     private val dataPages = mutableListOf<DataPage<Key, Data, SourcePagingStatus>>()
-    private val dataChangedCallbacks = mutableListOf<DataChangedCallback<Key, Data>>()
     val currentPagesCount get() = dataPages.size
 
     private var isNeedToTrim = false
     private var lastPaginationDirection: PaginationDirection? = null
     private val coroutineScope = concatDataSourceConfig.coroutineScope
+    private val dataChangedCallbacks = mutableListOf<DataChangedCallback<Key, Data>>()
 
     /**
      * Adds callback which called when data has been changed

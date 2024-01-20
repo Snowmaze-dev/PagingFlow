@@ -1,32 +1,52 @@
 package ru.snowmaze.pagingflow.presenters
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import ru.snowmaze.pagingflow.PagingFlow
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.utils.limitedParallelismCompat
 
 class PagingDataMappingPresenter<Key : Any, Data : Any, NewData : Any>(
-    pagingFlow: PagingFlow<Key, Data, *>,
+    pagingDataPresenter: PagingDataPresenter<Key, Data>,
     invalidateBehavior: InvalidateBehavior,
     throttleDurationMs: Long,
     private val transform: (List<Data?>) -> List<NewData?>,
+    override val coroutineScope: CoroutineScope,
+    processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : ThrottleEventsPagingPresenter<Key, NewData>(invalidateBehavior, throttleDurationMs) {
 
-    override val coroutineScope = pagingFlow.pagingFlowConfiguration.coroutineScope
-    override val processingDispatcher = pagingFlow.pagingFlowConfiguration.processingDispatcher
-        .limitedParallelismCompat(1)
+    override val processingDispatcher = processingDispatcher.limitedParallelismCompat(1)
 
     init {
-        pagingFlow.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
+        pagingDataPresenter.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
             override fun onPageAdded(key: Key?, pageIndex: Int, items: List<Data>) {
-                updateData { this[pageIndex] = transform(items) }
+                updateData {
+                    val transformResult = transform(items) as List<NewData>
+                    this[pageIndex] = transformResult
+                    callDataChangedCallbacks {
+                        onPageAdded(key, pageIndex, transformResult)
+                    }
+                }
             }
 
             override fun onPageChanged(key: Key?, pageIndex: Int, items: List<Data?>) {
-                updateData { this[pageIndex] = transform(items) }
+                updateData {
+                    val transformResult = transform(items)
+                    this[pageIndex] = transformResult
+                    callDataChangedCallbacks {
+                        onPageChanged(key, pageIndex, transformResult)
+                    }
+                }
             }
 
             override fun onPageRemoved(key: Key?, pageIndex: Int) {
-                updateData { remove(pageIndex) }
+                updateData {
+                    remove(pageIndex)
+                    callDataChangedCallbacks {
+                        onPageRemoved(key, pageIndex)
+                    }
+                }
             }
 
             override fun onInvalidate() = onInvalidateInternal()
@@ -39,14 +59,31 @@ class PagingDataMappingPresenter<Key : Any, Data : Any, NewData : Any>(
  * @param invalidateBehavior behavior of invalidate, by default it clears list after new value received
  * it means that list wouldn't blink when invalidate happens
  */
-fun <Key : Any, Data : Any, NewData : Any> PagingFlow<Key, Data, *>.mappingPresenter(
+fun <Key : Any, Data : Any, NewData : Any> PagingDataPresenter<Key, Data>.mappingDataPresenter(
+    invalidateBehavior: InvalidateBehavior =
+        InvalidateBehavior.INVALIDATE_AND_CLEAR_LIST_BEFORE_NEXT_VALUE_RECEIVED,
+    throttleDurationMs: Long = 120L,
+    coroutineScope: CoroutineScope,
+    processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
+    transform: (List<Data?>) -> List<NewData?>
+) = PagingDataMappingPresenter(
+    pagingDataPresenter = this,
+    invalidateBehavior = invalidateBehavior,
+    throttleDurationMs = throttleDurationMs,
+    coroutineScope = coroutineScope,
+    processingDispatcher = processingDispatcher,
+    transform = transform
+)
+
+fun <Key : Any, Data : Any, NewData : Any> PagingFlow<Key, Data, *>.mappingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
         InvalidateBehavior.INVALIDATE_AND_CLEAR_LIST_BEFORE_NEXT_VALUE_RECEIVED,
     throttleDurationMs: Long = 120L,
     transform: (List<Data?>) -> List<NewData?>
-): PagingDataPresenter<Key, NewData> = PagingDataMappingPresenter(
-    pagingFlow = this,
+) = pagingFlowWrapperPresenter().mappingDataPresenter(
     invalidateBehavior = invalidateBehavior,
     throttleDurationMs = throttleDurationMs,
+    coroutineScope = pagingFlowConfiguration.coroutineScope,
+    processingDispatcher = pagingFlowConfiguration.processingDispatcher,
     transform = transform
 )

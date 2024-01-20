@@ -16,7 +16,7 @@ import kotlinx.coroutines.launch
 abstract class ThrottleEventsPagingPresenter<Key : Any, Data : Any>(
     private val invalidateBehavior: InvalidateBehavior,
     private val throttleDurationMs: Long
-) : PagingDataPresenter<Key, Data> {
+) : PagingDataPresenter<Key, Data>() {
 
     abstract val coroutineScope: CoroutineScope
     abstract val processingDispatcher: CoroutineDispatcher
@@ -37,6 +37,7 @@ abstract class ThrottleEventsPagingPresenter<Key : Any, Data : Any>(
             else isInvalidated = true
             changeDataJob.cancel()
             changeDataJob = Job()
+            callDataChangedCallbacks { onInvalidate() }
         }
     }
 
@@ -52,8 +53,7 @@ abstract class ThrottleEventsPagingPresenter<Key : Any, Data : Any>(
     private fun buildList() {
         val result = buildList(pageIndexesKeys.sumOf { pageIndexes.getValue(it).size }) {
             for (pageIndex in pageIndexesKeys) {
-                val data = pageIndexes.getValue(pageIndex)
-                addAll(data)
+                addAll(pageIndexes.getValue(pageIndex))
             }
         }
         if (isInvalidated && invalidateBehavior ==
