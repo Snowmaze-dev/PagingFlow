@@ -11,8 +11,9 @@ internal data class DataPage<Key : Any, Data : Any, PagingStatus : Any>(
     val previousPageKey: Key?,
     val currentPageKey: Key?,
     val nextPageKey: Key?,
-    val pageIndex: Int,
     val dataSource: DataSource<Key, Data, PagingStatus>,
     val listenJob: Job,
-    val cachedResult: PagingParams?
+    val cachedResult: PagingParams?,
+    val pageIndex: Int,
+    val dataSourceIndex: Int
 )

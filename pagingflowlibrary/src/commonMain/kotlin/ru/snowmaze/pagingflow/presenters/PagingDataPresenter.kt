@@ -29,6 +29,32 @@ abstract class PagingDataPresenter<Key : Any, Data : Any> {
     protected inline fun callDataChangedCallbacks(block: DataChangedCallback<Key, Data>.() -> Unit) {
         dataChangedCallbacks.forEach(block)
     }
+
+    protected fun createDefaultDataChangedCallback(
+    ) = object : DataChangedCallback<Key, Data> {
+
+        override fun onPageAdded(
+            key: Key?,
+            pageIndex: Int,
+            sourceIndex: Int,
+            items: List<Data>
+        ) = callDataChangedCallbacks { onPageAdded(key, pageIndex, sourceIndex, items) }
+
+        override fun onPageChanged(
+            key: Key?,
+            pageIndex: Int,
+            sourceIndex: Int,
+            items: List<Data?>
+        ) = callDataChangedCallbacks { onPageChanged(key, pageIndex, sourceIndex, items) }
+
+        override fun onPageRemoved(key: Key?, pageIndex: Int, sourceIndex: Int) {
+            callDataChangedCallbacks { onPageRemoved(key, pageIndex, sourceIndex) }
+        }
+
+        override fun onInvalidate() {
+            callDataChangedCallbacks { onInvalidate() }
+        }
+    }
 }
 
 val PagingDataPresenter<*, *>.itemCount get() = dataFlow.value.size

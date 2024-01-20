@@ -156,9 +156,10 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
             else result.nextNextPageKey,
             currentPageKey = currentKey,
             listenJob = listenJob,
+            cachedResult = result.cachedResult,
             pageIndex = if (lastPage == null) 0
             else if (isPaginationDown) lastPage.pageIndex + 1 else lastPage.pageIndex - 1,
-            cachedResult = result.cachedResult
+            dataSourceIndex = newIndex.coerceAtLeast(0)
         )
         val isExistingPage = dataPages.getOrNull(newIndex) != null
         if (isExistingPage) {
@@ -177,11 +178,13 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
                 if (isExistingPage) onPageChanged(
                     key = currentKey,
                     pageIndex = page.pageIndex,
-                    items = firstValue
+                    items = firstValue,
+                    sourceIndex = page.dataSourceIndex
                 ) else onPageAdded(
                     key = currentKey,
                     pageIndex = page.pageIndex,
-                    items = firstValue
+                    items = firstValue,
+                    sourceIndex = page.dataSourceIndex
                 )
             }
         }
@@ -194,7 +197,8 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
                     onPageChanged(
                         key = currentKey,
                         pageIndex = page.pageIndex,
-                        items = it.data
+                        items = it.data,
+                        sourceIndex = page.dataSourceIndex
                     )
                 }
             }
@@ -251,11 +255,12 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
                     onPageChanged(
                         key = page.currentPageKey,
                         pageIndex = page.pageIndex,
-                        buildList(lastDataSize) {
+                        items = buildList(lastDataSize) {
                             repeat(lastDataSize) {
                                 add(null)
                             }
-                        }
+                        },
+                        sourceIndex = page.dataSourceIndex
                     )
                 }
             } else {
@@ -266,6 +271,7 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
                         onPageRemoved(
                             key = page.currentPageKey,
                             pageIndex = page.pageIndex,
+                            sourceIndex = page.dataSourceIndex
                         )
                     }
                 }

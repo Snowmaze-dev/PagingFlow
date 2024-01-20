@@ -18,16 +18,24 @@ class SimplePagingDataPresenter<Key : Any, Data : Any>(
     override val processingDispatcher = processingDispatcher.limitedParallelismCompat(1)
 
     init {
+        pagingFlowWrapperPresenter.addDataChangedCallback(createDefaultDataChangedCallback())
         pagingFlowWrapperPresenter.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
-            override fun onPageAdded(key: Key?, pageIndex: Int, items: List<Data>) {
-                updateData { this[pageIndex] = items }
-            }
 
-            override fun onPageChanged(key: Key?, pageIndex: Int, items: List<Data?>) {
-                updateData { this[pageIndex] = items }
-            }
+            override fun onPageAdded(
+                key: Key?,
+                pageIndex: Int,
+                sourceIndex: Int,
+                items: List<Data>
+            ) = updateData { this[pageIndex] = items }
 
-            override fun onPageRemoved(key: Key?, pageIndex: Int) {
+            override fun onPageChanged(
+                key: Key?,
+                pageIndex: Int,
+                sourceIndex: Int,
+                items: List<Data?>
+            ) = updateData { this[pageIndex] = items }
+
+            override fun onPageRemoved(key: Key?, pageIndex: Int, sourceIndex: Int) {
                 updateData { remove(pageIndex) }
             }
 

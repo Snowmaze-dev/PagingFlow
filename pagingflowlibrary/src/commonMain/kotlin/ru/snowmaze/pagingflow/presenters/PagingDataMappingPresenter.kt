@@ -20,31 +20,37 @@ class PagingDataMappingPresenter<Key : Any, Data : Any, NewData : Any>(
 
     init {
         pagingDataPresenter.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
-            override fun onPageAdded(key: Key?, pageIndex: Int, items: List<Data>) {
-                updateData {
-                    val transformResult = transform(items) as List<NewData>
-                    this[pageIndex] = transformResult
-                    callDataChangedCallbacks {
-                        onPageAdded(key, pageIndex, transformResult)
-                    }
+            override fun onPageAdded(
+                key: Key?,
+                pageIndex: Int,
+                sourceIndex: Int,
+                items: List<Data>
+            ) = updateData {
+                val transformResult = transform(items) as List<NewData>
+                this[pageIndex] = transformResult
+                callDataChangedCallbacks {
+                    onPageAdded(key, pageIndex, sourceIndex, transformResult)
                 }
             }
 
-            override fun onPageChanged(key: Key?, pageIndex: Int, items: List<Data?>) {
-                updateData {
-                    val transformResult = transform(items)
-                    this[pageIndex] = transformResult
-                    callDataChangedCallbacks {
-                        onPageChanged(key, pageIndex, transformResult)
-                    }
+            override fun onPageChanged(
+                key: Key?,
+                pageIndex: Int,
+                sourceIndex: Int,
+                items: List<Data?>
+            ) = updateData {
+                val transformResult = transform(items)
+                this[pageIndex] = transformResult
+                callDataChangedCallbacks {
+                    onPageChanged(key, pageIndex, sourceIndex, transformResult)
                 }
             }
 
-            override fun onPageRemoved(key: Key?, pageIndex: Int) {
+            override fun onPageRemoved(key: Key?, pageIndex: Int, sourceIndex: Int) {
                 updateData {
                     remove(pageIndex)
                     callDataChangedCallbacks {
-                        onPageRemoved(key, pageIndex)
+                        onPageRemoved(key, pageIndex, sourceIndex)
                     }
                 }
             }
@@ -73,6 +79,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataPresenter<Key, Data>.mappin
     processingDispatcher = processingDispatcher,
     transform = transform
 )
+
 fun <Key : Any, Data : Any, NewData : Any> PagingFlow<Key, Data, *>.mappingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
         InvalidateBehavior.INVALIDATE_AND_CLEAR_LIST_BEFORE_NEXT_VALUE_RECEIVED,

@@ -9,11 +9,11 @@ import ru.snowmaze.pagingflow.presenters.SimplePagingDataPresenter
  */
 interface DataChangedCallback<Key : Any, Data : Any> {
 
-    fun onPageAdded(key: Key?, pageIndex: Int, items: List<Data>) {}
+    fun onPageAdded(key: Key?, pageIndex: Int, sourceIndex: Int, items: List<Data>) {}
 
-    fun onPageChanged(key: Key?, pageIndex: Int, items: List<Data?>) {}
+    fun onPageChanged(key: Key?, pageIndex: Int, sourceIndex: Int, items: List<Data?>) {}
 
-    fun onPageRemoved(key: Key?, pageIndex: Int) {}
+    fun onPageRemoved(key: Key?, pageIndex: Int, sourceIndex: Int) {}
 
     /**
      * @see [PagingFlow.invalidate]
