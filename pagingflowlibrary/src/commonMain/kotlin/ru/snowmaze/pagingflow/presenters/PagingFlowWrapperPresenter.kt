@@ -4,6 +4,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import ru.snowmaze.pagingflow.PagingFlow
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 
+/**
+ * Wrapper around [PagingFlow] class which can be wrapped in other data presenters like [pagingDataPresenter]
+ */
 class PagingFlowWrapperPresenter<Key : Any, Data : Any>(pagingFlow: PagingFlow<Key, Data, *>) :
     PagingDataPresenter<Key, Data>() {
 

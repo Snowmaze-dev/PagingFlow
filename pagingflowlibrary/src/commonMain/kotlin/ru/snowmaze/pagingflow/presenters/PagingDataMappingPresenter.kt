@@ -56,8 +56,7 @@ class PagingDataMappingPresenter<Key : Any, Data : Any, NewData : Any>(
 
 /**
  * Creates mapping presenter, which maps only changed pages and have throttling mechanism
- * @param invalidateBehavior behavior of invalidate, by default it clears list after new value received
- * it means that list wouldn't blink when invalidate happens
+ * @see pagingDataPresenter for arguments docs
  */
 fun <Key : Any, Data : Any, NewData : Any> PagingDataPresenter<Key, Data>.mappingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
@@ -74,7 +73,6 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataPresenter<Key, Data>.mappin
     processingDispatcher = processingDispatcher,
     transform = transform
 )
-
 fun <Key : Any, Data : Any, NewData : Any> PagingFlow<Key, Data, *>.mappingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
         InvalidateBehavior.INVALIDATE_AND_CLEAR_LIST_BEFORE_NEXT_VALUE_RECEIVED,

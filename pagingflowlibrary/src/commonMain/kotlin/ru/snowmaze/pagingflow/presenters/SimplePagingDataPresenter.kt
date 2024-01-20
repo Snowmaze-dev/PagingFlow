@@ -36,6 +36,12 @@ class SimplePagingDataPresenter<Key : Any, Data : Any>(
     }
 }
 
+/**
+ * Creates simple presenter, which builds list from pages and have throttling mechanism
+ * @param invalidateBehavior behavior of invalidate, by default it clears list after new value received, it means that list wouldn't blink when invalidate happens
+ * @param throttleDurationMs duration of throttle window
+ * @see InvalidateBehavior
+ */
 fun <Key : Any, Data : Any> PagingDataPresenter<Key, Data>.pagingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
         InvalidateBehavior.INVALIDATE_AND_CLEAR_LIST_BEFORE_NEXT_VALUE_RECEIVED,
