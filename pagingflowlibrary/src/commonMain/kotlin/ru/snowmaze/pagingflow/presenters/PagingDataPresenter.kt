@@ -2,11 +2,12 @@ package ru.snowmaze.pagingflow.presenters
 
 import kotlinx.coroutines.flow.StateFlow
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
+import ru.snowmaze.pagingflow.diff.DataChangesProvider
 
 /**
  * Base class for paging presenter, which exposes full list of data and callbacks to subscribe for data changes
  */
-abstract class PagingDataPresenter<Key : Any, Data : Any> {
+abstract class PagingDataPresenter<Key : Any, Data : Any> : DataChangesProvider<Key, Data> {
 
     protected val dataChangedCallbacks = mutableListOf<DataChangedCallback<Key, Data>>()
 
@@ -15,14 +16,14 @@ abstract class PagingDataPresenter<Key : Any, Data : Any> {
     /**
      * Adds callback which called when data has been changed
      */
-    fun addDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
+    override fun addDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
         dataChangedCallbacks.add(callback)
     }
 
     /**
      * Removes data changed callback
      */
-    fun removeDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
+    override fun removeDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
         dataChangedCallbacks.remove(callback)
     }
 

@@ -5,10 +5,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import ru.snowmaze.pagingflow.PagingFlow
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
+import ru.snowmaze.pagingflow.diff.DataChangesProvider
 import ru.snowmaze.pagingflow.utils.limitedParallelismCompat
 
 class PagingDataMappingPresenter<Key : Any, Data : Any, NewData : Any>(
-    pagingDataPresenter: PagingDataPresenter<Key, Data>,
+    dataChangedCallback: DataChangesProvider<Key, Data>,
     invalidateBehavior: InvalidateBehavior,
     throttleDurationMs: Long,
     private val transform: (List<Data?>) -> List<NewData?>,
@@ -19,7 +20,7 @@ class PagingDataMappingPresenter<Key : Any, Data : Any, NewData : Any>(
     override val processingDispatcher = processingDispatcher.limitedParallelismCompat(1)
 
     init {
-        pagingDataPresenter.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
+        dataChangedCallback.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
             override fun onPageAdded(
                 key: Key?,
                 pageIndex: Int,
@@ -64,7 +65,7 @@ class PagingDataMappingPresenter<Key : Any, Data : Any, NewData : Any>(
  * Creates mapping presenter, which maps only changed pages and have throttling mechanism
  * @see pagingDataPresenter for arguments docs
  */
-fun <Key : Any, Data : Any, NewData : Any> PagingDataPresenter<Key, Data>.mappingDataPresenter(
+fun <Key : Any, Data : Any, NewData : Any> DataChangesProvider<Key, Data>.mappingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
         InvalidateBehavior.INVALIDATE_AND_CLEAR_LIST_BEFORE_NEXT_VALUE_RECEIVED,
     throttleDurationMs: Long = 120L,
@@ -72,7 +73,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataPresenter<Key, Data>.mappin
     processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
     transform: (List<Data?>) -> List<NewData?>
 ) = PagingDataMappingPresenter(
-    pagingDataPresenter = this,
+    dataChangedCallback = this,
     invalidateBehavior = invalidateBehavior,
     throttleDurationMs = throttleDurationMs,
     coroutineScope = coroutineScope,
@@ -85,7 +86,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingFlow<Key, Data, *>.mappingDataP
         InvalidateBehavior.INVALIDATE_AND_CLEAR_LIST_BEFORE_NEXT_VALUE_RECEIVED,
     throttleDurationMs: Long = 120L,
     transform: (List<Data?>) -> List<NewData?>
-) = pagingFlowWrapperPresenter().mappingDataPresenter(
+) = mappingDataPresenter(
     invalidateBehavior = invalidateBehavior,
     throttleDurationMs = throttleDurationMs,
     coroutineScope = pagingFlowConfiguration.coroutineScope,

@@ -5,10 +5,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import ru.snowmaze.pagingflow.PagingFlow
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
+import ru.snowmaze.pagingflow.diff.DataChangesProvider
 import ru.snowmaze.pagingflow.utils.limitedParallelismCompat
 
 class SimplePagingDataPresenter<Key : Any, Data : Any>(
-    pagingFlowWrapperPresenter: PagingDataPresenter<Key, Data>,
+    dataChangesProvider: DataChangesProvider<Key, Data>,
     invalidateBehavior: InvalidateBehavior,
     throttleDurationMs: Long,
     override val coroutineScope: CoroutineScope,
@@ -18,8 +19,8 @@ class SimplePagingDataPresenter<Key : Any, Data : Any>(
     override val processingDispatcher = processingDispatcher.limitedParallelismCompat(1)
 
     init {
-        pagingFlowWrapperPresenter.addDataChangedCallback(createDefaultDataChangedCallback())
-        pagingFlowWrapperPresenter.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
+        dataChangesProvider.addDataChangedCallback(createDefaultDataChangedCallback())
+        dataChangesProvider.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
 
             override fun onPageAdded(
                 key: Key?,
@@ -50,14 +51,14 @@ class SimplePagingDataPresenter<Key : Any, Data : Any>(
  * @param throttleDurationMs duration of throttle window
  * @see InvalidateBehavior
  */
-fun <Key : Any, Data : Any> PagingDataPresenter<Key, Data>.pagingDataPresenter(
+fun <Key : Any, Data : Any> DataChangesProvider<Key, Data>.pagingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
         InvalidateBehavior.INVALIDATE_AND_CLEAR_LIST_BEFORE_NEXT_VALUE_RECEIVED,
     throttleDurationMs: Long = 120L,
     coroutineScope: CoroutineScope,
     processingDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) = SimplePagingDataPresenter(
-    pagingFlowWrapperPresenter = this,
+    dataChangesProvider = this,
     invalidateBehavior = invalidateBehavior,
     throttleDurationMs = throttleDurationMs,
     coroutineScope = coroutineScope,
@@ -68,7 +69,7 @@ fun <Key : Any, Data : Any> PagingFlow<Key, Data, *>.pagingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
         InvalidateBehavior.INVALIDATE_AND_CLEAR_LIST_BEFORE_NEXT_VALUE_RECEIVED,
     throttleDurationMs: Long = 120L
-) = pagingFlowWrapperPresenter().pagingDataPresenter(
+) = pagingDataPresenter(
     invalidateBehavior = invalidateBehavior,
     throttleDurationMs = throttleDurationMs,
     coroutineScope = pagingFlowConfiguration.coroutineScope,
