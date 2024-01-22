@@ -47,7 +47,7 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
 
     private val dataSources = DataSources<Key, Data, SourcePagingStatus>()
     private val dataPages = mutableListOf<DataPage<Key, Data, SourcePagingStatus>>()
-    private val cachedData = mutableMapOf<Int, PagingParams>()
+    private val cachedData = mutableMapOf<Int, Pair<Key?, PagingParams>>()
     val currentPagesCount get() = dataPages.size
 
     private var isNeedToTrim = false
@@ -80,7 +80,6 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         }
     }
 
-    // TODO сейчас если страница полностью удалена, то кэш удаляется, сделать сохранение кэша отдельно и сделать параметр в параметрах, который чистит кэш после условно 20 страниц которые проскролены вперёд
     @Suppress("UNCHECKED_CAST")
     override suspend fun load(
         loadParams: LoadParams<Key>
@@ -106,13 +105,16 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         } else null
         val pageAbsoluteIndex = if (lastPage == null) 0
         else if (isPaginationDown) lastPage.pageIndex + 1 else lastPage.pageIndex - 1
+        var cachedResultPair = cachedData[pageAbsoluteIndex]
+        if (cachedResultPair != null) {
+            if (cachedResultPair.first != currentKey) cachedResultPair = null
+        }
         val nextLoadParams = LoadParams(
             pageSize = dataSource.defaultLoadParams?.pageSize ?: loadParams.pageSize,
             paginationDirection = paginationDirection,
             key = currentKey,
-            cachedResult = cachedData[pageAbsoluteIndex]
-                ?: loadParams.cachedResult
-                ?: defaultLoadParams?.cachedResult,
+            cachedResult = cachedResultPair?.second ?: loadParams.cachedResult
+            ?: defaultLoadParams?.cachedResult,
             pagingParams = loadParams.pagingParams ?: defaultLoadParams?.cachedResult
         )
         val result = try {
@@ -163,7 +165,7 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
             pageIndex = pageAbsoluteIndex,
             dataSourceIndex = newIndex.coerceAtLeast(0)
         )
-        result.cachedResult?.let { cachedData[pageAbsoluteIndex] = it }
+        result.cachedResult?.let { cachedData[pageAbsoluteIndex] = currentKey to it }
         val isExistingPage = dataPages.getOrNull(newIndex) != null
         if (isExistingPage) {
             dataPages[newIndex] = page
