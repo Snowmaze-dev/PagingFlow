@@ -47,6 +47,7 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
 
     private val dataSources = DataSources<Key, Data, SourcePagingStatus>()
     private val dataPages = mutableListOf<DataPage<Key, Data, SourcePagingStatus>>()
+    private val cachedData = mutableMapOf<Int, PagingParams>()
     val currentPagesCount get() = dataPages.size
 
     private var isNeedToTrim = false
@@ -75,10 +76,11 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
     override fun removeDataSource(dataSource: DataSource<Key, Data, SourcePagingStatus>) {
         dataSources.removeDataSource(dataSource)
         coroutineScope.launch {
-            invalidate()
+            invalidate(removeCachedData = true)
         }
     }
 
+    // TODO сейчас если страница полностью удалена, то кэш удаляется, сделать сохранение кэша отдельно и сделать параметр в параметрах, который чистит кэш после условно 20 страниц которые проскролены вперёд
     @Suppress("UNCHECKED_CAST")
     override suspend fun load(
         loadParams: LoadParams<Key>
@@ -102,11 +104,13 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         val currentKey = nextPageKey ?: if (dataPages.isEmpty()) {
             dataSource.defaultLoadParams?.key ?: loadParams.key ?: defaultParams.key
         } else null
+        val pageAbsoluteIndex = if (lastPage == null) 0
+        else if (isPaginationDown) lastPage.pageIndex + 1 else lastPage.pageIndex - 1
         val nextLoadParams = LoadParams(
             pageSize = dataSource.defaultLoadParams?.pageSize ?: loadParams.pageSize,
             paginationDirection = paginationDirection,
             key = currentKey,
-            cachedResult = dataPages.getOrNull(newIndex)?.cachedResult
+            cachedResult = cachedData[pageAbsoluteIndex]
                 ?: loadParams.cachedResult
                 ?: defaultLoadParams?.cachedResult,
             pagingParams = loadParams.pagingParams ?: defaultLoadParams?.cachedResult
@@ -136,7 +140,7 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
             return result as LoadResult<Key, Data, SourcePagingStatus>
         }
         result as LoadResult.Success<Key, Data, SourcePagingStatus>
-        if (concatDataSourceConfig.removePagesOffset != null) {
+        if (concatDataSourceConfig.maxPagesCount != null) {
             isNeedToTrim = true
             lastPaginationDirection = paginationDirection
         }
@@ -156,11 +160,10 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
             else result.nextNextPageKey,
             currentPageKey = currentKey,
             listenJob = listenJob,
-            cachedResult = result.cachedResult,
-            pageIndex = if (lastPage == null) 0
-            else if (isPaginationDown) lastPage.pageIndex + 1 else lastPage.pageIndex - 1,
+            pageIndex = pageAbsoluteIndex,
             dataSourceIndex = newIndex.coerceAtLeast(0)
         )
+        result.cachedResult?.let { cachedData[pageAbsoluteIndex] = it }
         val isExistingPage = dataPages.getOrNull(newIndex) != null
         if (isExistingPage) {
             dataPages[newIndex] = page
@@ -174,32 +177,36 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         concatDataSourceConfig.coroutineScope.launch(coroutineContext) {
             val firstValue = valueStateFlow.first().data
             if (invalidateData) invalidateInternal(page)
-            callDataChangedCallbacks {
-                if (isExistingPage) onPageChanged(
-                    key = currentKey,
-                    pageIndex = page.pageIndex,
-                    items = firstValue,
-                    sourceIndex = page.dataSourceIndex
-                ) else onPageAdded(
-                    key = currentKey,
-                    pageIndex = page.pageIndex,
-                    items = firstValue,
-                    sourceIndex = page.dataSourceIndex
-                )
+            setDataMutex.withLock {
+                trimPages()
+                callDataChangedCallbacks {
+                    if (isExistingPage) onPageChanged(
+                        key = currentKey,
+                        pageIndex = page.pageIndex,
+                        items = firstValue,
+                        sourceIndex = page.dataSourceIndex
+                    ) else onPageAdded(
+                        key = currentKey,
+                        pageIndex = page.pageIndex,
+                        items = firstValue,
+                        sourceIndex = page.dataSourceIndex
+                    )
+                }
             }
         }
         concatDataSourceConfig.coroutineScope.launch(coroutineContext) {
             result.dataFlow?.collect {
                 valueStateFlow.value = it
-                setDataMutex.withLock { trimPages() }
                 if (page.dataFlow?.value == null) return@collect
-                callDataChangedCallbacks {
-                    onPageChanged(
-                        key = currentKey,
-                        pageIndex = page.pageIndex,
-                        items = it.data,
-                        sourceIndex = page.dataSourceIndex
-                    )
+                setDataMutex.withLock {
+                    callDataChangedCallbacks {
+                        onPageChanged(
+                            key = currentKey,
+                            pageIndex = page.pageIndex,
+                            items = it.data,
+                            sourceIndex = page.dataSourceIndex
+                        )
+                    }
                 }
             }
         }
@@ -216,10 +223,16 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
 
     /**
      * Deletes all pages
+     * @param removeCachedData should also remove cached data for pages?
      */
-    suspend fun invalidate() = setDataMutex.withLock { invalidateInternal() }
+    suspend fun invalidate(removeCachedData: Boolean) = setDataMutex.withLock {
+        invalidateInternal(removeCachedData = removeCachedData)
+    }
 
-    private fun invalidateInternal(skipPage: DataPage<Key, Data, SourcePagingStatus>? = null) {
+    private fun invalidateInternal(
+        skipPage: DataPage<Key, Data, SourcePagingStatus>? = null,
+        removeCachedData: Boolean = true
+    ) {
         for (page in dataPages) {
             if (page == skipPage) continue
             page.listenJob.cancel()
@@ -227,6 +240,7 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         dataPages.clear()
         skipPage?.let { dataPages.add(it) }
         dataChangedCallbacks.forEach { it.onInvalidate() }
+        if (removeCachedData) cachedData.clear()
     }
 
     /**
@@ -238,7 +252,7 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         isNeedToTrim = false
         val lastPaginationDirection = lastPaginationDirection ?: return
         val removePagesOffset = concatDataSourceConfig
-            .removePagesOffset.takeIf { it != 0 } ?: return
+            .maxPagesCount.takeIf { it != 0 } ?: return
         if (dataPages.size > removePagesOffset) {
             val isDown = lastPaginationDirection == PaginationDirection.DOWN
 
@@ -246,6 +260,15 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
             val pageIndex = (if (isDown) dataPages.indexOfFirst { it.dataFlow != null }
             else dataPages.lastIndex)
             val page = dataPages.getOrNull(pageIndex) ?: return
+
+            val maxCachedResultPagesCount = concatDataSourceConfig.maxCachedResultPagesCount
+            if (maxCachedResultPagesCount != null) {
+                val pageAbsoluteIndex = page.pageIndex
+                val removeCacheIndex = if (isDown) pageAbsoluteIndex - maxCachedResultPagesCount
+                else pageAbsoluteIndex + maxCachedResultPagesCount
+                cachedData.remove(removeCacheIndex)
+            }
+
             if (concatDataSourceConfig.shouldFillRemovedPagesWithNulls && isDown) {
                 val lastData = page.dataFlow?.value?.data ?: return
                 val lastDataSize = lastData.size

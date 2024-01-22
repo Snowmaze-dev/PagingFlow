@@ -21,6 +21,11 @@ data class PagingFlowConfiguration<Key : Any>(
     val maxPagesCount: Int? = null,
 
     /**
+     * Defines the maximum number of cached result of pages that may be reused before cache should be dropped
+     */
+    val maxCachedResultPagesCount: Int? = null,
+
+    /**
      * Defines whether should replace dropped pages with nulls or just drop them completely
      */
     val enableDroppedPagesNullPlaceholders: Boolean = true,

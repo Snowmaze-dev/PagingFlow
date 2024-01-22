@@ -126,7 +126,8 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
     /**
      * @see [ConcatDataSource.invalidate]
      */
-    suspend fun invalidate() = concatDataSource.invalidate()
+    suspend fun invalidate(removeCachedData: Boolean = true) =
+        concatDataSource.invalidate(removeCachedData = removeCachedData)
 }
 
 fun <Key : Any, Data : Any, PagingStatus : Any> buildPagingFlow(
@@ -136,7 +137,8 @@ fun <Key : Any, Data : Any, PagingStatus : Any> buildPagingFlow(
     ConcatDataSource(
         ConcatDataSourceConfig(
             defaultParams = configuration.defaultParams,
-            removePagesOffset = configuration.maxPagesCount,
+            maxPagesCount = configuration.maxPagesCount,
+            maxCachedResultPagesCount = configuration.maxCachedResultPagesCount,
             mainDispatcher = configuration.mainDispatcher,
             processingDispatcher = configuration.processingDispatcher,
             coroutineScope = configuration.coroutineScope,

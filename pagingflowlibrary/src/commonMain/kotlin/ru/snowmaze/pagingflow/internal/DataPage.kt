@@ -13,7 +13,6 @@ internal data class DataPage<Key : Any, Data : Any, PagingStatus : Any>(
     val nextPageKey: Key?,
     val dataSource: DataSource<Key, Data, PagingStatus>,
     val listenJob: Job,
-    val cachedResult: PagingParams?,
     val pageIndex: Int,
     val dataSourceIndex: Int
 )
