@@ -62,4 +62,13 @@ abstract class ThrottleEventsPagingPresenter<Key : Any, Data : Any>(
         this.isInvalidated = false
         _dataFlow.value = result
     }
+
+    /**
+     * Rebuilds list
+     */
+    fun forceRebuildList() {
+        coroutineScope.launch(processingDispatcher) {
+            buildList()
+        }
+    }
 }
