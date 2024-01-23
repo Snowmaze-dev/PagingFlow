@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.PaginationDirection
@@ -146,12 +147,7 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
             isNeedToTrim = true
             lastPaginationDirection = paginationDirection
         }
-        val valueStateFlow = MutableStateFlow(
-            UpdatableData<Key, Data>(
-                data = emptyList(),
-                nextPageKey = result.nextNextPageKey
-            )
-        )
+        val valueStateFlow = MutableStateFlow<UpdatableData<Key, Data>?>(null)
         val listenJob = SupervisorJob()
         val page = DataPage(
             dataFlow = valueStateFlow,
@@ -176,44 +172,46 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
 
         val invalidateData = loadParams.pagingParams?.getOrNull(DefaultKeys.InvalidateData) ?: false
         val coroutineContext = concatDataSourceConfig.processingDispatcher + listenJob
+        var isValueSet = false
         concatDataSourceConfig.coroutineScope.launch(coroutineContext) {
-            val firstValue = valueStateFlow.first().data
-            if (invalidateData) invalidateInternal(page)
-            setDataMutex.withLock {
-                trimPages()
-                callDataChangedCallbacks {
-                    if (isExistingPage) onPageChanged(
-                        key = currentKey,
-                        pageIndex = page.pageIndex,
-                        items = firstValue,
-                        sourceIndex = page.dataSourceIndex
-                    ) else onPageAdded(
-                        key = currentKey,
-                        pageIndex = page.pageIndex,
-                        items = firstValue,
-                        sourceIndex = page.dataSourceIndex
-                    )
-                }
-            }
-        }
-        concatDataSourceConfig.coroutineScope.launch(coroutineContext) {
-            result.dataFlow?.collect {
-                valueStateFlow.value = it
+            result.dataFlow?.collect { value ->
+                valueStateFlow.value = value
                 if (page.dataFlow?.value == null) return@collect
-                setDataMutex.withLock {
-                    callDataChangedCallbacks {
-                        onPageChanged(
-                            key = currentKey,
-                            pageIndex = page.pageIndex,
-                            items = it.data,
-                            sourceIndex = page.dataSourceIndex
-                        )
+                if (isValueSet) {
+                    setDataMutex.withLock {
+                        callDataChangedCallbacks {
+                            onPageChanged(
+                                key = currentKey,
+                                pageIndex = page.pageIndex,
+                                items = value.data,
+                                sourceIndex = page.dataSourceIndex
+                            )
+                        }
+                    }
+                } else {
+                    isValueSet = true
+                    if (invalidateData) invalidateInternal(page)
+                    setDataMutex.withLock {
+                        trimPages()
+                        callDataChangedCallbacks {
+                            if (isExistingPage) onPageChanged(
+                                key = currentKey,
+                                pageIndex = page.pageIndex,
+                                items = value.data,
+                                sourceIndex = page.dataSourceIndex
+                            ) else onPageAdded(
+                                key = currentKey,
+                                pageIndex = page.pageIndex,
+                                items = value.data,
+                                sourceIndex = page.dataSourceIndex
+                            )
+                        }
                     }
                 }
             }
         }
         result.copy(
-            dataFlow = valueStateFlow,
+            dataFlow = result.dataFlow,
             additionalData = PagingParams {
                 put(
                     concatDataSourceResultKey(),
@@ -228,7 +226,9 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
      * @param removeCachedData should also remove cached data for pages?
      */
     suspend fun invalidate(removeCachedData: Boolean) = setDataMutex.withLock {
-        invalidateInternal(removeCachedData = removeCachedData)
+        withContext(concatDataSourceConfig.processingDispatcher) {
+            invalidateInternal(removeCachedData = removeCachedData)
+        }
     }
 
     private fun invalidateInternal(

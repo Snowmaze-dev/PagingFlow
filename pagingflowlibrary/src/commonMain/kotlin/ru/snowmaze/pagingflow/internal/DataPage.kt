@@ -7,7 +7,7 @@ import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.sources.DataSource
 
 internal data class DataPage<Key : Any, Data : Any, PagingStatus : Any>(
-    var dataFlow: StateFlow<UpdatableData<Key, Data>>?,
+    var dataFlow: StateFlow<UpdatableData<Key, Data>?>?,
     val previousPageKey: Key?,
     val currentPageKey: Key?,
     val nextPageKey: Key?,
