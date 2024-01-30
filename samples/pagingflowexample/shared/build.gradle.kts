@@ -11,7 +11,7 @@ kotlin {
   sourceSets {
     val commonMain by getting {
       dependencies {
-        api(projects.pagingFlow.pagingflowlibrary)
+        api(projects.pagingflowlibrary)
         api(libs.kotlinx.coroutines.core)
         implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
         api("dev.icerock.moko:mvvm-core:0.16.1")
