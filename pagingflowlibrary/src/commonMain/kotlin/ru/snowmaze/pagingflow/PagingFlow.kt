@@ -5,7 +5,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
-import ru.snowmaze.pagingflow.diff.DataChangesProvider
+import ru.snowmaze.pagingflow.diff.mediums.DataChangesMedium
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.sources.ConcatDataSource
 import ru.snowmaze.pagingflow.sources.ConcatDataSourceConfig
@@ -25,7 +25,7 @@ import ru.snowmaze.pagingflow.result.LoadResult
 class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
     private val concatDataSource: ConcatDataSource<Key, Data, PagingStatus>,
     val pagingFlowConfiguration: PagingFlowConfiguration<Key>
-) : DataChangesProvider<Key, Data> {
+) : DataChangesMedium<Key, Data> {
 
     private val loadMutex = Mutex()
     val upPagingStatus get() = concatDataSource.upPagingStatus
@@ -33,7 +33,6 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
     val isLoading get() = loadMutex.isLocked
 
     val currentPagesCount get() = concatDataSource.currentPagesCount
-    private val defaultParams = pagingFlowConfiguration.defaultParams
 
     /**
      * @see [ConcatDataSource.addDataSource]
@@ -63,12 +62,14 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
         concatDataSource.removeDataChangedCallback(callback)
     }
 
+
     /**
      * Loads next page async
      * @see loadNextPageInternal
      */
     fun loadNextPage(
-        paginationDirection: PaginationDirection = defaultParams.paginationDirection,
+        paginationDirection: PaginationDirection = pagingFlowConfiguration.defaultParamsProvider()
+            .paginationDirection,
         pagingParams: PagingParams? = null
     ) = pagingFlowConfiguration.coroutineScope.launch {
         loadNextPageWithResult(paginationDirection, pagingParams)
@@ -79,7 +80,8 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
      * @see loadNextPageInternal
      */
     suspend fun loadNextPageWithResult(
-        paginationDirection: PaginationDirection = defaultParams.paginationDirection,
+        paginationDirection: PaginationDirection = pagingFlowConfiguration.defaultParamsProvider()
+            .paginationDirection,
         pagingParams: PagingParams? = null
     ) = loadMutex.withLock {
         pagingFlowConfiguration.processingDispatcher {
@@ -97,11 +99,15 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
         paginationDirection: PaginationDirection,
         pagingParams: PagingParams? = null
     ): LoadNextPageResult<Key, Data> {
+        val defaultParams = pagingFlowConfiguration.defaultParamsProvider()
+        val defaultPagingParams = defaultParams.pagingParams
 
         val loadData = concatDataSource.load(
-            pagingFlowConfiguration.defaultParams.copy(
+            defaultParams.copy(
                 paginationDirection = paginationDirection,
-                pagingParams = pagingParams ?: pagingFlowConfiguration.defaultParams.pagingParams
+                pagingParams = defaultPagingParams?.apply {
+                    pagingParams?.let { put(it) }
+                } ?: pagingParams
             )
         )
         val result = loadData.additionalData?.getOrNull(
@@ -112,7 +118,7 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
             is LoadResult.Success<Key, Data, PagingStatus> -> LoadNextPageResult.Success(
                 currentKey = result?.currentKey,
                 dataFlow = loadData.dataFlow,
-                hasNext = loadData.nextNextPageKey != null,
+                hasNext = loadData.nextPageKey != null,
                 additionalData = additionalData ?: PagingParams()
             )
 
@@ -136,7 +142,7 @@ fun <Key : Any, Data : Any, PagingStatus : Any> buildPagingFlow(
 ) = PagingFlow<Key, Data, PagingStatus>(
     ConcatDataSource(
         ConcatDataSourceConfig(
-            defaultParams = configuration.defaultParams,
+            defaultParamsProvider = configuration.defaultParamsProvider,
             maxPagesCount = configuration.maxPagesCount,
             maxCachedResultPagesCount = configuration.maxCachedResultPagesCount,
             mainDispatcher = configuration.mainDispatcher,

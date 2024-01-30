@@ -1,8 +1,10 @@
 package ru.snowmaze.pagingflow.sources
 
+import kotlinx.coroutines.flow.map
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.PaginationDirection
+import ru.snowmaze.pagingflow.UpdatableData
 import ru.snowmaze.pagingflow.result.mapSuccess
 
 abstract class SegmentedDataSource<Data : Any, PagingStatus : Any> :
@@ -19,7 +21,9 @@ abstract class SegmentedDataSource<Data : Any, PagingStatus : Any> :
         val nextPageKey = if (howManyLeft == 0) null
         else if (isDown) endIndex else startIndex - pageSize
         return loadData(loadParams, startIndex, endIndex).mapSuccess { result ->
-            if (result.nextNextPageKey == null) result.copy(nextNextPageKey = nextPageKey)
+            if (result.nextPageKey == null) result.copy(dataFlow = result.dataFlow?.map {
+                UpdatableData(it.data, it.nextPageKey ?: nextPageKey)
+            }, nextPageKey = nextPageKey)
             else result
         }
     }

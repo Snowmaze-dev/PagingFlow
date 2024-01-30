@@ -27,7 +27,7 @@ class TestPagingDataSource(private val itemsCount: Int) : PagingSource<Int, Stri
         return LoadResult.Page(
             result.dataFlow!!.first().data,
             prevKey = params.key?.minus(params.loadSize)?.takeIf { it >= 0 },
-            nextKey = result.nextNextPageKey
+            nextKey = result.nextPageKey
         )
     }
 }

@@ -25,7 +25,9 @@ class PagingTrigger(
     }
 ) {
 
-    val isLoading get() = pagingFlow().isLoading
+    private var _isLoading = false
+
+    val isLoading get() = _isLoading || pagingFlow().isLoading
     private var lastTimeTriggered = 0L
 
     fun onItemVisible(index: Int): Boolean {
@@ -46,9 +48,11 @@ class PagingTrigger(
         ) {
             PaginationDirection.UP
         } else return false
+        _isLoading = true
         coroutineScope.launch {
             onEndReached(direction)
             lastTimeTriggered = currentTime
+            _isLoading = false
         }
         return true
     }

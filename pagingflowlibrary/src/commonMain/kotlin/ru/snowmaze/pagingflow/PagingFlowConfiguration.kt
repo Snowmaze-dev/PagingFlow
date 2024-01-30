@@ -13,7 +13,7 @@ data class PagingFlowConfiguration<Key : Any>(
     /**
      * Defines params fields from which will be used as default values to load data
      */
-    val defaultParams: LoadParams<Key>,
+    val defaultParamsProvider: () -> LoadParams<Key>,
 
     /**
      * Defines the maximum number of pages that may be loaded before pages should be dropped
@@ -33,4 +33,23 @@ data class PagingFlowConfiguration<Key : Any>(
     val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
     val processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
     val coroutineScope: CoroutineScope = CoroutineScope(mainDispatcher + SupervisorJob()),
-)
+) {
+
+    constructor(
+        defaultParams: LoadParams<Key>,
+        maxPagesCount: Int? = null,
+        maxCachedResultPagesCount: Int? = null,
+        enableDroppedPagesNullPlaceholders: Boolean = true,
+        mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
+        processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
+        coroutineScope: CoroutineScope = CoroutineScope(mainDispatcher + SupervisorJob()),
+    ) : this(
+        defaultParamsProvider = { defaultParams },
+        maxPagesCount = maxPagesCount,
+        maxCachedResultPagesCount = maxCachedResultPagesCount,
+        enableDroppedPagesNullPlaceholders = enableDroppedPagesNullPlaceholders,
+        mainDispatcher = mainDispatcher,
+        processingDispatcher = processingDispatcher,
+        coroutineScope = coroutineScope
+    )
+}

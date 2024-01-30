@@ -1,7 +1,6 @@
 package ru.snowmaze.pagingflow.diff
 
 import ru.snowmaze.pagingflow.PagingFlow
-import ru.snowmaze.pagingflow.presenters.SimplePagingDataPresenter
 
 /**
  * This callback called when data is changed.

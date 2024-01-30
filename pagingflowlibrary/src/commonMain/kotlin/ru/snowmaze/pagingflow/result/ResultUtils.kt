@@ -5,6 +5,7 @@ package ru.snowmaze.pagingflow.result
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.UpdatableData
 import ru.snowmaze.pagingflow.params.PagingParams
@@ -22,8 +23,16 @@ fun DataSource<*, *, *>.positiveOffset(
     currentOffset: Int,
     pageSize: Int,
     hasNextPage: Boolean = true
-) = if (paginationDirection == PaginationDirection.DOWN) currentOffset + pageSize
-else (currentOffset - pageSize).takeIf { it >= 0 }.takeIf { hasNextPage }
+) = (if (paginationDirection == PaginationDirection.DOWN) currentOffset + pageSize
+else (currentOffset - pageSize).takeIf { it >= 0 }).takeIf { hasNextPage }
+
+fun LoadParams<Int>.positiveOffset(
+    hasNextPage: Boolean = true,
+    currentOffset: Int = key ?: 0
+): Int? {
+    return (if (paginationDirection == PaginationDirection.DOWN) currentOffset + pageSize
+    else (currentOffset - pageSize).takeIf { it >= 0 }).takeIf { hasNextPage }
+}
 
 fun <Key : Any, Data : Any, PagingStatus : Any> LoadResult<Key, Data, PagingStatus>.mapSuccess(
     transform: (LoadResult.Success<Key, Data, PagingStatus>) -> LoadResult<Key, Data, PagingStatus>
@@ -52,7 +61,7 @@ fun <Key : Any, Data : Any, PagingStatus : Any> DataSource<Key, Data, PagingStat
     cachedResult: PagingParams? = null,
 ) = LoadResult.Success(
     dataFlow = flow { emit(UpdatableData(data, nextPageKey)) },
-    nextNextPageKey = nextPageKey,
+    nextPageKey = nextPageKey,
     status = status,
     additionalData = additionalData,
     cachedResult = cachedResult
@@ -65,8 +74,8 @@ fun <Key : Any, Data : Any, PagingStatus : Any> DataSource<Key, Data, PagingStat
     additionalData: PagingParams? = null,
     cachedResult: PagingParams? = null,
 ) = LoadResult.Success(
-    dataFlow = dataFlow.map { UpdatableData(it, null) },
-    nextNextPageKey = nextPageKey,
+    dataFlow = dataFlow.map { UpdatableData(it, nextPageKey) },
+    nextPageKey = nextPageKey,
     status = status,
     additionalData = additionalData,
     cachedResult = cachedResult
@@ -79,7 +88,7 @@ fun <Key : Any, Data : Any, PagingStatus : Any> DataSource<Key, Data, PagingStat
     cachedResult: PagingParams? = null,
 ) = LoadResult.Success<Key, Data, PagingStatus>(
     dataFlow = null,
-    nextNextPageKey = nextPageKey,
+    nextPageKey = nextPageKey,
     status = status,
     additionalData = additionalData,
     cachedResult = cachedResult

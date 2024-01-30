@@ -1,5 +1,6 @@
 package ru.snowmaze.pagingflow.params
 
+// TODO заменить тут ключи под капотом на стринг
 /**
  * Paging params where you can specify typesafe params for data sources
  * @see DefaultKeys

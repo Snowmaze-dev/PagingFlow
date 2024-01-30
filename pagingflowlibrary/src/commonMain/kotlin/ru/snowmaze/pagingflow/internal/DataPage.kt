@@ -1,16 +1,15 @@
 package ru.snowmaze.pagingflow.internal
 
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import ru.snowmaze.pagingflow.UpdatableData
-import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.sources.DataSource
 
 internal data class DataPage<Key : Any, Data : Any, PagingStatus : Any>(
-    var dataFlow: StateFlow<UpdatableData<Key, Data>?>?,
-    val previousPageKey: Key?,
+    var dataFlow: MutableStateFlow<UpdatableData<Key, Data>?>?,
+    var previousPageKey: Key?,
     val currentPageKey: Key?,
-    val nextPageKey: Key?,
+    var nextPageKey: Key?,
     val dataSource: DataSource<Key, Data, PagingStatus>,
     val listenJob: Job,
     val pageIndex: Int,

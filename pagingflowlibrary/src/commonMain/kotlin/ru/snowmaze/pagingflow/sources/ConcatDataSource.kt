@@ -3,7 +3,6 @@ package ru.snowmaze.pagingflow.sources
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -12,8 +11,8 @@ import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.PagingStatus
-import ru.snowmaze.pagingflow.UpdatableData
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
+import ru.snowmaze.pagingflow.diff.mediums.DataChangesMedium
 import ru.snowmaze.pagingflow.errorshandler.DefaultPagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.internal.DataPage
 import ru.snowmaze.pagingflow.internal.DataSources
@@ -24,14 +23,13 @@ import ru.snowmaze.pagingflow.result.simpleResult
 
 class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
     private val concatDataSourceConfig: ConcatDataSourceConfig<Key>
-) : SourcesChainSource<Key, Data, SourcePagingStatus> {
+) : SourcesChainSource<Key, Data, SourcePagingStatus>, DataChangesMedium<Key, Data> {
 
     companion object {
         fun <Key : Any> concatDataSourceResultKey() =
             DataKey<ConcatSourceData<Key>>("concat_data_source_result")
     }
 
-    private val defaultParams = concatDataSourceConfig.defaultParams
     private val setDataMutex = Mutex()
     private val _upPagingStatus =
         MutableStateFlow<PagingStatus<SourcePagingStatus>>(PagingStatus.Success(hasNextPage = true))
@@ -59,14 +57,14 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
     /**
      * Adds callback which called when data has been changed
      */
-    fun addDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
+    override fun addDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
         dataChangedCallbacks.add(callback)
     }
 
     /**
      * Removes data changed callback
      */
-    fun removeDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
+    override fun removeDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
         dataChangedCallbacks.remove(callback)
     }
 
@@ -102,7 +100,8 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
             navigationDirection = paginationDirection
         ) ?: return simpleResult(emptyList())
         val currentKey = nextPageKey ?: if (dataPages.isEmpty()) {
-            dataSource.defaultLoadParams?.key ?: loadParams.key ?: defaultParams.key
+            dataSource.defaultLoadParams?.key ?: loadParams.key
+            ?: concatDataSourceConfig.defaultParamsProvider().key
         } else null
         val pageAbsoluteIndex = if (lastPage == null) 0
         else if (isPaginationDown) lastPage.pageIndex + 1 else lastPage.pageIndex - 1
@@ -116,7 +115,7 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
             key = currentKey,
             cachedResult = cachedResultPair?.second ?: loadParams.cachedResult
             ?: defaultLoadParams?.cachedResult,
-            pagingParams = loadParams.pagingParams ?: defaultLoadParams?.cachedResult
+            pagingParams = loadParams.pagingParams ?: defaultLoadParams?.pagingParams
         )
         val result = try {
             dataSource.load(nextLoadParams)
@@ -128,7 +127,7 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         val status = when (result) {
             is LoadResult.Success<*, *, *> -> PagingStatus.Success(
                 sourcePagingStatus = result.status,
-                hasNextPage = result.nextNextPageKey != null
+                hasNextPage = result.nextPageKey != null
             )
 
             is LoadResult.Failure -> PagingStatus.Failure(
@@ -147,15 +146,14 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
             isNeedToTrim = true
             lastPaginationDirection = paginationDirection
         }
-        val valueStateFlow = MutableStateFlow<UpdatableData<Key, Data>?>(null)
         val listenJob = SupervisorJob()
         val page = DataPage(
-            dataFlow = valueStateFlow,
-            nextPageKey = if (isPaginationDown) result.nextNextPageKey
+            dataFlow = MutableStateFlow(null),
+            nextPageKey = if (isPaginationDown) result.nextPageKey
             else dataPages.first().currentPageKey,
             dataSource = dataSource,
             previousPageKey = if (isPaginationDown) dataPages.lastOrNull()?.currentPageKey
-            else result.nextNextPageKey,
+            else result.nextPageKey,
             currentPageKey = currentKey,
             listenJob = listenJob,
             pageIndex = pageAbsoluteIndex,
@@ -171,11 +169,38 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         }
 
         val invalidateData = loadParams.pagingParams?.getOrNull(DefaultKeys.InvalidateData) ?: false
-        val coroutineContext = concatDataSourceConfig.processingDispatcher + listenJob
+        collectPageData(
+            page = page,
+            result = result,
+            invalidateData = invalidateData,
+            currentKey = currentKey,
+            isExistingPage = isExistingPage,
+            isPaginationDown = isPaginationDown
+        )
+        result.copy(
+            dataFlow = result.dataFlow,
+            additionalData = PagingParams {
+                put(
+                    concatDataSourceResultKey(),
+                    ConcatSourceData(currentKey, result.additionalData)
+                )
+            }
+        )
+    }
+
+    private fun collectPageData(
+        page: DataPage<Key, Data, SourcePagingStatus>,
+        result: LoadResult.Success<Key, Data, SourcePagingStatus>,
+        invalidateData: Boolean,
+        currentKey: Key?,
+        isExistingPage: Boolean,
+        isPaginationDown: Boolean
+    ) {
+        val coroutineContext = concatDataSourceConfig.processingDispatcher + page.listenJob
         var isValueSet = false
         concatDataSourceConfig.coroutineScope.launch(coroutineContext) {
             result.dataFlow?.collect { value ->
-                valueStateFlow.value = value
+                page.dataFlow?.value = value
                 if (page.dataFlow?.value == null) return@collect
                 if (isValueSet) {
                     setDataMutex.withLock {
@@ -208,17 +233,10 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
                         }
                     }
                 }
+                if (isPaginationDown) page.nextPageKey = value.nextPageKey
+                else page.previousPageKey = value.nextPageKey
             }
         }
-        result.copy(
-            dataFlow = result.dataFlow,
-            additionalData = PagingParams {
-                put(
-                    concatDataSourceResultKey(),
-                    ConcatSourceData(currentKey, result.additionalData)
-                )
-            }
-        )
     }
 
     /**
