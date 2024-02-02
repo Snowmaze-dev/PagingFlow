@@ -8,10 +8,16 @@ internal class DataSources<Key : Any, Data : Any, PagingStatus : Any> {
     private val _dataSources = mutableListOf<DataSource<Key, Data, PagingStatus>>()
     val dataSources: List<DataSource<Key, Data, PagingStatus>> get() = _dataSources
 
+    /**
+     * Adds data source to end of chain
+     */
     fun addDataSource(dataSource: DataSource<Key, Data, PagingStatus>) {
         _dataSources.add(dataSource)
     }
 
+    /**
+     * Removes data source and invalidates all data
+     */
     fun removeDataSource(dataSource: DataSource<Key, Data, PagingStatus>) {
         _dataSources.remove(dataSource)
     }

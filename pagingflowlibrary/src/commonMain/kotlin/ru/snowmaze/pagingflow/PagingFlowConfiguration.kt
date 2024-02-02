@@ -11,7 +11,7 @@ import kotlinx.coroutines.SupervisorJob
 data class PagingFlowConfiguration<Key : Any>(
 
     /**
-     * Defines params fields from which will be used as default values to load data
+     * Defines provider of params which will be used as default params to load data from sources
      */
     val defaultParamsProvider: () -> LoadParams<Key>,
 

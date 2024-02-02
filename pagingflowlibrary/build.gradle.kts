@@ -1,5 +1,3 @@
-import java.net.URI
-
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
