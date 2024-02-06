@@ -1,6 +1,7 @@
 package ru.snowmaze.pagingflow.diff.mediums
 
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
+import ru.snowmaze.pagingflow.diff.DataChangedEvent
 
 abstract class DefaultDataChangesMedium<Key : Any, Data : Any> : DataChangesMedium<Key, Data> {
 
@@ -20,29 +21,27 @@ abstract class DefaultDataChangesMedium<Key : Any, Data : Any> : DataChangesMedi
         dataChangedCallbacks.forEach(block)
     }
 
+    protected inline fun notifyOnEvent(event: DataChangedEvent<Key, Data>) {
+        callDataChangedCallbacks { onEvent(event) }
+    }
+
+    protected inline fun notifyOnEvents(events: List<DataChangedEvent<Key, Data>>) {
+        callDataChangedCallbacks { onEvents(events) }
+    }
+
     protected fun createDefaultDataChangedCallback(
     ) = object : DataChangedCallback<Key, Data> {
 
-        override fun onPageAdded(
-            key: Key?,
-            pageIndex: Int,
-            sourceIndex: Int,
-            items: List<Data>
-        ) = callDataChangedCallbacks { onPageAdded(key, pageIndex, sourceIndex, items) }
-
-        override fun onPageChanged(
-            key: Key?,
-            pageIndex: Int,
-            sourceIndex: Int,
-            items: List<Data?>
-        ) = callDataChangedCallbacks { onPageChanged(key, pageIndex, sourceIndex, items) }
-
-        override fun onPageRemoved(key: Key?, pageIndex: Int, sourceIndex: Int) {
-            callDataChangedCallbacks { onPageRemoved(key, pageIndex, sourceIndex) }
+        override fun onEvent(event: DataChangedEvent<Key, Data>) {
+            callDataChangedCallbacks {
+                onEvent(event)
+            }
         }
 
-        override fun onInvalidate() {
-            callDataChangedCallbacks { onInvalidate() }
+        override fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
+            callDataChangedCallbacks {
+                onEvents(events)
+            }
         }
     }
 }

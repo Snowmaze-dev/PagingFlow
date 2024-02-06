@@ -6,6 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import ru.snowmaze.pagingflow.PagingFlow
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataMappingMedium
+import ru.snowmaze.pagingflow.diff.mediums.ThrottleDataChangesMedium
 
 /**
  * Creates mapping presenter, which maps only changed pages and have throttling mechanism
@@ -13,42 +14,38 @@ import ru.snowmaze.pagingflow.diff.mediums.PagingDataMappingMedium
  */
 fun <Key : Any, Data : Any, NewData : Any> DataChangesMedium<Key, Data>.mappingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
-        InvalidateBehavior.INVALIDATE_AND_CLEAR_LIST_BEFORE_NEXT_VALUE_RECEIVED,
-    throttleDurationMs: Long = 0L,
+        InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE,
     coroutineScope: CoroutineScope,
     processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
     transform: (List<Data?>) -> List<NewData?>
-) = if (throttleDurationMs == 0L) BuildListPagingPresenter(
+) = SimpleBuildListPagingPresenter(
     dataChangesMedium = PagingDataMappingMedium(
-        dataChangedCallback = this,
+        dataChangesMedium = this,
         transform = transform
     ),
     invalidateBehavior = invalidateBehavior,
-    coroutineScope = coroutineScope,
-    processingDispatcher = processingDispatcher
-) else ThrottleEventsPagingPresenter(
-    dataChangesMedium = PagingDataMappingMedium(
-        dataChangedCallback = this,
-        transform = transform
-    ),
-    invalidateBehavior = invalidateBehavior,
-    throttleDurationMs = throttleDurationMs,
     coroutineScope = coroutineScope,
     processingDispatcher = processingDispatcher
 )
 
 fun <Key : Any, Data : Any, NewData : Any> PagingFlow<Key, Data, *>.mappingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
-        InvalidateBehavior.INVALIDATE_AND_CLEAR_LIST_BEFORE_NEXT_VALUE_RECEIVED,
+        InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE,
     throttleDurationMs: Long = 0L,
     transform: (List<Data?>) -> List<NewData?>
-) = mappingDataPresenter(
-    invalidateBehavior = invalidateBehavior,
-    throttleDurationMs = throttleDurationMs,
-    coroutineScope = pagingFlowConfiguration.coroutineScope,
-    processingDispatcher = pagingFlowConfiguration.processingDispatcher,
-    transform = transform
-)
+): SimpleBuildListPagingPresenter<Key, NewData> {
+    return (if (throttleDurationMs == 0L) this else ThrottleDataChangesMedium(
+        this,
+        throttleDurationMs = throttleDurationMs,
+        coroutineScope = pagingFlowConfiguration.coroutineScope,
+        processingDispatcher = pagingFlowConfiguration.processingDispatcher
+    )).mappingDataPresenter(
+        invalidateBehavior = invalidateBehavior,
+        coroutineScope = pagingFlowConfiguration.coroutineScope,
+        processingDispatcher = pagingFlowConfiguration.processingDispatcher,
+        transform = transform
+    )
+}
 
 /**
  * Creates simple presenter, which builds list from pages and have throttling mechanism
@@ -58,30 +55,29 @@ fun <Key : Any, Data : Any, NewData : Any> PagingFlow<Key, Data, *>.mappingDataP
  */
 fun <Key : Any, Data : Any> DataChangesMedium<Key, Data>.pagingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
-        InvalidateBehavior.INVALIDATE_AND_CLEAR_LIST_BEFORE_NEXT_VALUE_RECEIVED,
-    throttleDurationMs: Long = 0L,
+        InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE,
     coroutineScope: CoroutineScope,
     processingDispatcher: CoroutineDispatcher = Dispatchers.Default
-) = if (throttleDurationMs == 0L) BuildListPagingPresenter(
+) = SimpleBuildListPagingPresenter(
     dataChangesMedium = this,
     invalidateBehavior = invalidateBehavior,
-    coroutineScope = coroutineScope,
-    processingDispatcher = processingDispatcher
-) else ThrottleEventsPagingPresenter(
-    dataChangesMedium = this,
-    invalidateBehavior = invalidateBehavior,
-    throttleDurationMs = throttleDurationMs,
     coroutineScope = coroutineScope,
     processingDispatcher = processingDispatcher
 )
 
 fun <Key : Any, Data : Any> PagingFlow<Key, Data, *>.pagingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
-        InvalidateBehavior.INVALIDATE_AND_CLEAR_LIST_BEFORE_NEXT_VALUE_RECEIVED,
+        InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE,
     throttleDurationMs: Long = 0L
-) = pagingDataPresenter(
-    invalidateBehavior = invalidateBehavior,
-    throttleDurationMs = throttleDurationMs,
-    coroutineScope = pagingFlowConfiguration.coroutineScope,
-    processingDispatcher = pagingFlowConfiguration.processingDispatcher
-)
+): SimpleBuildListPagingPresenter<Key, Data> {
+    return (if (throttleDurationMs == 0L) this else ThrottleDataChangesMedium(
+        this,
+        throttleDurationMs = throttleDurationMs,
+        coroutineScope = pagingFlowConfiguration.coroutineScope,
+        processingDispatcher = pagingFlowConfiguration.processingDispatcher
+    )).pagingDataPresenter(
+        invalidateBehavior = invalidateBehavior,
+        coroutineScope = pagingFlowConfiguration.coroutineScope,
+        processingDispatcher = pagingFlowConfiguration.processingDispatcher
+    )
+}

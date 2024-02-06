@@ -5,6 +5,9 @@ plugins {
 }
 
 kotlin {
+    jvmToolchain(11)
+    android()
+    jvm()
     js(IR) {
         browser {
             testTask {
@@ -22,12 +25,6 @@ kotlin {
         it.binaries.framework {
             baseName = "pagingflowlibrary"
             isStatic = true
-        }
-    }
-    jvm {
-        tasks.getByName("assemble").dependsOn("jvmSourcesJar")
-        kotlin {
-            jvmToolchain(11)
         }
     }
 
@@ -77,8 +74,8 @@ android {
     kotlin {
         jvmToolchain(11)
     }
-    java {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
+    compileOptions {
+        sourceCompatibility(JavaVersion.VERSION_11)
+        targetCompatibility(JavaVersion.VERSION_11)
     }
 }

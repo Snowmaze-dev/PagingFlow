@@ -33,10 +33,10 @@ open class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
     private val setDataMutex = Mutex()
 
     private val _upPagingStatus = MutableStateFlow<PagingStatus<SourcePagingStatus>>(
-        PagingStatus.Success(hasNextPage = true)
+        PagingStatus.Initial()
     )
     private val _downPagingStatus = MutableStateFlow<PagingStatus<SourcePagingStatus>>(
-        PagingStatus.Success(hasNextPage = true)
+        PagingStatus.Initial()
     )
 
     val upPagingStatus = _upPagingStatus.asStateFlow()
@@ -91,11 +91,12 @@ open class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         val nextPageKey = if (isPaginationDown) lastPage?.nextPageKey else lastPage?.previousPageKey
         val newIndex = if (isPaginationDown) lastPageIndex + 1
         else lastPageIndex - 1
-        val dataSource = dataSources.findNextDataSource(
+        val dataSourceWithIndex = dataSources.findNextDataSource(
             currentDataSource = lastPage?.dataSource,
             isThereKey = nextPageKey != null,
             navigationDirection = paginationDirection
         ) ?: return simpleResult(emptyList())
+        val dataSource = dataSourceWithIndex.first
         val currentKey = nextPageKey ?: if (dataPages.isEmpty()) {
             dataSource.defaultLoadParams?.key ?: loadParams.key
             ?: concatDataSourceConfig.defaultParamsProvider().key
@@ -144,13 +145,13 @@ open class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
             dataFlow = MutableStateFlow(null),
             nextPageKey = if (isPaginationDown) result.nextPageKey
             else dataPages.first().currentPageKey,
-            dataSource = dataSource,
+            dataSource = dataSourceWithIndex,
             previousPageKey = if (isPaginationDown) dataPages.lastOrNull()?.currentPageKey
             else result.nextPageKey,
             currentPageKey = currentKey,
             listenJob = listenJob,
             pageIndex = pageAbsoluteIndex,
-            dataSourceIndex = newIndex.coerceAtLeast(0)
+            dataSourceIndex = dataSourceWithIndex.second
         )
         dataPagesManager.savePage(
             newIndex = newIndex,

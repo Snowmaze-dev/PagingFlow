@@ -6,6 +6,11 @@ import kotlinx.coroutines.sync.withLock
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
+import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.diff.InvalidateEvent
+import ru.snowmaze.pagingflow.diff.PageAddedEvent
+import ru.snowmaze.pagingflow.diff.PageChangedEvent
+import ru.snowmaze.pagingflow.diff.PageRemovedEvent
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMedium
 import ru.snowmaze.pagingflow.params.DefaultKeys
 import ru.snowmaze.pagingflow.params.PagingParams
@@ -73,7 +78,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
         }
         _dataPages.clear()
         skipPage?.let { _dataPages.add(it) }
-        dataChangedCallbacks.forEach { it.onInvalidate() }
+        callDataChangedCallbacks { InvalidateEvent() }
         if (removeCachedData) cachedData.clear()
     }
 
@@ -94,7 +99,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                 if (isValueSet) {
                     setDataMutex.withLock {
                         callDataChangedCallbacks {
-                            onPageChanged(
+                            PageChangedEvent(
                                 key = currentKey,
                                 pageIndex = page.pageIndex,
                                 items = value.data,
@@ -108,12 +113,12 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                     setDataMutex.withLock {
                         trimPages(isPaginationDown)
                         callDataChangedCallbacks {
-                            if (isExistingPage) onPageChanged(
+                            if (isExistingPage) PageChangedEvent(
                                 key = currentKey,
                                 pageIndex = page.pageIndex,
                                 items = value.data,
                                 sourceIndex = page.dataSourceIndex
-                            ) else onPageAdded(
+                            ) else PageAddedEvent(
                                 key = currentKey,
                                 pageIndex = page.pageIndex,
                                 items = value.data,
@@ -143,6 +148,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
             else dataPages.lastIndex)
             val page = dataPages.getOrNull(pageIndex) ?: return
 
+            // TODO поменять расчёт индекса для удаления кэша
             val maxCachedResultPagesCount = concatDataSourceConfig.maxCachedResultPagesCount
             if (maxCachedResultPagesCount != null) {
                 val pageAbsoluteIndex = page.pageIndex
@@ -160,7 +166,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                 page.listenJob.cancel()
                 page.dataFlow = null
                 callDataChangedCallbacks {
-                    onPageChanged(
+                    PageChangedEvent(
                         key = page.currentPageKey,
                         pageIndex = page.pageIndex,
                         items = buildList(lastDataSize) {
@@ -176,7 +182,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                 _dataPages.removeAt(pageIndex)
                 callDataChangedCallbacks {
                     page.dataFlow?.value?.data?.let {
-                        onPageRemoved(
+                        PageRemovedEvent(
                             key = page.currentPageKey,
                             pageIndex = page.pageIndex,
                             sourceIndex = page.dataSourceIndex
@@ -188,7 +194,8 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
         }
     }
 
-    private inline fun callDataChangedCallbacks(block: DataChangedCallback<Key, Data>.() -> Unit) {
-        dataChangedCallbacks.forEach(block)
+    private inline fun callDataChangedCallbacks(block: () -> DataChangedEvent<Key, Data>?) {
+        val event = block() ?: return
+        dataChangedCallbacks.forEach { it.onEvent(event) }
     }
 }

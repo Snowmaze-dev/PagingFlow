@@ -2,6 +2,9 @@ package ru.snowmaze.pagingflow
 
 sealed class PagingStatus<SourcePagingStatus : Any>(val hasNextPage: Boolean) {
 
+    class Initial<SourcePagingStatus : Any> internal constructor() :
+        PagingStatus<SourcePagingStatus>(true)
+
     class Success<SourcePagingStatus : Any>(
         val sourcePagingStatus: SourcePagingStatus? = null,
         hasNextPage: Boolean

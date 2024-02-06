@@ -23,21 +23,21 @@ internal class DataSources<Key : Any, Data : Any, PagingStatus : Any> {
     }
 
     fun findNextDataSource(
-        currentDataSource: DataSource<Key, Data, PagingStatus>?,
+        currentDataSource: Pair<DataSource<Key, Data, PagingStatus>, Int>?,
         navigationDirection: PaginationDirection,
         isThereKey: Boolean
-    ): DataSource<Key, Data, PagingStatus>? {
-        if (isThereKey && currentDataSource != null) return currentDataSource
-        val sourceIndex = if (currentDataSource == null) -1
+    ): Pair<DataSource<Key, Data, PagingStatus>, Int>? {
+        if (isThereKey && currentDataSource?.first != null) return currentDataSource
+        val sourceIndex = if (currentDataSource?.first == null) -1
         else {
-            val foundSourceIndex = dataSources.indexOf(currentDataSource)
+            val foundSourceIndex = dataSources.indexOf(currentDataSource.first)
             if (foundSourceIndex == -1) throw IllegalStateException(
                 "Cant find current data sources. Looks like bug in library. Report to developer."
             )
             foundSourceIndex
         }
-        return dataSources.getOrNull(
+        val checkingIndex =
             sourceIndex + if (navigationDirection == PaginationDirection.DOWN) 1 else -1
-        )
+        return dataSources.getOrNull(checkingIndex)?.let { it to checkingIndex }
     }
 }

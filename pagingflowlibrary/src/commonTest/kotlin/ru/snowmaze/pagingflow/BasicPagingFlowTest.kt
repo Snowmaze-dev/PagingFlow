@@ -1,6 +1,5 @@
 package ru.snowmaze.pagingflow
 
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
@@ -14,7 +13,6 @@ class BasicPagingFlowTest {
 
     val pageSize = Random.nextInt(5, 30)
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     private val basePagingFlowConfiguration = PagingFlowConfiguration(
         defaultParams = LoadParams(pageSize, 0),
         maxPagesCount = null,
