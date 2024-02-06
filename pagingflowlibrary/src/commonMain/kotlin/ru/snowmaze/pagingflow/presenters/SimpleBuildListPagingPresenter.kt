@@ -1,21 +1,23 @@
 package ru.snowmaze.pagingflow.presenters
 
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
 import ru.snowmaze.pagingflow.diff.mediums.handle
 
 open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
     dataChangesMedium: DataChangesMedium<Key, Data>,
     invalidateBehavior: InvalidateBehavior,
-    coroutineScope: CoroutineScope,
-    processingDispatcher: CoroutineDispatcher
-) : BuildListPagingPresenter<Key, Data>(invalidateBehavior, coroutineScope, processingDispatcher) {
+    config: DataChangesMediumConfig = dataChangesMedium.config
+) : BuildListPagingPresenter<Key, Data>(
+    invalidateBehavior,
+    config.coroutineScope,
+    config.processingDispatcher
+) {
 
     protected val pageIndexes = mutableMapOf<Int, List<Data?>>()
     protected var pageIndexesKeys = emptyList<Int>()

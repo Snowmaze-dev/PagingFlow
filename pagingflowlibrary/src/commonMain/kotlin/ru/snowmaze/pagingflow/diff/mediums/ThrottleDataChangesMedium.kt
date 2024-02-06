@@ -1,7 +1,5 @@
 package ru.snowmaze.pagingflow.diff.mediums
 
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -12,13 +10,13 @@ import ru.snowmaze.pagingflow.utils.limitedParallelismCompat
 class ThrottleDataChangesMedium<Key : Any, Data : Any>(
     dataChangesMedium: DataChangesMedium<Key, Data>,
     private val throttleDurationMs: Long,
-    private val coroutineScope: CoroutineScope,
-    processingDispatcher: CoroutineDispatcher
+    override val config: DataChangesMediumConfig = dataChangesMedium.config
 ) : DefaultDataChangesMedium<Key, Data>() {
 
     private val savedEvents = mutableListOf<DataChangedEvent<Key, Data>>()
     private var job: Job? = null
-    protected val processingDispatcher = processingDispatcher.limitedParallelismCompat(1)
+    private val coroutineScope = config.coroutineScope
+    protected val processingDispatcher = config.processingDispatcher.limitedParallelismCompat(1)
 
     init {
         dataChangesMedium.addDataChangedCallback(object : DataChangedCallback<Key, Data> {

@@ -56,6 +56,8 @@ open class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         setDataMutex = setDataMutex
     )
 
+    override val config = dataPagesManager.config
+
     override fun addDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
         dataPagesManager.addDataChangedCallback(callback)
     }

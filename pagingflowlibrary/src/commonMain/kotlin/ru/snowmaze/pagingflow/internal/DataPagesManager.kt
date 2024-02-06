@@ -12,6 +12,7 @@ import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
 import ru.snowmaze.pagingflow.params.DefaultKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.result.LoadResult
@@ -31,6 +32,11 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
     private var isNeedToTrim = false
 
     private val dataChangedCallbacks = mutableListOf<DataChangedCallback<Key, Data>>()
+
+    override val config = DataChangesMediumConfig(
+        concatDataSourceConfig.coroutineScope,
+        concatDataSourceConfig.processingDispatcher
+    )
 
     override fun addDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
         dataChangedCallbacks.add(callback)
@@ -78,8 +84,8 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
         }
         _dataPages.clear()
         skipPage?.let { _dataPages.add(it) }
-        callDataChangedCallbacks { InvalidateEvent() }
         if (removeCachedData) cachedData.clear()
+        callDataChangedCallbacks { InvalidateEvent() }
     }
 
     private fun collectPageData(

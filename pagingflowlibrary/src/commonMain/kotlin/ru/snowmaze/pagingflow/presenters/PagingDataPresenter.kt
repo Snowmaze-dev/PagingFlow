@@ -12,5 +12,5 @@ abstract class PagingDataPresenter<Key : Any, Data : Any> {
 
 val PagingDataPresenter<*, *>.itemCount get() = dataFlow.value.size
 
-fun <Key : Any, Data : Any> PagingDataPresenter<Key, Data>.mapNotNull(
+fun <Key : Any, Data : Any> PagingDataPresenter<Key, Data>.asNotNull(
 ) = dataFlow as StateFlow<List<Data>>

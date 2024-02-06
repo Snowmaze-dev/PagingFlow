@@ -4,11 +4,13 @@ import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
+import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
 
 class PagingDataMappingMedium<Key : Any, Data : Any, NewData : Any>(
     dataChangesMedium: DataChangesMedium<Key, Data>,
-    private val transform: (List<Data?>) -> List<NewData?>
+    override val config: DataChangesMediumConfig = dataChangesMedium.config,
+    private val transform: (PageChangedEvent<Key, Data>) -> List<NewData?>,
 ) : DefaultDataChangesMedium<Key, NewData>() {
 
     init {
@@ -21,15 +23,15 @@ class PagingDataMappingMedium<Key : Any, Data : Any, NewData : Any>(
                             key = it.key,
                             pageIndex = it.pageIndex,
                             sourceIndex = it.sourceIndex,
-                            items = transform(it.items) as List<NewData>,
+                            items = transform(it) as List<NewData>,
                         )
                     },
                     onPageChanged = {
-                        PageAddedEvent(
+                        PageChangedEvent(
                             key = it.key,
                             pageIndex = it.pageIndex,
                             sourceIndex = it.sourceIndex,
-                            items = transform(it.items) as List<NewData>,
+                            items = transform(it) as List<NewData>,
                         )
                     },
                     onPageRemovedEvent = { it as PageRemovedEvent<Key, NewData> },

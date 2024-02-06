@@ -34,6 +34,8 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
 
     val currentPagesCount get() = concatDataSource.currentPagesCount
 
+    override val config = concatDataSource.config
+
     /**
      * @see [ConcatDataSource.addDataSource]
      */
@@ -145,7 +147,6 @@ fun <Key : Any, Data : Any, PagingStatus : Any> buildPagingFlow(
             defaultParamsProvider = configuration.defaultParamsProvider,
             maxPagesCount = configuration.maxPagesCount,
             maxCachedResultPagesCount = configuration.maxCachedResultPagesCount,
-            mainDispatcher = configuration.mainDispatcher,
             processingDispatcher = configuration.processingDispatcher,
             coroutineScope = configuration.coroutineScope,
             shouldFillRemovedPagesWithNulls = configuration.enableDroppedPagesNullPlaceholders

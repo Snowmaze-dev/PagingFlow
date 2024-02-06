@@ -1,5 +1,7 @@
 package ru.snowmaze.pagingflow.diff.mediums
 
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
@@ -8,6 +10,8 @@ import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
 
 interface DataChangesMedium<Key : Any, Data : Any> {
+
+    val config: DataChangesMediumConfig
 
     /**
      * Adds callback which called when data has been changed
@@ -20,7 +24,12 @@ interface DataChangesMedium<Key : Any, Data : Any> {
     fun removeDataChangedCallback(callback: DataChangedCallback<Key, Data>)
 }
 
-inline fun <Key : Any, Data : Any, T: Any> DataChangedEvent<Key, Data>.handle(
+class DataChangesMediumConfig(
+    val coroutineScope: CoroutineScope,
+    val processingDispatcher: CoroutineDispatcher
+)
+
+inline fun <Key : Any, Data : Any, T : Any> DataChangedEvent<Key, Data>.handle(
     onPageAdded: (PageAddedEvent<Key, Data>) -> T?,
     onPageChanged: (PageChangedEvent<Key, Data>) -> T?,
     onPageRemovedEvent: (PageRemovedEvent<Key, Data>) -> T?,

@@ -14,7 +14,6 @@ class PagingBothDirectionsTest {
     private val basePagingFlowConfiguration = PagingFlowConfiguration(
         defaultParams = LoadParams(pageSize, 0),
         maxPagesCount = removePagesOffset,
-        mainDispatcher = testDispatcher,
         processingDispatcher = testDispatcher,
         enableDroppedPagesNullPlaceholders = false
     )
@@ -85,7 +84,7 @@ class PagingBothDirectionsTest {
         )
 
         assertEquals(totalCount / pageSize, pagingFlow.currentPagesCount)
-        var loadedData = presenter.dataFlow.value
+        val loadedData = presenter.dataFlow.value
         assertEquals(
             buildListOfNulls(totalCount - (pageSize * removePagesOffset)) +
                     testDataSource.getItems(totalCount).takeLast(pageSize * removePagesOffset),

@@ -10,8 +10,7 @@ class ConcatDataSourceConfig<Key : Any>(
     val defaultParamsProvider: () -> LoadParams<Key>,
     val maxPagesCount: Int? = null,
     val maxCachedResultPagesCount: Int? = null,
-    val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
     val processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
-    val coroutineScope: CoroutineScope = CoroutineScope(mainDispatcher + SupervisorJob()),
+    val coroutineScope: CoroutineScope = CoroutineScope(processingDispatcher + SupervisorJob()),
     val shouldFillRemovedPagesWithNulls: Boolean = true
 )

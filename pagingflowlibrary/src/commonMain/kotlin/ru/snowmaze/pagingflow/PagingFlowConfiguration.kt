@@ -30,9 +30,8 @@ data class PagingFlowConfiguration<Key : Any>(
      */
     val enableDroppedPagesNullPlaceholders: Boolean = true,
 
-    val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
     val processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
-    val coroutineScope: CoroutineScope = CoroutineScope(mainDispatcher + SupervisorJob()),
+    val coroutineScope: CoroutineScope = CoroutineScope(processingDispatcher + SupervisorJob()),
 ) {
 
     constructor(
@@ -40,15 +39,13 @@ data class PagingFlowConfiguration<Key : Any>(
         maxPagesCount: Int? = null,
         maxCachedResultPagesCount: Int? = null,
         enableDroppedPagesNullPlaceholders: Boolean = true,
-        mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
         processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
-        coroutineScope: CoroutineScope = CoroutineScope(mainDispatcher + SupervisorJob()),
+        coroutineScope: CoroutineScope = CoroutineScope(processingDispatcher + SupervisorJob()),
     ) : this(
         defaultParamsProvider = { defaultParams },
         maxPagesCount = maxPagesCount,
         maxCachedResultPagesCount = maxCachedResultPagesCount,
         enableDroppedPagesNullPlaceholders = enableDroppedPagesNullPlaceholders,
-        mainDispatcher = mainDispatcher,
         processingDispatcher = processingDispatcher,
         coroutineScope = coroutineScope
     )
