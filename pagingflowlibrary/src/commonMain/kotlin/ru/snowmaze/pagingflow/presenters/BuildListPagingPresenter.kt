@@ -32,16 +32,20 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
     protected open fun onInvalidateAdditionalAction() {}
 
     protected fun buildList(events: List<DataChangedEvent<Key, Data>>) {
+        val previousList = _dataFlow.value
         val result = buildListInternal()
         if (isInvalidated && invalidateBehavior ==
             InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE
         ) _dataFlow.value = emptyList()
         this.isInvalidated = false
         _dataFlow.value = result
-        onItemsSet(events)
+        onItemsSet(events, previousList)
     }
 
-    protected open fun onItemsSet(events: List<DataChangedEvent<Key, Data>>) {
+    protected open fun onItemsSet(
+        events: List<DataChangedEvent<Key, Data>>,
+        previousList: List<Data?>
+    ) {
 
     }
 

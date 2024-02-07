@@ -1,8 +1,7 @@
 package ru.snowmaze.pagingflow.recycler
 
-import android.util.Log
 import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.ListUpdateCallback
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -13,8 +12,10 @@ import ru.snowmaze.pagingflow.diff.mediums.handle
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.SimpleBuildListPagingPresenter
 
+// unit test
 class DispatchUpdatesToAdapterPresenter<Data : Any>(
-    private val adapter: RecyclerView.Adapter<*>,
+    private val listUpdateCallback: ListUpdateCallback,
+    private val offsetListUpdateCallbackProvider: (Int) -> OffsetListUpdateCallback,
     pagingMedium: PagingDataChangesMedium<out Any, Data>,
     private val itemCallback: DiffUtil.ItemCallback<Data>,
     invalidateBehavior: InvalidateBehavior,
@@ -26,22 +27,23 @@ class DispatchUpdatesToAdapterPresenter<Data : Any>(
 
     private val pagesIndexes = mutableMapOf<Int, List<Data?>>()
 
-    override fun onItemsSet(events: List<DataChangedEvent<Any, Data>>) {
+    override fun onItemsSet(
+        events: List<DataChangedEvent<Any, Data>>,
+        previousList: List<Data?>
+    ) {
         coroutineScope.launch(mainDispatcher) {
             for (event in events) {
                 event.handle(
                     onPageAdded = {
                         pagesIndexes[it.pageIndex] = it.items
-                        adapter.notifyItemRangeInserted(
+                        listUpdateCallback.onInserted(
                             calculatePageStartItemIndex(it.pageIndex),
                             it.items.size
                         )
                     },
                     onPageChanged = {
-                        val offsetListUpdateCallback = OffsetListUpdateCallback(
-                            adapter,
-                            calculatePageStartItemIndex(it.pageIndex)
-                        )
+                        val offsetListUpdateCallback =
+                            offsetListUpdateCallbackProvider(calculatePageStartItemIndex(it.pageIndex))
                         when (it.changeType) {
                             PageChangedEvent.ChangeType.COMMON_CHANGE -> PagingDiffUtil.dispatchDiff(
                                 itemCallback as DiffUtil.ItemCallback<Data>,
@@ -50,20 +52,22 @@ class DispatchUpdatesToAdapterPresenter<Data : Any>(
                                 offsetListUpdateCallback
                             )
 
-                            else -> adapter.notifyItemRangeChanged(0, it.items.size)
+                            else -> offsetListUpdateCallback.onChanged(0, it.items.size, null)
                         }
                         pagesIndexes[it.pageIndex] = it.items
                     },
                     onPageRemovedEvent = {
                         val list = pagesIndexes.remove(it.pageIndex)
-                        adapter.notifyItemRangeRemoved(
+                        listUpdateCallback.onRemoved(
                             calculatePageStartItemIndex(it.pageIndex),
                             list?.size ?: 0
                         )
                     },
+
+                    // TODO implement invalidate behavior
                     onInvalidate = {
                         pagesIndexes.clear()
-                        adapter.notifyItemRangeRemoved(0, adapter.itemCount)
+                        listUpdateCallback.onRemoved(0, previousList.size)
                     }
                 )
             }

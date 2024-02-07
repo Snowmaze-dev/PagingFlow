@@ -1,5 +1,6 @@
 package ru.snowmaze.pagingflow.recycler
 
+import androidx.recyclerview.widget.AdapterListUpdateCallback
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
@@ -18,10 +19,13 @@ abstract class PagingFlowAdapter<Data : Any, VH : ViewHolder>(
 ) : RecyclerView.Adapter<VH>() {
 
     private val dispatchUpdatesToAdapterPresenter = DispatchUpdatesToAdapterPresenter(
-        this,
-        pagingDataChangesMedium,
-        itemCallback,
-        invalidateBehavior
+        listUpdateCallback = AdapterListUpdateCallback(this),
+        offsetListUpdateCallbackProvider = { offset: Int ->
+            OffsetListUpdateCallback(this, offset)
+        },
+        pagingMedium = pagingDataChangesMedium,
+        itemCallback = itemCallback,
+        invalidateBehavior = invalidateBehavior
     )
     private var items = listOf<Data?>()
 
