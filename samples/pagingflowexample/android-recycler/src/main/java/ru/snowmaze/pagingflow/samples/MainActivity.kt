@@ -19,15 +19,16 @@ import ru.snowmaze.samples.pagingflow.R
 class MainActivity : AppCompatActivity() {
 
     // TODO сделать пример отображения заглушек, тип возвращаем Flow с айтемами типа Stub, а потом когда подгрузятся элементы возвращаем в эту Flow уже нормальный список
-
+    private lateinit var recyclerView: RecyclerView
     val viewModel by viewModels<TestViewModel>()
     private val recyclerAdapter by lazy {
         TestAdapter(
             PagingTrigger(
                 pagingFlow = { viewModel.pagingFlow },
                 prefetchDistance = PREFETCH_DISTANCE,
-                itemCount = viewModel.pagingDataPresenter::itemCount
-            )
+                itemCount = { recyclerView.adapter?.itemCount ?: 0 },
+            ),
+            pagingDataChangesMedium = viewModel.pagingDataChangesMedium
         )
     }
 
@@ -43,12 +44,7 @@ class MainActivity : AppCompatActivity() {
         findViewById<RecyclerView>(R.id.main_recycler_view).apply {
             layoutManager = LinearLayoutManager(context)
             this.adapter = recyclerAdapter
-        }
-        lifecycleScope.launch {
-            viewModel.pagingDataPresenter.dataFlow.collect {
-                Log.d("MyActivity", "list $it")
-                recyclerAdapter.submitList(it)
-            }
+            recyclerView = this
         }
     }
 }

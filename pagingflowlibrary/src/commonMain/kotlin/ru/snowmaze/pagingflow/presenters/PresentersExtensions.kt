@@ -2,21 +2,21 @@ package ru.snowmaze.pagingflow.presenters
 
 import ru.snowmaze.pagingflow.PagingFlow
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
-import ru.snowmaze.pagingflow.diff.mediums.DataChangesMedium
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataMappingMedium
-import ru.snowmaze.pagingflow.diff.mediums.ThrottleDataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.MappingPagingDataMedium
+import ru.snowmaze.pagingflow.diff.mediums.ThrottlePagingDataChangesMedium
 
 /**
  * Creates mapping presenter, which maps only changed pages and have throttling mechanism
  * @see pagingDataPresenter for arguments docs
  */
-fun <Key : Any, Data : Any, NewData : Any> DataChangesMedium<Key, Data>.mappingDataPresenter(
+fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mappingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
         InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE,
     transform: (PageChangedEvent<Key, Data>) -> List<NewData?>
 ) = SimpleBuildListPagingPresenter(
-    dataChangesMedium = PagingDataMappingMedium(
-        dataChangesMedium = this,
+    pagingDataChangesMedium = MappingPagingDataMedium(
+        pagingDataChangesMedium = this,
         transform = transform
     ),
     invalidateBehavior = invalidateBehavior
@@ -28,7 +28,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingFlow<Key, Data, *>.mappingDataP
     throttleDurationMs: Long = 0L,
     transform: (PageChangedEvent<Key, Data>) -> List<NewData?>
 ): SimpleBuildListPagingPresenter<Key, NewData> {
-    return (if (throttleDurationMs == 0L) this else ThrottleDataChangesMedium(
+    return (if (throttleDurationMs == 0L) this else ThrottlePagingDataChangesMedium(
         this,
         throttleDurationMs = throttleDurationMs
     )).mappingDataPresenter(
@@ -43,11 +43,11 @@ fun <Key : Any, Data : Any, NewData : Any> PagingFlow<Key, Data, *>.mappingDataP
  * @param throttleDurationMs duration of throttle window
  * @see InvalidateBehavior
  */
-fun <Key : Any, Data : Any> DataChangesMedium<Key, Data>.pagingDataPresenter(
+fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
         InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE
 ) = SimpleBuildListPagingPresenter(
-    dataChangesMedium = this,
+    pagingDataChangesMedium = this,
     invalidateBehavior = invalidateBehavior
 )
 
@@ -56,7 +56,7 @@ fun <Key : Any, Data : Any> PagingFlow<Key, Data, *>.pagingDataPresenter(
         InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE,
     throttleDurationMs: Long = 0L
 ): SimpleBuildListPagingPresenter<Key, Data> {
-    return (if (throttleDurationMs == 0L) this else ThrottleDataChangesMedium(
+    return (if (throttleDurationMs == 0L) this else ThrottlePagingDataChangesMedium(
         this,
         throttleDurationMs = throttleDurationMs,
     )).pagingDataPresenter(invalidateBehavior)

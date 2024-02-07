@@ -26,8 +26,14 @@ android {
     kotlin {
         jvmToolchain(11)
     }
+    compileOptions {
+        sourceCompatibility(JavaVersion.VERSION_11)
+        targetCompatibility(JavaVersion.VERSION_11)
+    }
 }
 
 dependencies {
-    implementation(libs.androidx.recyclerview)
+    api(libs.androidx.recyclerview)
+    api(projects.pagingflowlibrary)
+    api(libs.kotlinx.coroutines.core)
 }

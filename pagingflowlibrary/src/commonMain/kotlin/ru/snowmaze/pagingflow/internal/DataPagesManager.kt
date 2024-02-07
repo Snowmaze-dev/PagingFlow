@@ -11,7 +11,7 @@ import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
-import ru.snowmaze.pagingflow.diff.mediums.DataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
 import ru.snowmaze.pagingflow.params.DefaultKeys
 import ru.snowmaze.pagingflow.params.PagingParams
@@ -21,7 +21,7 @@ import ru.snowmaze.pagingflow.sources.ConcatDataSourceConfig
 internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>(
     private val concatDataSourceConfig: ConcatDataSourceConfig<Key>,
     private val setDataMutex: Mutex
-) : DataChangesMedium<Key, Data> {
+) : PagingDataChangesMedium<Key, Data> {
 
     private val _dataPages = mutableListOf<DataPage<Key, Data, SourcePagingStatus>>()
     val dataPages: List<DataPage<Key, Data, SourcePagingStatus>> get() = _dataPages
@@ -117,19 +117,24 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                     isValueSet = true
                     if (invalidateData) invalidate(page)
                     setDataMutex.withLock {
-                        trimPages(isPaginationDown)
-                        callDataChangedCallbacks {
-                            if (isExistingPage) PageChangedEvent(
-                                key = currentKey,
-                                pageIndex = page.pageIndex,
-                                items = value.data,
-                                sourceIndex = page.dataSourceIndex
-                            ) else PageAddedEvent(
-                                key = currentKey,
-                                pageIndex = page.pageIndex,
-                                items = value.data,
-                                sourceIndex = page.dataSourceIndex
-                            )
+                        val trimEvent = trimPages(isPaginationDown)
+                        val pageAddEvent = if (isExistingPage) PageChangedEvent(
+                            key = currentKey,
+                            pageIndex = page.pageIndex,
+                            items = value.data,
+                            sourceIndex = page.dataSourceIndex,
+                            changeType = PageChangedEvent.ChangeType.CHANGE_FROM_NULLS_TO_ITEMS
+                        ) else PageAddedEvent(
+                            key = currentKey,
+                            pageIndex = page.pageIndex,
+                            items = value.data,
+                            sourceIndex = page.dataSourceIndex
+                        )
+                        if (trimEvent == null) {
+                            callDataChangedCallbacks { pageAddEvent }
+                        } else {
+                            val events = listOf(trimEvent, pageAddEvent)
+                            dataChangedCallbacks.forEach { it.onEvents(events) }
                         }
                     }
                 }
@@ -143,16 +148,17 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
      * Removes pages that not needed anymore
      * Also can replace removed pages to null pages if [ConcatDataSourceConfig.shouldFillRemovedPagesWithNulls] is true
      */
-    private fun trimPages(isPaginationDown: Boolean) {
-        if (!isNeedToTrim) return
+    private fun trimPages(isPaginationDown: Boolean): DataChangedEvent<Key, Data>? {
+        if (!isNeedToTrim) return null
         isNeedToTrim = false
-        val removePagesOffset = concatDataSourceConfig.maxPagesCount.takeIf { it != 0 } ?: return
+        val removePagesOffset =
+            concatDataSourceConfig.maxPagesCount.takeIf { it != 0 } ?: return null
         if (dataPages.size > removePagesOffset) {
 
             // заменить на удаляемую страницу
             val pageIndex = (if (isPaginationDown) dataPages.indexOfFirst { it.dataFlow != null }
             else dataPages.lastIndex)
-            val page = dataPages.getOrNull(pageIndex) ?: return
+            val page = dataPages.getOrNull(pageIndex) ?: return null
 
             // TODO поменять расчёт индекса для удаления кэша
             val maxCachedResultPagesCount = concatDataSourceConfig.maxCachedResultPagesCount
@@ -167,37 +173,35 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
             }
 
             if (concatDataSourceConfig.shouldFillRemovedPagesWithNulls && isPaginationDown) {
-                val lastData = page.dataFlow?.value?.data ?: return
+                val lastData = page.dataFlow?.value?.data ?: return null
                 val lastDataSize = lastData.size
                 page.listenJob.cancel()
                 page.dataFlow = null
-                callDataChangedCallbacks {
-                    PageChangedEvent(
-                        key = page.currentPageKey,
-                        pageIndex = page.pageIndex,
-                        items = buildList(lastDataSize) {
-                            repeat(lastDataSize) {
-                                add(null)
-                            }
-                        },
-                        sourceIndex = page.dataSourceIndex
-                    )
-                }
+                return PageChangedEvent(
+                    key = page.currentPageKey,
+                    pageIndex = page.pageIndex,
+                    items = buildList(lastDataSize) {
+                        repeat(lastDataSize) {
+                            add(null)
+                        }
+                    },
+                    sourceIndex = page.dataSourceIndex,
+                    changeType = PageChangedEvent.ChangeType.CHANGE_TO_NULLS
+                )
             } else {
                 page.listenJob.cancel()
                 _dataPages.removeAt(pageIndex)
-                callDataChangedCallbacks {
-                    page.dataFlow?.value?.data?.let {
-                        PageRemovedEvent(
-                            key = page.currentPageKey,
-                            pageIndex = page.pageIndex,
-                            sourceIndex = page.dataSourceIndex
-                        )
-                    }
+                page.dataFlow?.value?.data?.let {
+                    return PageRemovedEvent(
+                        key = page.currentPageKey,
+                        pageIndex = page.pageIndex,
+                        sourceIndex = page.dataSourceIndex
+                    )
                 }
                 page.dataFlow = null
             }
         }
+        return null
     }
 
     private inline fun callDataChangedCallbacks(block: () -> DataChangedEvent<Key, Data>?) {

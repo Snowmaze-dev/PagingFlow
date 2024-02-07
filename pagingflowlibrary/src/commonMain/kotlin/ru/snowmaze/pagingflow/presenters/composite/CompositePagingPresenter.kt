@@ -4,7 +4,7 @@ import kotlinx.coroutines.launch
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
-import ru.snowmaze.pagingflow.diff.mediums.DataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
 import ru.snowmaze.pagingflow.diff.mediums.handle
 import ru.snowmaze.pagingflow.internal.CompositePresenterSection
@@ -12,14 +12,14 @@ import ru.snowmaze.pagingflow.presenters.BuildListPagingPresenter
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 
 open class CompositePagingPresenter<Key : Any, Data : Any> internal constructor(
-    dataChangesMedium: DataChangesMedium<Key, Data>,
+    pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
     private val sections: List<CompositePresenterSection<Data>>,
     invalidateBehavior: InvalidateBehavior,
-    config: DataChangesMediumConfig = dataChangesMedium.config
+    config: DataChangesMediumConfig = pagingDataChangesMedium.config
 ) : BuildListPagingPresenter<Key, Data>(
-    invalidateBehavior,
-    config.coroutineScope,
-    config.processingDispatcher
+    invalidateBehavior = invalidateBehavior,
+    coroutineScope = config.coroutineScope,
+    processingDispatcher = config.processingDispatcher
 ) {
 
     private val dataSourcesSections =
@@ -31,6 +31,8 @@ open class CompositePagingPresenter<Key : Any, Data : Any> internal constructor(
                 dataSourcesSections[section.dataSourceIndex ?: continue] = section
             }
         }
+
+        updateSectionsData()
 
         val applyEvent: (event: DataChangedEvent<Key, Data>) -> Unit = { event ->
             event.handle(
@@ -46,23 +48,14 @@ open class CompositePagingPresenter<Key : Any, Data : Any> internal constructor(
                 onInvalidate = { onInvalidateInternal() }
             )
         }
-        dataChangesMedium.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
+        pagingDataChangesMedium.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
 
             override fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
                 updateData {
-                    var lastEvent: DataChangedEvent<Key, Data>? = null
                     for (event in events) {
                         applyEvent(event)
-                        lastEvent = event
                     }
-                    lastEvent !is InvalidateEvent<*, *>
-                }
-            }
-
-            override fun onEvent(event: DataChangedEvent<Key, Data>) {
-                updateData {
-                    applyEvent(event)
-                    event !is InvalidateEvent<*, *>
+                    events
                 }
             }
         })
@@ -72,14 +65,10 @@ open class CompositePagingPresenter<Key : Any, Data : Any> internal constructor(
         for (section in sections) {
             section.items.clear()
         }
+        updateSectionsData()
     }
 
     override fun buildListInternal(): List<Data?> {
-        for (section in sections) {
-            if (section is CompositePresenterSection.SimpleSection<Data>) {
-                section.items[0] = section.itemsProvider()
-            }
-        }
         return buildList(sections.sumOf { section ->
             section.items.keys.sumOf {
                 section.items.getValue(it).size
@@ -87,15 +76,24 @@ open class CompositePagingPresenter<Key : Any, Data : Any> internal constructor(
         }) {
             for (section in sections) {
                 for (key in section.items.keys.sorted()) {
-                    addAll(section.items[key] ?: continue)
+                    addAll(section.items[key] ?: break)
                 }
             }
         }
     }
 
-    protected open fun updateData(update: () -> Boolean) {
+    private fun updateSectionsData() {
+        for (section in sections) {
+            if (section is CompositePresenterSection.SimpleSection<Data>) {
+                section.items[0] = section.itemsProvider()
+            }
+        }
+    }
+
+    protected open fun updateData(update: () -> List<DataChangedEvent<Key, Data>>) {
         coroutineScope.launch(processingDispatcher) {
-            if (update()) buildList()
+            val events = update()
+            if (events.lastOrNull() !is InvalidateEvent<*, *>) buildList(events)
         }
     }
 }

@@ -7,14 +7,14 @@ import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
 
-class PagingDataMappingMedium<Key : Any, Data : Any, NewData : Any>(
-    dataChangesMedium: DataChangesMedium<Key, Data>,
-    override val config: DataChangesMediumConfig = dataChangesMedium.config,
+class MappingPagingDataMedium<Key : Any, Data : Any, NewData : Any>(
+    pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
+    override val config: DataChangesMediumConfig = pagingDataChangesMedium.config,
     private val transform: (PageChangedEvent<Key, Data>) -> List<NewData?>,
-) : DefaultDataChangesMedium<Key, NewData>() {
+) : DefaultPagingDataChangesMedium<Key, NewData>() {
 
     init {
-        dataChangesMedium.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
+        pagingDataChangesMedium.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
 
             fun handleEvent(event: DataChangedEvent<Key, Data>): DataChangedEvent<Key, NewData>? {
                 return event.handle(

@@ -9,7 +9,7 @@ import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
 
-interface DataChangesMedium<Key : Any, Data : Any> {
+interface PagingDataChangesMedium<Key : Any, Data : Any> {
 
     val config: DataChangesMediumConfig
 
@@ -37,8 +37,8 @@ inline fun <Key : Any, Data : Any, T : Any> DataChangedEvent<Key, Data>.handle(
     onElse: ((DataChangedEvent<Key, Data>) -> T?) = { null }
 ): T? {
     return when (this) {
-        is PageChangedEvent -> onPageChanged(this)
         is PageAddedEvent -> onPageAdded(this)
+        is PageChangedEvent -> onPageChanged(this)
         is PageRemovedEvent -> onPageRemovedEvent(this)
         is InvalidateEvent -> onInvalidate(this)
         else -> onElse(this)

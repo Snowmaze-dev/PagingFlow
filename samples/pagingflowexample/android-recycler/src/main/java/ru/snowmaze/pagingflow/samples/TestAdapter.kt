@@ -7,11 +7,17 @@ import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.updatePadding
 import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
+import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import ru.snowmaze.pagingflow.recycler.PagingFlowAdapter
 import ru.snowmaze.pagingflow.utils.PagingTrigger
 
 class TestAdapter(
-    private val pagingTrigger: PagingTrigger
-) : ListAdapter<String, TestAdapter.TestViewHolder>(StringItemCallback()) {
+    private val pagingTrigger: PagingTrigger,
+    pagingDataChangesMedium: PagingDataChangesMedium<Int, String>,
+) : PagingFlowAdapter<String, TestAdapter.TestViewHolder>(
+    StringItemCallback(),
+    pagingDataChangesMedium
+) {
 
     class TestViewHolder(itemView: View) : ViewHolder(itemView)
 

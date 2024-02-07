@@ -22,6 +22,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.collectAsLazyPagingItems
+import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
+import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.utils.PagingTrigger
 import ru.snowmaze.pagingflow.samples.TestViewModel.Companion.PREFETCH_DISTANCE
 import ru.snowmaze.pagingflow.samples.ui.theme.TestComposeAppTheme
@@ -34,7 +36,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             TestComposeAppTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    List(innerPadding)
+                    val model = viewModel<TestViewModel>()
+                    val presenter = remember { model.pagingFlow.pagingDataPresenter() }
+                    List(innerPadding, presenter)
                 }
             }
         }
@@ -42,19 +46,18 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun List(innerPadding: PaddingValues) {
+fun List(innerPadding: PaddingValues, pagingDataPresenter: PagingDataPresenter<Int, String>) {
     val model = viewModel<TestViewModel>()
     val scope = rememberCoroutineScope()
     val pagingTrigger = remember {
         PagingTrigger(
             pagingFlow = { model.pagingFlow },
             prefetchDistance = PREFETCH_DISTANCE,
-            itemCount = { model.pagingDataPresenter.dataFlow.value.size }
+            itemCount = { pagingDataPresenter.dataFlow.value.size }
         )
     }
     val lazyListState = rememberLazyListState()
-    val items by model.pagingDataPresenter.dataFlow.collectAsState()
-    Log.d("MyActivity", "items $items")
+    val items by pagingDataPresenter.dataFlow.collectAsState()
     LazyColumn(
         modifier = Modifier.fillMaxWidth(), state = lazyListState, contentPadding = innerPadding
     ) {
@@ -71,12 +74,10 @@ fun PagingList(innerPadding: PaddingValues) {
     val lazyListState = rememberLazyListState()
     val model = androidx.lifecycle.viewmodel.compose.viewModel<TestPagingViewModel>()
     val items = model.flow.collectAsLazyPagingItems()
-    Log.d("MyActivity", "items $items")
     items.loadState.prepend
     LazyColumn(
         state = lazyListState, contentPadding = innerPadding
     ) {
-        Log.d("MyActivity", "items ${items.itemSnapshotList}")
         items(items.itemCount) { index ->
             val item = items[index] ?: return@items
 

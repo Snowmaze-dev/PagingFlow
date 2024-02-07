@@ -3,7 +3,7 @@ package ru.snowmaze.pagingflow.diff.mediums
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 
-abstract class DefaultDataChangesMedium<Key : Any, Data : Any> : DataChangesMedium<Key, Data> {
+abstract class DefaultPagingDataChangesMedium<Key : Any, Data : Any> : PagingDataChangesMedium<Key, Data> {
 
     protected val dataChangedCallbacks = mutableListOf<DataChangedCallback<Key, Data>>()
 

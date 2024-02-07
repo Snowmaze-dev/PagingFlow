@@ -5,9 +5,9 @@ import kotlinx.coroutines.flow.StateFlow
 /**
  * Base class for paging presenter, which exposes full list of data and callbacks to subscribe for data changes
  */
-abstract class PagingDataPresenter<Key : Any, Data : Any> {
+interface PagingDataPresenter<Key : Any, Data : Any> {
 
-    abstract val dataFlow: StateFlow<List<Data?>>
+    val dataFlow: StateFlow<List<Data?>>
 }
 
 val PagingDataPresenter<*, *>.itemCount get() = dataFlow.value.size

@@ -7,6 +7,7 @@ import kotlinx.datetime.Clock
 import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.PagingFlow
 
+// TODO пофиксить баг с нуллами когда скроллим назад
 /**
  * The helper class which calls pagination when end of page reached.
  */
@@ -17,6 +18,8 @@ class PagingTrigger(
     private val debounceTimeSeconds: Int = 1,
     val paginationDownEnabled: Boolean = true,
     val paginationUpEnabled: Boolean = true,
+
+    // TODO убрать
     val shouldTryPaginateBackOnEveryPageStartVisible: Boolean = true,
     private val coroutineScope: CoroutineScope = GlobalScope,
     private val currentTimeSecondsProvider: () -> Long = { Clock.System.now().epochSeconds },

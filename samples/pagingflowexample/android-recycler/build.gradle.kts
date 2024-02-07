@@ -40,6 +40,7 @@ android {
 
 dependencies {
     implementation(projects.samples.pagingflowexample.shared)
+    implementation(projects.pagingRecycler)
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)

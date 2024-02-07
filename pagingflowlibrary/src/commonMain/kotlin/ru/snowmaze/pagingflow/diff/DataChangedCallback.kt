@@ -8,5 +8,7 @@ interface DataChangedCallback<Key : Any, Data : Any> {
 
     fun onEvents(events: List<DataChangedEvent<Key, Data>>)
 
-    fun onEvent(event: DataChangedEvent<Key, Data>)
+    fun onEvent(event: DataChangedEvent<Key, Data>) {
+        onEvents(listOf(event))
+    }
 }

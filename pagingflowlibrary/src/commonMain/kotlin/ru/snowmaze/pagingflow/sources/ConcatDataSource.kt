@@ -12,7 +12,7 @@ import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.PagingStatus
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
-import ru.snowmaze.pagingflow.diff.mediums.DataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.errorshandler.DefaultPagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.internal.DataPage
 import ru.snowmaze.pagingflow.internal.DataPagesManager
@@ -23,7 +23,7 @@ import ru.snowmaze.pagingflow.result.simpleResult
 
 open class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
     private val concatDataSourceConfig: ConcatDataSourceConfig<Key>
-) : DataSource<Key, Data, SourcePagingStatus>, DataChangesMedium<Key, Data> {
+) : DataSource<Key, Data, SourcePagingStatus>, PagingDataChangesMedium<Key, Data> {
 
     companion object {
         fun <Key : Any> concatDataSourceResultKey() =

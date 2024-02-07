@@ -4,6 +4,7 @@ import dev.icerock.moko.mvvm.viewmodel.ViewModel
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.PagingFlowConfiguration
 import ru.snowmaze.pagingflow.buildPagingFlow
+import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 
 class TestViewModel : ViewModel() {
@@ -26,5 +27,5 @@ class TestViewModel : ViewModel() {
         addDataSource(TestDataSource(totalItemsCount, true))
         loadNextPage()
     }
-    val pagingDataPresenter = pagingFlow.pagingDataPresenter()
+    val pagingDataChangesMedium: PagingDataChangesMedium<Int, String> = pagingFlow
 }

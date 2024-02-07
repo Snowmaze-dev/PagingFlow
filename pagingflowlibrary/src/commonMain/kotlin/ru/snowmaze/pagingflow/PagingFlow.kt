@@ -5,7 +5,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
-import ru.snowmaze.pagingflow.diff.mediums.DataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.sources.ConcatDataSource
 import ru.snowmaze.pagingflow.sources.ConcatDataSourceConfig
@@ -25,7 +25,7 @@ import ru.snowmaze.pagingflow.result.LoadResult
 class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
     private val concatDataSource: ConcatDataSource<Key, Data, PagingStatus>,
     val pagingFlowConfiguration: PagingFlowConfiguration<Key>
-) : DataChangesMedium<Key, Data> {
+) : PagingDataChangesMedium<Key, Data> {
 
     private val loadMutex = Mutex()
     val upPagingStatus get() = concatDataSource.upPagingStatus

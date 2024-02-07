@@ -5,14 +5,14 @@ import kotlinx.coroutines.launch
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
-import ru.snowmaze.pagingflow.diff.mediums.DataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
 import ru.snowmaze.pagingflow.diff.mediums.handle
 
 open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
-    dataChangesMedium: DataChangesMedium<Key, Data>,
+    pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
     invalidateBehavior: InvalidateBehavior,
-    config: DataChangesMediumConfig = dataChangesMedium.config
+    config: DataChangesMediumConfig = pagingDataChangesMedium.config
 ) : BuildListPagingPresenter<Key, Data>(
     invalidateBehavior,
     config.coroutineScope,
@@ -24,7 +24,7 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
     protected var changeDataJob: Job = Job()
 
     init {
-        dataChangesMedium.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
+        pagingDataChangesMedium.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
 
             fun MutableMap<Int, List<Data?>>.applyEvent(event: DataChangedEvent<Key, Data>) {
                 event.handle(
@@ -37,19 +37,8 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
 
             override fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
                 updateData {
-                    var lastEvent: DataChangedEvent<Key, Data>? = null
-                    for (event in events) {
-                        applyEvent(event)
-                        lastEvent = event
-                    }
-                    lastEvent !is InvalidateEvent<*, *>
-                }
-            }
-
-            override fun onEvent(event: DataChangedEvent<Key, Data>) {
-                updateData {
-                    applyEvent(event)
-                    event !is InvalidateEvent<*, *>
+                    for (event in events) { applyEvent(event) }
+                    events
                 }
             }
         })
@@ -62,12 +51,13 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
         changeDataJob = Job()
     }
 
-    protected open fun updateData(update: MutableMap<Int, List<Data?>>.() -> Boolean) {
+    protected open fun updateData(update: MutableMap<Int, List<Data?>>.() -> List<DataChangedEvent<Key, Data>>) {
         coroutineScope.launch(processingDispatcher + changeDataJob) {
             val result = pageIndexes.update()
-            if (result) {
+            val lastEvent = result.lastOrNull()
+            if (lastEvent != null && lastEvent !is InvalidateEvent) {
                 pageIndexesKeys = pageIndexes.keys.sorted()
-                buildList()
+                buildList(result)
             }
         }
     }
@@ -77,7 +67,7 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
      */
     fun forceRebuildList() {
         coroutineScope.launch(processingDispatcher) {
-            buildList()
+            buildList(emptyList())
         }
     }
 

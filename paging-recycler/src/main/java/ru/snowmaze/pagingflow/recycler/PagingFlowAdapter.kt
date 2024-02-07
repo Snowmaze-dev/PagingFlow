@@ -1,14 +1,39 @@
 package ru.snowmaze.pagingflow.recycler
 
-import android.view.ViewGroup
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 
-class PagingFlowAdapter<VH: ViewHolder>: RecyclerView.Adapter<VH>() {
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): VH = TODO()
+@Suppress("LeakingThis")
+abstract class PagingFlowAdapter<Data : Any, VH : ViewHolder>(
+    itemCallback: DiffUtil.ItemCallback<Data>,
+    pagingDataChangesMedium: PagingDataChangesMedium<out Any, Data>,
+    invalidateBehavior: InvalidateBehavior = InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE,
+    mainDispatcher: CoroutineDispatcher = Dispatchers.Main
+) : RecyclerView.Adapter<VH>() {
 
-    override fun getItemCount() = 0
+    private val dispatchUpdatesToAdapterPresenter = DispatchUpdatesToAdapterPresenter(
+        this,
+        pagingDataChangesMedium,
+        itemCallback,
+        invalidateBehavior
+    )
+    private var items = listOf<Data?>()
 
-    override fun onBindViewHolder(holder: VH, position: Int) {
+    init {
+        pagingDataChangesMedium.config.coroutineScope.launch(mainDispatcher) {
+            dispatchUpdatesToAdapterPresenter.dataFlow.collect {
+                items = it
+            }
+        }
     }
+
+    override fun getItemCount() = items.size
+
+    fun getItem(index: Int) = items[index]
 }
