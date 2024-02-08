@@ -195,7 +195,8 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                     return PageRemovedEvent(
                         key = page.currentPageKey,
                         pageIndex = page.pageIndex,
-                        sourceIndex = page.dataSourceIndex
+                        sourceIndex = page.dataSourceIndex,
+                        itemsCount = it.size
                     )
                 }
                 page.dataFlow = null

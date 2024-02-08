@@ -1,7 +1,6 @@
 package ru.snowmaze.pagingflow.samples
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -52,7 +51,7 @@ fun List(innerPadding: PaddingValues, pagingDataPresenter: PagingDataPresenter<I
     val pagingTrigger = remember {
         PagingTrigger(
             pagingFlow = { model.pagingFlow },
-            prefetchDistance = PREFETCH_DISTANCE,
+            prefetchDownDistance = PREFETCH_DISTANCE,
             itemCount = { pagingDataPresenter.dataFlow.value.size }
         )
     }
@@ -63,7 +62,6 @@ fun List(innerPadding: PaddingValues, pagingDataPresenter: PagingDataPresenter<I
     ) {
         itemsIndexed(items) { index, item ->
             if (item != null) TestItem(item)
-//                            pagingTrigger.onItemVisible(index)
             pagingTrigger.launchedHandleLazyListState(lazyListState)
         }
     }

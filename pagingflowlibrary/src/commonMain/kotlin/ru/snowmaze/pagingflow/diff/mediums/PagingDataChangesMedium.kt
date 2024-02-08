@@ -9,6 +9,9 @@ import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
 
+/**
+ * An interface that provides changes of paged data.
+ */
 interface PagingDataChangesMedium<Key : Any, Data : Any> {
 
     val config: DataChangesMediumConfig

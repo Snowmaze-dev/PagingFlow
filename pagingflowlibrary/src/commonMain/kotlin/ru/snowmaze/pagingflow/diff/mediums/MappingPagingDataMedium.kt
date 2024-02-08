@@ -17,6 +17,8 @@ class MappingPagingDataMedium<Key : Any, Data : Any, NewData : Any>(
         pagingDataChangesMedium.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
 
             fun handleEvent(event: DataChangedEvent<Key, Data>): DataChangedEvent<Key, NewData>? {
+
+                // TODO сделать маппинг других эвентов
                 return event.handle(
                     onPageAdded = {
                         PageAddedEvent(
@@ -35,7 +37,7 @@ class MappingPagingDataMedium<Key : Any, Data : Any, NewData : Any>(
                         )
                     },
                     onPageRemovedEvent = { it as PageRemovedEvent<Key, NewData> },
-                    onInvalidate = { it as InvalidateEvent<Key, NewData> }
+                    onInvalidate = { it as InvalidateEvent<Key, NewData> },
                 )
             }
 

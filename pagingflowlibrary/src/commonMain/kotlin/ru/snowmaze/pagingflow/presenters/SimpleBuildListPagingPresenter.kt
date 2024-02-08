@@ -5,6 +5,7 @@ import kotlinx.coroutines.launch
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
+import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
 import ru.snowmaze.pagingflow.diff.mediums.handle
@@ -19,17 +20,17 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
     config.processingDispatcher
 ) {
 
-    protected val pageIndexes = mutableMapOf<Int, List<Data?>>()
+    protected val pageIndexes = mutableMapOf<Int, PageChangedEvent<Key, Data>>()
     protected var pageIndexesKeys = emptyList<Int>()
     protected var changeDataJob: Job = Job()
 
     init {
         pagingDataChangesMedium.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
 
-            fun MutableMap<Int, List<Data?>>.applyEvent(event: DataChangedEvent<Key, Data>) {
+            fun MutableMap<Int, PageChangedEvent<Key, Data>>.applyEvent(event: DataChangedEvent<Key, Data>) {
                 event.handle(
-                    onPageAdded = { this[it.pageIndex] = it.items },
-                    onPageChanged = { this[it.pageIndex] = it.items },
+                    onPageAdded = { this[it.pageIndex] = it },
+                    onPageChanged = { this[it.pageIndex] = it },
                     onPageRemovedEvent = { remove(it.pageIndex) },
                     onInvalidate = { onInvalidateInternal() }
                 )
@@ -37,7 +38,9 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
 
             override fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
                 updateData {
-                    for (event in events) { applyEvent(event) }
+                    for (event in events) {
+                        applyEvent(event)
+                    }
                     events
                 }
             }
@@ -51,7 +54,9 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
         changeDataJob = Job()
     }
 
-    protected open fun updateData(update: MutableMap<Int, List<Data?>>.() -> List<DataChangedEvent<Key, Data>>) {
+    protected open fun updateData(
+        update: MutableMap<Int, PageChangedEvent<Key, Data>>.() -> List<DataChangedEvent<Key, Data>>
+    ) {
         coroutineScope.launch(processingDispatcher + changeDataJob) {
             val result = pageIndexes.update()
             val lastEvent = result.lastOrNull()
@@ -72,10 +77,16 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
     }
 
     override fun buildListInternal(): List<Data?> {
-        return buildList(pageIndexesKeys.sumOf { pageIndexes.getValue(it).size }) {
+        return buildList(pageIndexesKeys.sumOf { pageIndexes.getValue(it).items.size }) {
+            var newStartIndex = 0
             for (pageIndex in pageIndexesKeys) {
-                addAll(pageIndexes.getValue(pageIndex))
+                val page = pageIndexes.getValue(pageIndex)
+                if (page.changeType == PageChangedEvent.ChangeType.CHANGE_TO_NULLS) {
+                    newStartIndex += page.items.size
+                }
+                addAll(page.items)
             }
+            _startIndex = newStartIndex
         }
     }
 }

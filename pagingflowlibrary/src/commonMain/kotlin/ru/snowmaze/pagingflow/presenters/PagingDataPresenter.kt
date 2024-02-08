@@ -8,6 +8,9 @@ import kotlinx.coroutines.flow.StateFlow
 interface PagingDataPresenter<Key : Any, Data : Any> {
 
     val dataFlow: StateFlow<List<Data?>>
+
+    // An index that takes into account null pages at the beginning
+    val startIndex: Int
 }
 
 val PagingDataPresenter<*, *>.itemCount get() = dataFlow.value.size

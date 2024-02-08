@@ -7,48 +7,74 @@ import kotlinx.datetime.Clock
 import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.PagingFlow
 
-// TODO пофиксить баг с нуллами когда скроллим назад
 /**
  * The helper class which calls pagination when end of page reached.
  */
 class PagingTrigger(
-    private val pagingFlow: () -> PagingFlow<*, *, *>,
-    private val itemCount: () -> Int,
-    val prefetchDistance: Int = 1,
-    private val debounceTimeSeconds: Int = 1,
+    private val isLoadingCallback: () -> Boolean,
+    private val onEndReached: suspend (PaginationDirection) -> Unit,
+    var itemCount: () -> Int = { 0 },
+    var currentStartIndexProvider: () -> Int = { 0 },
+    val maxPagesCount: () -> Int? = { null },
+    val prefetchDownDistance: Int = 1,
+    val prefetchUpDistance: Int = prefetchDownDistance,
+    private val debounceTimeMillis: Int = 500,
     val paginationDownEnabled: Boolean = true,
     val paginationUpEnabled: Boolean = true,
-
-    // TODO убрать
-    val shouldTryPaginateBackOnEveryPageStartVisible: Boolean = true,
     private val coroutineScope: CoroutineScope = GlobalScope,
-    private val currentTimeSecondsProvider: () -> Long = { Clock.System.now().epochSeconds },
-    private val onEndReached: suspend (PaginationDirection) -> Unit = { direction ->
-        pagingFlow().loadNextPageWithResult(direction)
+    var currentTimeMillisProvider: () -> Long = {
+        Clock.System.now().toEpochMilliseconds()
     }
 ) {
 
+    constructor(
+        pagingFlow: () -> PagingFlow<*, *, *>,
+        itemCount: () -> Int = { 0 },
+        currentStartIndex: () -> Int = { 0 },
+        prefetchDownDistance: Int = 1,
+        prefetchUpDistance: Int = prefetchDownDistance,
+        debounceTimeMillis: Int = 500,
+        paginationDownEnabled: Boolean = true,
+        paginationUpEnabled: Boolean = true,
+        coroutineScope: CoroutineScope = GlobalScope,
+        currentTimeSecondsProvider: () -> Long = { Clock.System.now().epochSeconds },
+        onEndReached: suspend (PaginationDirection) -> Unit = { direction ->
+            pagingFlow().loadNextPageWithResult(direction)
+        }
+    ) : this(
+        itemCount = itemCount,
+        isLoadingCallback = { pagingFlow().isLoading },
+        maxPagesCount = { pagingFlow().pagingFlowConfiguration.maxPagesCount },
+        currentStartIndexProvider = currentStartIndex,
+        prefetchDownDistance = prefetchDownDistance,
+        prefetchUpDistance = prefetchUpDistance,
+        debounceTimeMillis = debounceTimeMillis,
+        paginationDownEnabled = paginationDownEnabled,
+        paginationUpEnabled = paginationUpEnabled,
+        coroutineScope = coroutineScope,
+        currentTimeMillisProvider = currentTimeSecondsProvider,
+        onEndReached = onEndReached
+    )
+
     private var _isLoading = false
 
-    val isLoading get() = _isLoading || pagingFlow().isLoading
+    val isLoading get() = _isLoading || isLoadingCallback()
     private var lastTimeTriggered = 0L
 
     fun onItemVisible(index: Int): Boolean {
-        val currentTime = currentTimeSecondsProvider()
-        if (debounceTimeSeconds != 0 &&
-            debounceTimeSeconds > currentTime - lastTimeTriggered
+        val currentTime = currentTimeMillisProvider()
+        if (debounceTimeMillis != 0 &&
+            debounceTimeMillis > currentTime - lastTimeTriggered
         ) return false
-        val pagingFlow = pagingFlow()
-        if (pagingFlow.isLoading) return false
-        val removePagesOffset = pagingFlow.pagingFlowConfiguration.maxPagesCount
+        if (isLoadingCallback()) return false
+        val maxPagesCount = maxPagesCount()
         val itemCount = itemCount()
-        val direction = if (index >= (itemCount - prefetchDistance) && paginationDownEnabled) {
+        val relativeStartIndex = if (maxPagesCount == null) index else {
+            index - currentStartIndexProvider()
+        }
+        val direction = if (index >= (itemCount - prefetchDownDistance) && paginationDownEnabled) {
             PaginationDirection.DOWN
-        } else if (paginationUpEnabled &&
-            if (shouldTryPaginateBackOnEveryPageStartVisible && removePagesOffset != null) {
-                prefetchDistance * (removePagesOffset - 1) >= index
-            } else prefetchDistance >= index
-        ) {
+        } else if (paginationUpEnabled && prefetchUpDistance >= relativeStartIndex) {
             PaginationDirection.UP
         } else return false
         _isLoading = true

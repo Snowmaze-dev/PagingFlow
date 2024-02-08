@@ -31,7 +31,6 @@ kotlin {
     sourceSets {
         val commonMain by getting {
             dependencies {
-                //put your multiplatform dependencies here
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.datetime)
             }

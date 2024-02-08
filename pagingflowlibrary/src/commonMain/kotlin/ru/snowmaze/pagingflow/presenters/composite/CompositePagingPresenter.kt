@@ -4,6 +4,8 @@ import kotlinx.coroutines.launch
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
+import ru.snowmaze.pagingflow.diff.PageAddedEvent
+import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
 import ru.snowmaze.pagingflow.diff.mediums.handle
@@ -37,10 +39,10 @@ open class CompositePagingPresenter<Key : Any, Data : Any> internal constructor(
         val applyEvent: (event: DataChangedEvent<Key, Data>) -> Unit = { event ->
             event.handle(
                 onPageAdded = {
-                    dataSourcesSections[it.sourceIndex]?.items?.set(it.pageIndex, it.items)
+                    dataSourcesSections[it.sourceIndex]?.items?.set(it.pageIndex, it)
                 },
                 onPageChanged = {
-                    dataSourcesSections[it.sourceIndex]?.items?.set(it.pageIndex, it.items)
+                    dataSourcesSections[it.sourceIndex]?.items?.set(it.pageIndex, it)
                 },
                 onPageRemovedEvent = {
                     dataSourcesSections[it.sourceIndex]?.items?.remove(it.pageIndex)
@@ -71,21 +73,32 @@ open class CompositePagingPresenter<Key : Any, Data : Any> internal constructor(
     override fun buildListInternal(): List<Data?> {
         return buildList(sections.sumOf { section ->
             section.items.keys.sumOf {
-                section.items.getValue(it).size
+                section.items.getValue(it).items.size
             }
         }) {
+            var newStartIndex = 0
             for (section in sections) {
                 for (key in section.items.keys.sorted()) {
-                    addAll(section.items[key] ?: break)
+                    val lastEvent = section.items[key]
+                    addAll(lastEvent?.items ?: break)
+                    if (lastEvent.changeType == PageChangedEvent.ChangeType.CHANGE_TO_NULLS) {
+                        newStartIndex += lastEvent.items.size
+                    }
                 }
             }
+            _startIndex = newStartIndex
         }
     }
 
     private fun updateSectionsData() {
         for (section in sections) {
             if (section is CompositePresenterSection.SimpleSection<Data>) {
-                section.items[0] = section.itemsProvider()
+                section.items[0] = PageAddedEvent(
+                    key = null,
+                    pageIndex = -1,
+                    sourceIndex = -1,
+                    items = section.itemsProvider()
+                )
             }
         }
     }

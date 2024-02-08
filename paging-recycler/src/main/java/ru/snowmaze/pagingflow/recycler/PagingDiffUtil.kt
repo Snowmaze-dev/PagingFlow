@@ -5,15 +5,6 @@ import androidx.recyclerview.widget.ListUpdateCallback
 
 object PagingDiffUtil {
 
-    fun <T : Any> dispatchDiff(
-        diffCallback: DiffUtil.ItemCallback<T>,
-        oldList: List<T>,
-        newList: List<T>,
-        diffUpdateCallback: ListUpdateCallback
-    ) {
-        calculateDiff(diffCallback, oldList, newList).dispatchUpdatesTo(diffUpdateCallback)
-    }
-
     fun <T : Any> calculateDiff(
         diffCallback: DiffUtil.ItemCallback<T>,
         oldList: List<T>,

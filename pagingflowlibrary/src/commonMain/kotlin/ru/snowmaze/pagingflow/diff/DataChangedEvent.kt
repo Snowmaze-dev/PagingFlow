@@ -8,6 +8,7 @@ open class PageChangedEvent<Key : Any, Data : Any>(
     val key: Key?,
     val pageIndex: Int,
     val sourceIndex: Int,
+    val previousList: List<Data?>? = null,
     val items: List<Data?>,
     val changeType: ChangeType = ChangeType.COMMON_CHANGE
 ) : DataChangedEvent<Key, Data>() {
@@ -21,12 +22,13 @@ class PageAddedEvent<Key : Any, Data : Any>(
     pageIndex: Int,
     sourceIndex: Int,
     items: List<Data>
-) : PageChangedEvent<Key, Data>(key, pageIndex, sourceIndex, items)
+) : PageChangedEvent<Key, Data>(key, pageIndex, sourceIndex, null, items)
 
 class PageRemovedEvent<Key : Any, Data : Any>(
     val key: Key?,
     val pageIndex: Int,
-    val sourceIndex: Int
+    val sourceIndex: Int,
+    val itemsCount: Int
 ) : DataChangedEvent<Key, Data>()
 
 /**

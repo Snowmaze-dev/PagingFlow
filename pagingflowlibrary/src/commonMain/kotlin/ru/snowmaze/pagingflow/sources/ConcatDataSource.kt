@@ -146,9 +146,9 @@ open class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         val page = DataPage(
             dataFlow = MutableStateFlow(null),
             nextPageKey = if (isPaginationDown) result.nextPageKey
-            else dataPages.first().currentPageKey,
+            else dataPages.getOrNull(lastPageIndex)?.currentPageKey,
             dataSource = dataSourceWithIndex,
-            previousPageKey = if (isPaginationDown) dataPages.lastOrNull()?.currentPageKey
+            previousPageKey = if (isPaginationDown) dataPages.getOrNull(lastPageIndex)?.currentPageKey
             else result.nextPageKey,
             currentPageKey = currentKey,
             listenJob = listenJob,

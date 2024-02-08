@@ -28,7 +28,8 @@ else (currentOffset - pageSize).takeIf { it >= 0 }).takeIf { hasNextPage }
 
 fun LoadParams<Int>.positiveOffset(
     hasNextPage: Boolean = true,
-    currentOffset: Int = key ?: 0
+    currentOffset: Int = key ?: 0,
+    pageSize: Int = this.pageSize
 ): Int? {
     return (if (paginationDirection == PaginationDirection.DOWN) currentOffset + pageSize
     else (currentOffset - pageSize).takeIf { it >= 0 }).takeIf { hasNextPage }

@@ -24,10 +24,10 @@ class PagingBothDirectionsTest {
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
             addDataSource(testDataSource)
         }
-        val presenter = pagingFlow.pagingDataPresenter(throttleDurationMs = 0)
+        val presenter = pagingFlow.pagingDataPresenter( )
         pagingFlow.testLoadEverything(
-            listOf(testDataSource), pageSize,
-            shouldTestItems = false,
+            listOf(testDataSource),
+            pageSize,
             pagingPresenter = presenter
         )
 
@@ -57,6 +57,12 @@ class PagingBothDirectionsTest {
             false,
             pagingFlow.loadNextPageWithResult(PaginationDirection.UP).asSuccess().hasNext
         )
+
+        pagingFlow.testLoadEverything(
+            listOf(testDataSource),
+            pageSize,
+            pagingPresenter = presenter
+        )
     }
 
     fun getItemsWithPagesOffset(pagesOffset: Int): Pair<Int, Int> {
@@ -79,7 +85,6 @@ class PagingBothDirectionsTest {
         pagingFlow.testLoadEverything(
             listOf(testDataSource),
             pageSize,
-            shouldTestItems = false,
             pagingPresenter = presenter
         )
 
@@ -89,6 +94,17 @@ class PagingBothDirectionsTest {
             buildListOfNulls(totalCount - (pageSize * removePagesOffset)) +
                     testDataSource.getItems(totalCount).takeLast(pageSize * removePagesOffset),
             loadedData
+        )
+
+        var hasNext = true
+        while (hasNext) {
+            hasNext = pagingFlow.loadNextPageWithResult(PaginationDirection.UP).asSuccess().hasNext
+        }
+
+        pagingFlow.testLoadEverything(
+            listOf(testDataSource),
+            pageSize,
+            pagingPresenter = presenter
         )
     }
 
