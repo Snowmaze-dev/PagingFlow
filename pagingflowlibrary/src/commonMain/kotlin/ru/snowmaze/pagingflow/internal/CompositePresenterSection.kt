@@ -1,17 +1,29 @@
 package ru.snowmaze.pagingflow.internal
 
-import ru.snowmaze.pagingflow.diff.PageChangedEvent
+import kotlinx.coroutines.flow.StateFlow
 
-internal sealed class CompositePresenterSection<Data: Any> {
+internal sealed class CompositePresenterSection<Data : Any> {
 
-    open var items: MutableMap<Int, PageChangedEvent<*, Data>> = mutableMapOf()
+    abstract val sectionIndex: Int
+    abstract var pageIndex: Int
 
     internal class SimpleSection<Data : Any>(
         val itemsProvider: () -> List<Data>,
+        override val sectionIndex: Int,
+        override var pageIndex: Int = sectionIndex,
+    ) : CompositePresenterSection<Data>() {
+
+        var items: List<Data> = emptyList()
+    }
+
+    internal class FlowSimpleSection<Data : Any>(
+        val flow: StateFlow<List<Data>>,
+        override val sectionIndex: Int,
+        override var pageIndex: Int = sectionIndex,
     ) : CompositePresenterSection<Data>()
 
     internal class DataSourceSection<Data : Any>(
-        var dataSourceIndex: Int? = null
+        override val sectionIndex: Int,
+        override var pageIndex: Int = sectionIndex,
     ) : CompositePresenterSection<Data>()
-
 }

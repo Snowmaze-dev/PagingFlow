@@ -11,23 +11,23 @@ suspend fun PagingFlow<Int, String, DefaultPagingStatus>.testLoadEverything(
     dataSources: List<TestDataSource>,
     pageSize: Int,
     shouldTestItems: Boolean = true,
-    pagingPresenter: PagingDataPresenter<Int, String>
+    pagingPresenter: PagingDataPresenter<Int, String>? = null
 ) {
     var dataSourceIndex = 0
     var currentDataSource = dataSources[dataSourceIndex]
-    var currentSourceLoadedCount = pagingPresenter.dataFlow.value.size
+    var currentSourceLoadedCount = pagingPresenter?.dataFlow?.value?.size ?: 0
     var currentLoadSize = currentDataSource.defaultLoadParams?.pageSize ?: pageSize
     var currentTotalCount = currentDataSource.totalCount
     val loadingSources = mutableListOf(currentDataSource)
-    var overallLoadedCount = pagingPresenter.dataFlow.value.size
+    var overallLoadedCount = pagingPresenter?.dataFlow?.value?.size ?: 0
 
     while (true) {
         val result = loadNextPageWithResult()
         currentSourceLoadedCount += currentLoadSize
         overallLoadedCount += currentLoadSize
-        assertEquals(currentTotalCount != currentSourceLoadedCount, result.asSuccess().hasNext)
         currentLoadSize = (currentTotalCount - currentSourceLoadedCount).coerceAtMost(pageSize)
         if (shouldTestItems) {
+            assertEquals(currentTotalCount != currentSourceLoadedCount, result.asSuccess().hasNext)
             var testItems: List<String?> = loadingSources.mapIndexed { index, testDataSource ->
                 testDataSource.getItems(
                     if (index == loadingSources.lastIndex) {
@@ -48,7 +48,7 @@ suspend fun PagingFlow<Int, String, DefaultPagingStatus>.testLoadEverything(
             }
             assertEquals(
                 testItems,
-                pagingPresenter.dataFlow.value
+                pagingPresenter?.dataFlow?.value
             )
         }
         if (currentLoadSize == 0) {
