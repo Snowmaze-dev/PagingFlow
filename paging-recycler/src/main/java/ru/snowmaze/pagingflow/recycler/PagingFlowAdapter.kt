@@ -28,6 +28,7 @@ abstract class PagingFlowAdapter<Data : Any, VH : ViewHolder>(
     mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) : RecyclerView.Adapter<VH>() {
 
+    @Suppress("LeakingThis")
     private val dispatchUpdatesToCallbackPresenter = DispatchUpdatesToCallbackPresenter(
         listUpdateCallback = AdapterListUpdateCallback(this),
         offsetListUpdateCallbackProvider = { offset: Int ->
@@ -37,7 +38,7 @@ abstract class PagingFlowAdapter<Data : Any, VH : ViewHolder>(
         itemCallback = itemCallback,
         invalidateBehavior = invalidateBehavior
     )
-    private var items = listOf<Data?>()
+    private var items = emptyList<Data?>()
 
     init {
         pagingDataChangesMedium.config.coroutineScope.launch(mainDispatcher) {
