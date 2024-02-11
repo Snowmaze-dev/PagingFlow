@@ -43,7 +43,6 @@ class CommonPresentersTest {
 
         pagingFlow.testLoadEverything(
             dataSources = listOf(testDataSource),
-            pageSize = pageSize,
             pagingPresenter = pagingFlow.pagingDataPresenter()
         )
         assertEquals(
