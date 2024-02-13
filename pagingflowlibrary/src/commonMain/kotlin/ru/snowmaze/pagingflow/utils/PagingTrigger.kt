@@ -37,7 +37,7 @@ class PagingTrigger(
         paginationDownEnabled: Boolean = true,
         paginationUpEnabled: Boolean = true,
         coroutineScope: CoroutineScope = GlobalScope,
-        currentTimeSecondsProvider: () -> Long = { Clock.System.now().epochSeconds },
+        currentTimeMillisProvider: () -> Long = { Clock.System.now().toEpochMilliseconds() },
         onEndReached: suspend (PaginationDirection) -> Unit = { direction ->
             pagingFlow().loadNextPageWithResult(direction)
         }
@@ -52,7 +52,7 @@ class PagingTrigger(
         paginationDownEnabled = paginationDownEnabled,
         paginationUpEnabled = paginationUpEnabled,
         coroutineScope = coroutineScope,
-        currentTimeMillisProvider = currentTimeSecondsProvider,
+        currentTimeMillisProvider = currentTimeMillisProvider,
         onEndReached = onEndReached
     )
 

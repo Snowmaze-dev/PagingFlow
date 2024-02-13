@@ -28,7 +28,7 @@ class BasicPagingFlowTest {
         }
         val presenter = pagingFlow.pagingDataPresenter(throttleDurationMs = 0)
 
-        pagingFlow.testLoadEverything(listOf(testDataSource), pageSize, pagingPresenter = presenter)
+        pagingFlow.testLoadEverything(listOf(testDataSource), pagingPresenter = presenter)
         invalidateAndCheckLoadingRight(pagingFlow, testDataSource, pagingDataPresenter = presenter)
     }
 
@@ -59,7 +59,6 @@ class BasicPagingFlowTest {
 
         pagingFlow.testLoadEverything(
             listOf(firstTestDataSource, secondTestDataSource, thirdTestDataSource),
-            pageSize,
             pagingPresenter = presenter
         )
         invalidateAndCheckLoadingRight(pagingFlow, firstTestDataSource, presenter)

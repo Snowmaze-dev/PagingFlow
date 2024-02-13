@@ -24,10 +24,9 @@ class PagingBothDirectionsTest {
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
             addDataSource(testDataSource)
         }
-        val presenter = pagingFlow.pagingDataPresenter( )
+        val presenter = pagingFlow.pagingDataPresenter()
         pagingFlow.testLoadEverything(
             listOf(testDataSource),
-            pageSize,
             pagingPresenter = presenter
         )
 
@@ -60,7 +59,6 @@ class PagingBothDirectionsTest {
 
         pagingFlow.testLoadEverything(
             listOf(testDataSource),
-            pageSize,
             pagingPresenter = presenter
         )
     }
@@ -84,7 +82,6 @@ class PagingBothDirectionsTest {
         val presenter = pagingFlow.pagingDataPresenter(throttleDurationMs = 0)
         pagingFlow.testLoadEverything(
             listOf(testDataSource),
-            pageSize,
             pagingPresenter = presenter
         )
 
@@ -103,7 +100,6 @@ class PagingBothDirectionsTest {
 
         pagingFlow.testLoadEverything(
             listOf(testDataSource),
-            pageSize,
             pagingPresenter = presenter
         )
     }

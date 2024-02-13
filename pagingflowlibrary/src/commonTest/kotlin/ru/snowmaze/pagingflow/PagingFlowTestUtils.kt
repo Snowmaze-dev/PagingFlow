@@ -3,16 +3,17 @@ package ru.snowmaze.pagingflow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
+import kotlin.math.ceil
 import kotlin.test.assertEquals
 
 val testDispatcher = UnconfinedTestDispatcher()
 
 suspend fun PagingFlow<Int, String, DefaultPagingStatus>.testLoadEverything(
     dataSources: List<TestDataSource>,
-    pageSize: Int,
     shouldTestItems: Boolean = true,
     pagingPresenter: PagingDataPresenter<Int, String>? = null
 ) {
+    val pageSize = pagingFlowConfiguration.defaultParamsProvider().pageSize
     var dataSourceIndex = 0
     var currentDataSource = dataSources[dataSourceIndex]
     var currentSourceLoadedCount = pagingPresenter?.dataFlow?.value?.size ?: 0
@@ -38,13 +39,16 @@ suspend fun PagingFlow<Int, String, DefaultPagingStatus>.testLoadEverything(
             val maxPagesCount = pagingFlowConfiguration.maxPagesCount
             if (maxPagesCount != null) {
                 val maxItemsOffset = maxPagesCount * pageSize
-                val removeItemsCount = (overallLoadedCount - maxItemsOffset).coerceAtLeast(0)
+                val removeItemsCount = (ceil((overallLoadedCount - maxItemsOffset)
+                    .coerceAtLeast(0) / pageSize.toDouble()) * pageSize).toInt()
                 testItems = if (pagingFlowConfiguration.enableDroppedPagesNullPlaceholders) {
                     testItems.mapIndexed { index, item ->
                         if (removeItemsCount > index) null
                         else item
                     }
-                } else testItems.drop(removeItemsCount)
+                } else {
+                    testItems.drop(removeItemsCount)
+                }
             }
             assertEquals(
                 testItems,

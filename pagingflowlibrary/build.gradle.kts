@@ -54,7 +54,7 @@ kotlin {
 publishing {
     publications {
         withType<MavenPublication> {
-            version = "1.0.0"
+            version = "1.0.1"
             group = "ru.snowmaze.pagingflow"
             val split = artifactId.split("-")
             val flavor = split.getOrNull(1)
