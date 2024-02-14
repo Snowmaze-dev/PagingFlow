@@ -24,6 +24,7 @@ class CompositePagingChangesMedium<Key : Any, Data : Any> internal constructor(
     // absolute source index to prepend simple pages count
     private val sourcesIndexShift = mutableMapOf<Int, Int>()
     private val simplePagesIndexes = mutableMapOf<Int, CompositePresenterSection<Data>>()
+    private var lastSimpleSectionsCount = 0
 
     init {
         var simpleSectionsCount = 0
@@ -31,7 +32,9 @@ class CompositePagingChangesMedium<Key : Any, Data : Any> internal constructor(
         for (section in sections) {
             when (section) {
                 is SimpleSection,
-                is FlowSimpleSection, -> {
+                is FlowSimpleSection,
+                -> {
+                    lastSimpleSectionsCount++
                     val currentPageIndex = simpleSectionsCount
                     simplePagesIndexes[currentPageIndex] = section
                     section.pageIndex = simpleSectionsCount
@@ -42,7 +45,7 @@ class CompositePagingChangesMedium<Key : Any, Data : Any> internal constructor(
                                 notifyOnEvent(
                                     PageChangedEvent(
                                         key = null,
-                                        pageIndex = currentPageIndex,
+                                        pageIndex = section.pageIndex,
                                         sourceIndex = -1,
                                         previousList = null,
                                         items = it
@@ -56,6 +59,7 @@ class CompositePagingChangesMedium<Key : Any, Data : Any> internal constructor(
                 is CompositePresenterSection.DataSourceSection -> {
                     sourcesIndexShift[dataSourceIndex] = simpleSectionsCount
                     dataSourceIndex++
+                    lastSimpleSectionsCount = 0
                 }
             }
         }
@@ -76,64 +80,13 @@ class CompositePagingChangesMedium<Key : Any, Data : Any> internal constructor(
     private fun mapEvent(event: DataChangedEvent<Key, Data>): List<DataChangedEvent<Key, Data>>? {
         return event.handle(
             onPageAdded = {
-                var shiftedPageIndex = (sourcesIndexShift[it.sourceIndex]
-                    ?: return@handle null) + it.pageIndex
-                val existingPage = simplePagesIndexes[shiftedPageIndex]
-                var wasShifted = false
-                val pageEvent = if (existingPage != null) {
-                    wasShifted = true
-                    PageChangedEvent(
-                        key = it.key,
-                        sourceIndex = it.sourceIndex,
-                        pageIndex = shiftedPageIndex,
-                        items = it.items
-                    )
-                } else {
-                    PageAddedEvent(
-                        key = it.key,
-                        sourceIndex = it.sourceIndex,
-                        pageIndex = shiftedPageIndex,
-                        items = it.items
-                    )
-                }
-
-                if (wasShifted) {
-                    buildList {
-                        add(pageEvent)
-                        val shiftedSections = mutableListOf<CompositePresenterSection<Data>>()
-                        while (true) {
-                            val section = simplePagesIndexes.getValue(shiftedPageIndex)
-                            shiftedSections.add(section)
-                            simplePagesIndexes.remove(shiftedPageIndex)
-                            section.pageIndex++
-                            shiftedPageIndex++
-                            val items = if (section is SimpleSection<Data>) {
-                                section.items
-                            } else if (section is FlowSimpleSection<Data>) {
-                                section.flow.value
-                            } else continue
-                            val isLastPage = simplePagesIndexes[shiftedPageIndex] == null
-                            add(
-                                if (isLastPage) PageAddedEvent(
-                                    key = null,
-                                    pageIndex = section.pageIndex,
-                                    sourceIndex = -1,
-                                    items = items
-                                )
-                                else PageChangedEvent(
-                                    key = null,
-                                    pageIndex = section.pageIndex,
-                                    sourceIndex = -1,
-                                    items = items
-                                )
-                            )
-                            if (isLastPage) break
-                        }
-                        for (section in shiftedSections) {
-                            simplePagesIndexes[section.pageIndex] = section
-                        }
-                    }
-                } else listOf(pageEvent)
+                getEventsForSizeChange(
+                    key = it.key,
+                    sourceIndex = it.sourceIndex,
+                    pageIndex = it.pageIndex,
+                    newItems = it.items,
+                    itemsCount = it.items.size
+                )
             },
             onPageChanged = {
                 listOf(
@@ -148,14 +101,13 @@ class CompositePagingChangesMedium<Key : Any, Data : Any> internal constructor(
                 )
             },
             onPageRemovedEvent = {
-                listOf(
-                    PageRemovedEvent(
-                        key = it.key,
-                        sourceIndex = it.sourceIndex,
-                        pageIndex = (sourcesIndexShift[it.sourceIndex]
-                            ?: return@handle null) + it.pageIndex,
-                        itemsCount = it.itemsCount
-                    )
+                // TODO проработать удаление простых секций, которые за областью удаления страниц
+                getEventsForSizeChange(
+                    key = it.key,
+                    sourceIndex = it.sourceIndex,
+                    pageIndex = it.pageIndex,
+                    newItems = null,
+                    itemsCount = it.itemsCount
                 )
             },
             onInvalidate = {
@@ -166,6 +118,84 @@ class CompositePagingChangesMedium<Key : Any, Data : Any> internal constructor(
             },
             onElse = { listOf(it) }
         )
+    }
+
+    private fun getEventsForSizeChange(
+        key: Key?,
+        sourceIndex: Int,
+        pageIndex: Int,
+        newItems: List<Data?>?,
+        itemsCount: Int,
+    ): List<DataChangedEvent<Key, Data>>? {
+        var shiftedPageIndex = (sourcesIndexShift[sourceIndex]
+            ?: return null) + pageIndex
+        val existingPage = simplePagesIndexes[shiftedPageIndex]
+        var wasShifted = false
+        val isPageRemoved = newItems == null
+        val pageEvent = if (newItems == null) PageRemovedEvent(
+            key = key,
+            sourceIndex = sourceIndex,
+            pageIndex = shiftedPageIndex,
+            itemsCount = itemsCount
+        ) else if (existingPage != null) {
+            wasShifted = true
+            PageChangedEvent(
+                key = key,
+                sourceIndex = sourceIndex,
+                pageIndex = shiftedPageIndex,
+                items = newItems
+            )
+        } else {
+            PageAddedEvent(
+                key = key,
+                sourceIndex = sourceIndex,
+                pageIndex = shiftedPageIndex,
+                items = newItems
+            )
+        }
+
+        return if ((wasShifted && lastSimpleSectionsCount != 0) || isPageRemoved) {
+            buildList {
+
+                // TODO удалять все страницы которые выше нулевого индекса страницы
+                if (isPageRemoved) {
+
+                }
+                add(pageEvent)
+                val shiftedSections =
+                    ArrayList<CompositePresenterSection<Data>>(lastSimpleSectionsCount)
+                while (true) {
+                    val section = simplePagesIndexes.getValue(shiftedPageIndex)
+                    shiftedSections.add(section)
+                    simplePagesIndexes.remove(shiftedPageIndex)
+                    if (isPageRemoved) section.pageIndex--
+                    else section.pageIndex++
+                    shiftedPageIndex++
+                    val items = if (section is SimpleSection<Data>) section.items
+                    else if (section is FlowSimpleSection<Data>) section.flow.value
+                    else continue
+                    val isLastPage = simplePagesIndexes[shiftedPageIndex] == null
+                    add(
+                        if (isLastPage || !isPageRemoved) PageAddedEvent(
+                            key = null,
+                            pageIndex = section.pageIndex,
+                            sourceIndex = -1,
+                            items = items
+                        )
+                        else PageChangedEvent(
+                            key = null,
+                            pageIndex = section.pageIndex,
+                            sourceIndex = -1,
+                            items = items
+                        )
+                    )
+                    if (isLastPage) break
+                }
+                for (section in shiftedSections) {
+                    simplePagesIndexes[section.pageIndex] = section
+                }
+            }
+        } else listOf(pageEvent)
     }
 
     override fun addDataChangedCallback(callback: DataChangedCallback<Key, Data>) {

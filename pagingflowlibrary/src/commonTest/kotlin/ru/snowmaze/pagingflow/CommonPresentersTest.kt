@@ -51,7 +51,6 @@ class CommonPresentersTest {
 
         pagingFlow.testLoadEverything(
             dataSources = listOf(testDataSource),
-            pageSize = pageSize,
             shouldTestItems = false
         )
         println("dataFlow ${presenter.dataFlow.value}")
@@ -71,7 +70,7 @@ class CommonPresentersTest {
         )
         pagingFlow.invalidate()
         assertEquals(
-            doublePrepend + doublePrepend,
+            doublePrepend + firstAfterSection.value + otherPrependItems,
             presenter.dataFlow.value
         )
     }
