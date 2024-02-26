@@ -1,6 +1,8 @@
 package ru.snowmaze.pagingflow
 
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.invoke
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -38,9 +40,13 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
     override val config = concatDataSource.config
 
     init {
+        val coroutineScope = CoroutineScope(config.processingDispatcher + SupervisorJob())
         config.coroutineScope.launch {
-            delay(Long.MAX_VALUE)
-            invalidate(true)
+            try {
+                awaitCancellation()
+            } finally {
+                coroutineScope.launch { invalidate(true) }
+            }
         }
     }
 
