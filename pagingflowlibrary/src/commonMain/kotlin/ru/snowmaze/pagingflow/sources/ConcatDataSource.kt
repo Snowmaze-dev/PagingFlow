@@ -1,6 +1,8 @@
 package ru.snowmaze.pagingflow.sources
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
@@ -21,7 +23,7 @@ import ru.snowmaze.pagingflow.params.DataKey
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.result.simpleResult
 
-open class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
+class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
     private val concatDataSourceConfig: ConcatDataSourceConfig<Key>
 ) : DataSource<Key, Data, SourcePagingStatus>, PagingDataChangesMedium<Key, Data> {
 
@@ -57,6 +59,17 @@ open class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
     )
 
     override val config = dataPagesManager.config
+
+    init {
+        val coroutineScope = CoroutineScope(config.processingDispatcher + SupervisorJob())
+        coroutineScope.launch {
+            try {
+                config.coroutineScope.launch { awaitCancellation() }.join()
+            } finally {
+                coroutineScope.launch { invalidate(true) }
+            }
+        }
+    }
 
     override fun addDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
         dataPagesManager.addDataChangedCallback(callback)
