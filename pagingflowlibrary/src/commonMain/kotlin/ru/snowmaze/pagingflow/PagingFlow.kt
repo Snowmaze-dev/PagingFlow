@@ -121,7 +121,8 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
                 currentKey = result?.currentKey,
                 dataFlow = loadData.dataFlow,
                 hasNext = result?.hasNext ?: false,
-                additionalData = additionalData ?: PagingParams()
+                additionalData = additionalData ?: PagingParams(),
+                nextPageKey = loadData.nextPageKey
             )
 
             is LoadResult.Failure<*, *, PagingStatus> -> LoadNextPageResult.Failure(

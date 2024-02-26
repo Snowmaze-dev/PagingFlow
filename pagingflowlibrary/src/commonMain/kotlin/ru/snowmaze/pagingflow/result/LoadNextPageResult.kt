@@ -13,6 +13,7 @@ sealed class LoadNextPageResult<Key, Data> {
         val dataFlow: Flow<UpdatableData<Key, Data>>? = null,
         override val additionalData: PagingParams,
         val hasNext: Boolean = false,
+        val nextPageKey: Key? = null
     ) : LoadNextPageResult<Key, Data>()
 
     data class Failure<Key : Any, Data : Any>(

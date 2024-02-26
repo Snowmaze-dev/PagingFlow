@@ -174,11 +174,6 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
             page = page,
             loadParams = loadParams
         )
-        println("nextPageKey ${result.nextPageKey} source ${dataSources.findNextDataSource(
-            currentDataSource = dataSourceWithIndex,
-            isThereKey = false,
-            paginationDirection = paginationDirection
-        ) }")
         result.copy(
             dataFlow = result.dataFlow,
             nextPageKey = result.nextPageKey,
