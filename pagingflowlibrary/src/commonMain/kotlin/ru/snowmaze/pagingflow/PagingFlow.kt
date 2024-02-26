@@ -1,5 +1,6 @@
 package ru.snowmaze.pagingflow
 
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.invoke
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -35,6 +36,13 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
     val currentPagesCount get() = concatDataSource.currentPagesCount
 
     override val config = concatDataSource.config
+
+    init {
+        config.coroutineScope.launch {
+            delay(Long.MAX_VALUE)
+            invalidate(true)
+        }
+    }
 
     /**
      * @see [ConcatDataSource.addDataSource]
