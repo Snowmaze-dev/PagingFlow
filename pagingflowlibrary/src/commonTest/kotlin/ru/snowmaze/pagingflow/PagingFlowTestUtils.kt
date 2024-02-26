@@ -21,12 +21,13 @@ suspend fun PagingFlow<Int, String, DefaultPagingStatus>.testLoadEverything(
     var currentTotalCount = currentDataSource.totalCount
     val loadingSources = mutableListOf(currentDataSource)
     var overallLoadedCount = pagingPresenter.dataFlow.value.size
+    val overallTotalCountOfItems = dataSources.sumOf { it.totalCount }
 
     while (true) {
         val result = loadNextPageWithResult()
         currentSourceLoadedCount += currentLoadSize
         overallLoadedCount += currentLoadSize
-        assertEquals(currentTotalCount != currentSourceLoadedCount, result.asSuccess().hasNext)
+        assertEquals(overallLoadedCount != overallTotalCountOfItems, result.asSuccess().hasNext)
         currentLoadSize = (currentTotalCount - currentSourceLoadedCount).coerceAtMost(pageSize)
         if (shouldTestItems) {
             var testItems: List<String?> = loadingSources.mapIndexed { index, testDataSource ->

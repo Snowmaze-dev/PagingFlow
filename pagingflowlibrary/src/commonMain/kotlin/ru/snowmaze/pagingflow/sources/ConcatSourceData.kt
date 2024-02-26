@@ -4,5 +4,6 @@ import ru.snowmaze.pagingflow.params.PagingParams
 
 class ConcatSourceData<Key : Any>(
     val currentKey: Key?,
-    val additionalData: PagingParams?
+    val additionalData: PagingParams?,
+    val hasNext: Boolean
 )

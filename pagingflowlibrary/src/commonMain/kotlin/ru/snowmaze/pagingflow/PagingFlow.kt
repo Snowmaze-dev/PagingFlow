@@ -120,7 +120,7 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
             is LoadResult.Success<Key, Data, PagingStatus> -> LoadNextPageResult.Success(
                 currentKey = result?.currentKey,
                 dataFlow = loadData.dataFlow,
-                hasNext = loadData.nextPageKey != null,
+                hasNext = result?.hasNext ?: false,
                 additionalData = additionalData ?: PagingParams()
             )
 

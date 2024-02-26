@@ -98,9 +98,12 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         val isPaginationDown = loadParams.paginationDirection == PaginationDirection.DOWN
         if (isPaginationDown) _downPagingStatus.value = PagingStatus.Loading()
         else _upPagingStatus.value = PagingStatus.Loading()
-        val (lastPageIndex, lastPage, nextPageKey) = getNextPageKey(isPaginationDown)
         val paginationDirection = loadParams.paginationDirection
+        val lastPageIndex = if (isPaginationDown) dataPages.lastIndex
+        else dataPages.indexOfFirst { it.dataFlow != null }
 
+        val lastPage = dataPages.getOrNull(lastPageIndex)
+        val nextPageKey = if (isPaginationDown) lastPage?.nextPageKey else lastPage?.previousPageKey
         val newIndex = if (isPaginationDown) lastPageIndex + 1
         else lastPageIndex - 1
         val dataSourceWithIndex = dataSources.findNextDataSource(
@@ -171,28 +174,28 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
             page = page,
             loadParams = loadParams
         )
+        println("nextPageKey ${result.nextPageKey} source ${dataSources.findNextDataSource(
+            currentDataSource = dataSourceWithIndex,
+            isThereKey = false,
+            paginationDirection = paginationDirection
+        ) }")
         result.copy(
             dataFlow = result.dataFlow,
-            nextPageKey = result.nextPageKey ?: getNextPageKey(isPaginationDown).third,
+            nextPageKey = result.nextPageKey,
             additionalData = PagingParams {
                 put(
                     concatDataSourceResultKey(),
-                    ConcatSourceData(currentKey, result.additionalData)
+                    ConcatSourceData(
+                        currentKey,
+                        result.additionalData,
+                        result.nextPageKey != null || dataSources.findNextDataSource(
+                            currentDataSource = dataSourceWithIndex,
+                            isThereKey = false,
+                            paginationDirection = paginationDirection
+                        ) != null
+                    )
                 )
             }
-        )
-    }
-
-    private inline fun getNextPageKey(isPaginationDown: Boolean): Triple<Int, DataPage<Key, Data, SourcePagingStatus>?, Key?> {
-        val dataPages = dataPagesManager.dataPages
-        val lastPageIndex = if (isPaginationDown) dataPages.lastIndex
-        else dataPages.indexOfFirst { it.dataFlow != null }
-
-        val lastPage = dataPages.getOrNull(lastPageIndex)
-        return Triple(
-            first = lastPageIndex,
-            second = lastPage,
-            third = if (isPaginationDown) lastPage?.nextPageKey else lastPage?.previousPageKey
         )
     }
 
