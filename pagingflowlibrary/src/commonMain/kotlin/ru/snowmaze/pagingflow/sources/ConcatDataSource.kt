@@ -24,7 +24,7 @@ import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.result.simpleResult
 
 class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
-    private val concatDataSourceConfig: ConcatDataSourceConfig<Key>
+    private val concatDataSourceConfig: ConcatDataSourceConfig<Key>,
 ) : DataSource<Key, Data, SourcePagingStatus>, PagingDataChangesMedium<Key, Data> {
 
     companion object {
@@ -92,24 +92,21 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
 
     @Suppress("UNCHECKED_CAST")
     override suspend fun load(
-        loadParams: LoadParams<Key>
+        loadParams: LoadParams<Key>,
     ): LoadResult<Key, Data, SourcePagingStatus> = setDataMutex.withLock {
         val dataPages = dataPagesManager.dataPages
         val isPaginationDown = loadParams.paginationDirection == PaginationDirection.DOWN
         if (isPaginationDown) _downPagingStatus.value = PagingStatus.Loading()
         else _upPagingStatus.value = PagingStatus.Loading()
+        val (lastPageIndex, lastPage, nextPageKey) = getNextPageKey(isPaginationDown)
         val paginationDirection = loadParams.paginationDirection
-        val lastPageIndex = if (isPaginationDown) dataPages.lastIndex
-        else dataPages.indexOfFirst { it.dataFlow != null }
 
-        val lastPage = dataPages.getOrNull(lastPageIndex)
-        val nextPageKey = if (isPaginationDown) lastPage?.nextPageKey else lastPage?.previousPageKey
         val newIndex = if (isPaginationDown) lastPageIndex + 1
         else lastPageIndex - 1
         val dataSourceWithIndex = dataSources.findNextDataSource(
             currentDataSource = lastPage?.dataSource,
             isThereKey = nextPageKey != null,
-            navigationDirection = paginationDirection
+            paginationDirection = paginationDirection
         ) ?: return simpleResult(emptyList())
         val dataSource = dataSourceWithIndex.first
         val currentKey = nextPageKey ?: if (dataPages.isEmpty()) {
@@ -176,12 +173,26 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         )
         result.copy(
             dataFlow = result.dataFlow,
+            nextPageKey = result.nextPageKey ?: getNextPageKey(isPaginationDown).third,
             additionalData = PagingParams {
                 put(
                     concatDataSourceResultKey(),
                     ConcatSourceData(currentKey, result.additionalData)
                 )
             }
+        )
+    }
+
+    private inline fun getNextPageKey(isPaginationDown: Boolean): Triple<Int, DataPage<Key, Data, SourcePagingStatus>?, Key?> {
+        val dataPages = dataPagesManager.dataPages
+        val lastPageIndex = if (isPaginationDown) dataPages.lastIndex
+        else dataPages.indexOfFirst { it.dataFlow != null }
+
+        val lastPage = dataPages.getOrNull(lastPageIndex)
+        return Triple(
+            first = lastPageIndex,
+            second = lastPage,
+            third = if (isPaginationDown) lastPage?.nextPageKey else lastPage?.previousPageKey
         )
     }
 

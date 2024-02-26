@@ -24,7 +24,7 @@ internal class DataSources<Key : Any, Data : Any, PagingStatus : Any> {
 
     fun findNextDataSource(
         currentDataSource: Pair<DataSource<Key, Data, PagingStatus>, Int>?,
-        navigationDirection: PaginationDirection,
+        paginationDirection: PaginationDirection,
         isThereKey: Boolean
     ): Pair<DataSource<Key, Data, PagingStatus>, Int>? {
         if (isThereKey && currentDataSource?.first != null) return currentDataSource
@@ -37,7 +37,7 @@ internal class DataSources<Key : Any, Data : Any, PagingStatus : Any> {
             foundSourceIndex
         }
         val checkingIndex =
-            sourceIndex + if (navigationDirection == PaginationDirection.DOWN) 1 else -1
+            sourceIndex + if (paginationDirection == PaginationDirection.DOWN) 1 else -1
         return dataSources.getOrNull(checkingIndex)?.let { it to checkingIndex }
     }
 }
