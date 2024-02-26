@@ -8,7 +8,7 @@ suspend fun <Key : Any, Data : Any, PagingStatus : Any> PagingFlow<Key, Data, Pa
     paginationDirection: PaginationDirection =
         pagingFlowConfiguration.defaultParamsProvider().paginationDirection,
     maxLoadPages: Int? = null,
-    shouldLoadNext: (LoadNextPageResult.Success<Key, Data>) -> Boolean,
+    shouldLoadNext: suspend (LoadNextPageResult.Success<Key, Data>) -> Boolean,
 ) {
     var result: LoadNextPageResult<Key, Data>
     var count = 0
