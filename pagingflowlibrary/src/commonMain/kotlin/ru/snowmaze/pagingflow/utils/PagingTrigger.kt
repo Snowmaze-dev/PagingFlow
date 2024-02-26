@@ -60,6 +60,7 @@ class PagingTrigger(
 
     val isLoading get() = _isLoading || isLoadingCallback()
     private var lastTimeTriggered = 0L
+    private var lastIndex = 0
 
     fun onItemVisible(index: Int): Boolean {
         val currentTime = currentTimeMillisProvider()
@@ -72,9 +73,13 @@ class PagingTrigger(
         val relativeStartIndex = if (maxPagesCount == null) index else {
             index - currentStartIndexProvider()
         }
-        val direction = if (index >= (itemCount - prefetchDownDistance) && paginationDownEnabled) {
+        val isScrolledDown = index > lastIndex
+        val canPaginateBottom = paginationDownEnabled && isScrolledDown
+        val canPaginateUp = paginationUpEnabled && !isScrolledDown
+        lastIndex = index
+        val direction = if (canPaginateBottom && index >= (itemCount - prefetchDownDistance)) {
             PaginationDirection.DOWN
-        } else if (paginationUpEnabled && prefetchUpDistance >= relativeStartIndex) {
+        } else if (canPaginateUp && prefetchUpDistance >= relativeStartIndex) {
             PaginationDirection.UP
         } else return false
         _isLoading = true
