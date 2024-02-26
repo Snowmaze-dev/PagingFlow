@@ -36,9 +36,8 @@ suspend fun PagingFlow<Int, String, DefaultPagingStatus>.testLoadEverything(
                     } else testDataSource.totalCount
                 )
             }.flatten()
-            val maxPagesCount = pagingFlowConfiguration.maxPagesCount
-            if (maxPagesCount != null) {
-                val maxItemsOffset = maxPagesCount * pageSize
+            val maxItemsOffset = pagingFlowConfiguration.maxItemsCount
+            if (maxItemsOffset != null) {
                 val removeItemsCount = (ceil((overallLoadedCount - maxItemsOffset)
                     .coerceAtLeast(0) / pageSize.toDouble()) * pageSize).toInt()
                 testItems = if (pagingFlowConfiguration.enableDroppedPagesNullPlaceholders) {

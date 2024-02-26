@@ -20,7 +20,7 @@ import ru.snowmaze.pagingflow.sources.ConcatDataSourceConfig
 
 internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>(
     private val concatDataSourceConfig: ConcatDataSourceConfig<Key>,
-    private val setDataMutex: Mutex
+    private val setDataMutex: Mutex,
 ) : PagingDataChangesMedium<Key, Data> {
 
     private val _dataPages = mutableListOf<DataPage<Key, Data, SourcePagingStatus>>()
@@ -54,7 +54,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
         page: DataPage<Key, Data, SourcePagingStatus>,
         loadParams: LoadParams<Key>,
     ) {
-        if (concatDataSourceConfig.maxPagesCount != null) isNeedToTrim = true
+        if (concatDataSourceConfig.maxItemsCount != null) isNeedToTrim = true
         result.cachedResult?.let { cachedData[page.pageIndex] = page.currentPageKey to it }
         val isExistingPage = dataPages.getOrNull(newIndex) != null
         val isPaginationDown = loadParams.paginationDirection == PaginationDirection.DOWN
@@ -76,7 +76,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
 
     fun invalidate(
         skipPage: DataPage<Key, Data, SourcePagingStatus>? = null,
-        removeCachedData: Boolean = true
+        removeCachedData: Boolean = true,
     ) {
         for (page in dataPages) {
             if (page == skipPage) continue
@@ -93,7 +93,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
         result: LoadResult.Success<Key, Data, SourcePagingStatus>,
         invalidateData: Boolean,
         isExistingPage: Boolean,
-        isPaginationDown: Boolean
+        isPaginationDown: Boolean,
     ) {
         val coroutineContext = concatDataSourceConfig.processingDispatcher + page.listenJob
         var isValueSet = false
@@ -151,9 +151,8 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
     private fun trimPages(isPaginationDown: Boolean): DataChangedEvent<Key, Data>? {
         if (!isNeedToTrim) return null
         isNeedToTrim = false
-        val removePagesOffset =
-            concatDataSourceConfig.maxPagesCount.takeIf { it != 0 } ?: return null
-        if (dataPages.size > removePagesOffset) {
+        val maxItemsCount = concatDataSourceConfig.maxItemsCount.takeIf { it != 0 } ?: return null
+        if (dataPages.sumOf { it.dataFlow?.value?.data?.size ?: 0 } > maxItemsCount) {
 
             // заменить на удаляемую страницу
             val pageIndex = (if (isPaginationDown) dataPages.indexOfFirst { it.dataFlow != null }

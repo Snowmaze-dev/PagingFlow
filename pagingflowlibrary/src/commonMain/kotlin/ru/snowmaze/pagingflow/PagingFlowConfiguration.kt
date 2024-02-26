@@ -18,7 +18,7 @@ data class PagingFlowConfiguration<Key : Any>(
     /**
      * Defines the maximum number of pages that may be loaded before pages should be dropped
      */
-    val maxPagesCount: Int? = null,
+    val maxItemsCount: Int? = null,
 
     /**
      * Defines the maximum number of cached result of pages that may be reused before cache should be dropped
@@ -36,14 +36,14 @@ data class PagingFlowConfiguration<Key : Any>(
 
     constructor(
         defaultParams: LoadParams<Key>,
-        maxPagesCount: Int? = null,
+        maxItemsCount: Int? = null,
         maxCachedResultPagesCount: Int? = null,
         enableDroppedPagesNullPlaceholders: Boolean = true,
         processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
         coroutineScope: CoroutineScope = CoroutineScope(processingDispatcher + SupervisorJob()),
     ) : this(
         defaultParamsProvider = { defaultParams },
-        maxPagesCount = maxPagesCount,
+        maxItemsCount = maxItemsCount,
         maxCachedResultPagesCount = maxCachedResultPagesCount,
         enableDroppedPagesNullPlaceholders = enableDroppedPagesNullPlaceholders,
         processingDispatcher = processingDispatcher,

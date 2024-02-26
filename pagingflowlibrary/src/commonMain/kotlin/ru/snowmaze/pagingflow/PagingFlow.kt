@@ -145,7 +145,7 @@ fun <Key : Any, Data : Any, PagingStatus : Any> buildPagingFlow(
     ConcatDataSource(
         ConcatDataSourceConfig(
             defaultParamsProvider = configuration.defaultParamsProvider,
-            maxPagesCount = configuration.maxPagesCount,
+            maxItemsCount = configuration.maxItemsCount,
             maxCachedResultPagesCount = configuration.maxCachedResultPagesCount,
             processingDispatcher = configuration.processingDispatcher,
             coroutineScope = configuration.coroutineScope,

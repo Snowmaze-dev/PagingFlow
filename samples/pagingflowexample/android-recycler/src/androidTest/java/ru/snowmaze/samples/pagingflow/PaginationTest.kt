@@ -37,7 +37,6 @@ class PaginationTest {
 
     @Test
     fun testPagination(): Unit = runBlocking {
-        val removeOffset = EXAMPLE_LOAD_SIZE * REMOVE_PAGE_OFFSET
         IdlingPolicies.setIdlingResourceTimeout(10, TimeUnit.SECONDS);
         val recycler = onView(withId(R.id.main_recycler_view))
         for (index in 0 until TEST_TOTAL_COUNT) {

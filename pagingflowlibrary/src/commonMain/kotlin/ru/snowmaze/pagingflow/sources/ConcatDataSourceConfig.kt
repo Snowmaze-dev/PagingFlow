@@ -8,7 +8,7 @@ import ru.snowmaze.pagingflow.LoadParams
 
 class ConcatDataSourceConfig<Key : Any>(
     val defaultParamsProvider: () -> LoadParams<Key>,
-    val maxPagesCount: Int? = null,
+    val maxItemsCount: Int? = null,
     val maxCachedResultPagesCount: Int? = null,
     val processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
     val coroutineScope: CoroutineScope = CoroutineScope(processingDispatcher + SupervisorJob()),

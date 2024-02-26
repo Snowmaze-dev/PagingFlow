@@ -15,7 +15,7 @@ class BasicPagingFlowTest {
 
     private val basePagingFlowConfiguration = PagingFlowConfiguration(
         defaultParams = LoadParams(pageSize, 0),
-        maxPagesCount = null,
+        maxItemsCount = null,
         processingDispatcher = testDispatcher
     )
 

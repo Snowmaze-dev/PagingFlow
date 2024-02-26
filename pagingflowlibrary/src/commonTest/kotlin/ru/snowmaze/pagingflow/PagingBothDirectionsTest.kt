@@ -13,7 +13,7 @@ class PagingBothDirectionsTest {
 
     private val basePagingFlowConfiguration = PagingFlowConfiguration(
         defaultParams = LoadParams(pageSize, 0),
-        maxPagesCount = removePagesOffset,
+        maxItemsCount = removePagesOffset * pageSize,
         processingDispatcher = testDispatcher,
         enableDroppedPagesNullPlaceholders = false
     )
@@ -102,6 +102,33 @@ class PagingBothDirectionsTest {
             listOf(testDataSource),
             pagingPresenter = presenter
         )
+    }
+
+    @Test
+    fun loadSmallPagesTest() = runTest {
+        val testDataSource = TestDataSource(totalCount)
+        var currentLoadParams = LoadParams<Int>(2)
+        val maxItemsCount = 5
+        val pagingFlow = buildPagingFlow(
+            basePagingFlowConfiguration.copy(
+                defaultParamsProvider = { currentLoadParams },
+                maxItemsCount = maxItemsCount,
+            )
+        ) {
+            addDataSource(testDataSource)
+        }
+        val presenter = pagingFlow.pagingDataPresenter(throttleDurationMs = 0)
+        pagingFlow.loadNextPageWithResult()
+        assertEquals(2, presenter.dataFlow.value.size)
+        repeat(2) {
+            pagingFlow.loadNextPageWithResult()
+        }
+        assertEquals(4, presenter.dataFlow.value.size)
+        currentLoadParams = LoadParams(1)
+        pagingFlow.loadNextPageWithResult()
+        assertEquals(5, presenter.dataFlow.value.size)
+        pagingFlow.loadNextPageWithResult()
+        assertEquals(4, presenter.dataFlow.value.size)
     }
 
     private fun buildListOfNulls(count: Int) = buildList {

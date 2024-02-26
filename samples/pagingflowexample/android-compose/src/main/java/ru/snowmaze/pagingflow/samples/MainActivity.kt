@@ -72,7 +72,6 @@ fun PagingList(innerPadding: PaddingValues) {
     val lazyListState = rememberLazyListState()
     val model = androidx.lifecycle.viewmodel.compose.viewModel<TestPagingViewModel>()
     val items = model.flow.collectAsLazyPagingItems()
-    items.loadState.prepend
     LazyColumn(
         state = lazyListState, contentPadding = innerPadding
     ) {
