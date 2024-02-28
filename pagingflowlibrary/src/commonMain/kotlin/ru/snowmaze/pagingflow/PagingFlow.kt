@@ -28,8 +28,8 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
 ) : PagingDataChangesMedium<Key, Data> {
 
     private val loadMutex = Mutex()
-    val upPagingStatus get() = concatDataSource.upPagingStatus
-    val downPagingStatus get() = concatDataSource.downPagingStatus
+    val upPagingStatus = concatDataSource.upPagingStatus
+    val downPagingStatus = concatDataSource.downPagingStatus
     val isLoading get() = loadMutex.isLocked
 
     val currentPagesCount get() = concatDataSource.currentPagesCount

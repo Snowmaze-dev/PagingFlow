@@ -15,8 +15,7 @@ suspend fun <Key : Any, Data : Any, PagingStatus : Any> PagingFlow<Key, Data, Pa
     do {
         result = loadNextPageWithResult(paginationDirection)
         count++
-    } while (result is LoadNextPageResult.Success<Key, Data> &&
-        result.hasNext && shouldLoadNext(result)
+    } while (result is LoadNextPageResult.Success<Key, Data> && shouldLoadNext(result)
         && (maxLoadPages == null || maxLoadPages > count)
     )
 }

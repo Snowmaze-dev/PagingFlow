@@ -53,6 +53,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
         result: LoadResult.Success<Key, Data, SourcePagingStatus>,
         page: DataPage<Key, Data, SourcePagingStatus>,
         loadParams: LoadParams<Key>,
+        onLastPageNextKeyChanged: suspend (Key?, Boolean) -> Unit
     ) {
         if (concatDataSourceConfig.maxItemsCount != null) isNeedToTrim = true
         result.cachedResult?.let { cachedData[page.pageIndex] = page.currentPageKey to it }
@@ -70,7 +71,8 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
             result = result,
             invalidateData = invalidateData,
             isExistingPage = isExistingPage,
-            isPaginationDown = isPaginationDown
+            isPaginationDown = isPaginationDown,
+            onNextKeyChanged = onLastPageNextKeyChanged
         )
     }
 
@@ -94,6 +96,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
         invalidateData: Boolean,
         isExistingPage: Boolean,
         isPaginationDown: Boolean,
+        onNextKeyChanged: suspend (Key?, Boolean) -> Unit
     ) {
         val coroutineContext = concatDataSourceConfig.processingDispatcher + page.listenJob
         var isValueSet = false
@@ -138,8 +141,16 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                         }
                     }
                 }
-                if (isPaginationDown) page.nextPageKey = value.nextPageKey
-                else page.previousPageKey = value.nextPageKey
+                val isLastPageChanged: Boolean
+                if (isPaginationDown) {
+                    isLastPageChanged = page == dataPages.lastOrNull()
+                    page.nextPageKey = value.nextPageKey
+                }
+                else {
+                    isLastPageChanged = page == dataPages.firstOrNull { it.dataFlow != null }
+                    page.previousPageKey = value.nextPageKey
+                }
+                if (isLastPageChanged) onNextKeyChanged(value.nextPageKey, isPaginationDown)
             }
         }
     }

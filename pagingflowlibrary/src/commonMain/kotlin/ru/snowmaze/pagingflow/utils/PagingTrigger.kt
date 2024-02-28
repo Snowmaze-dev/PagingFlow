@@ -24,7 +24,7 @@ class PagingTrigger(
     private val coroutineScope: CoroutineScope = GlobalScope,
     var currentTimeMillisProvider: () -> Long = {
         Clock.System.now().toEpochMilliseconds()
-    }
+    },
 ) {
 
     constructor(
@@ -40,7 +40,7 @@ class PagingTrigger(
         currentTimeMillisProvider: () -> Long = { Clock.System.now().toEpochMilliseconds() },
         onEndReached: suspend (PaginationDirection) -> Unit = { direction ->
             pagingFlow().loadNextPageWithResult(direction)
-        }
+        },
     ) : this(
         itemCount = itemCount,
         isLoadingCallback = { pagingFlow().isLoading },
@@ -63,11 +63,11 @@ class PagingTrigger(
     private var lastIndex = 0
 
     fun onItemVisible(index: Int): Boolean {
+        if (isLoading) return false
         val currentTime = currentTimeMillisProvider()
         if (debounceTimeMillis != 0 &&
             debounceTimeMillis > currentTime - lastTimeTriggered
         ) return false
-        if (isLoadingCallback()) return false
         val maxPagesCount = maxItemsCount()
         val itemCount = itemCount()
         val relativeStartIndex = if (maxPagesCount == null) index else {

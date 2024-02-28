@@ -81,6 +81,7 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
 
     fun addDataSource(dataSource: DataSource<Key, Data, SourcePagingStatus>) {
         dataSources.addDataSource(dataSource)
+        _downPagingStatus.value = downPagingStatus.value.mapHasNext(true)
     }
 
     fun removeDataSource(dataSource: DataSource<Key, Data, SourcePagingStatus>) {
@@ -96,21 +97,22 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
     ): LoadResult<Key, Data, SourcePagingStatus> = setDataMutex.withLock {
         val dataPages = dataPagesManager.dataPages
         val isPaginationDown = loadParams.paginationDirection == PaginationDirection.DOWN
-        if (isPaginationDown) _downPagingStatus.value = PagingStatus.Loading()
-        else _upPagingStatus.value = PagingStatus.Loading()
         val paginationDirection = loadParams.paginationDirection
         val lastPageIndex = if (isPaginationDown) dataPages.lastIndex
         else dataPages.indexOfFirst { it.dataFlow != null }
 
         val lastPage = dataPages.getOrNull(lastPageIndex)
         val nextPageKey = if (isPaginationDown) lastPage?.nextPageKey else lastPage?.previousPageKey
-        val newIndex = if (isPaginationDown) lastPageIndex + 1
-        else lastPageIndex - 1
+
         val dataSourceWithIndex = dataSources.findNextDataSource(
             currentDataSource = lastPage?.dataSource,
             isThereKey = nextPageKey != null,
             paginationDirection = paginationDirection
         ) ?: return simpleResult(emptyList())
+        val newIndex = if (isPaginationDown) lastPageIndex + 1
+        else lastPageIndex - 1
+        if (isPaginationDown) _downPagingStatus.value = PagingStatus.Loading()
+        else _upPagingStatus.value = PagingStatus.Loading()
         val dataSource = dataSourceWithIndex.first
         val currentKey = nextPageKey ?: if (dataPages.isEmpty()) {
             dataSource.defaultLoadParams?.key ?: loadParams.key
@@ -173,7 +175,14 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
             result = result,
             page = page,
             loadParams = loadParams
-        )
+        ) { newNextKey, isPaginationDown ->
+            setDataMutex.withLock {
+                val hasNext = newNextKey != null
+                val stateFlow = if (isPaginationDown) _downPagingStatus
+                else _upPagingStatus
+                stateFlow.value = stateFlow.value.mapHasNext(hasNext)
+            }
+        }
         result.copy(
             dataFlow = result.dataFlow,
             nextPageKey = result.nextPageKey,
@@ -192,6 +201,13 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
                 )
             }
         )
+    }
+
+    private fun PagingStatus<SourcePagingStatus>.mapHasNext(
+        hasNext: Boolean,
+    ) = when (this) {
+        is PagingStatus.Success -> PagingStatus.Success(sourcePagingStatus, hasNext)
+        else -> this
     }
 
     /**
