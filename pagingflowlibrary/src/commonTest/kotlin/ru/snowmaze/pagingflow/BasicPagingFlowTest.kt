@@ -17,7 +17,6 @@ class BasicPagingFlowTest {
 
     private val basePagingFlowConfiguration = PagingFlowConfiguration(
         defaultParams = LoadParams(pageSize, 0),
-        maxItemsCount = null,
         processingDispatcher = testDispatcher
     )
 
@@ -28,7 +27,7 @@ class BasicPagingFlowTest {
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
             addDataSource(testDataSource)
         }
-        val presenter = pagingFlow.pagingDataPresenter(throttleDurationMs = 0)
+        val presenter = pagingFlow.pagingDataPresenter()
 
         pagingFlow.testLoadEverything(listOf(testDataSource), pagingPresenter = presenter)
         invalidateAndCheckLoadingRight(pagingFlow, testDataSource, pagingDataPresenter = presenter)
@@ -58,7 +57,7 @@ class BasicPagingFlowTest {
             addDataSource(thirdTestDataSource)
         }
         val presenter = pagingFlow.pagingDataPresenter(
-            throttleDurationMs = 0,
+            throttleDurationMsProvider = { 0 },
             invalidateBehavior = InvalidateBehavior.INVALIDATE_IMMEDIATELY
         )
         var hasNext = true

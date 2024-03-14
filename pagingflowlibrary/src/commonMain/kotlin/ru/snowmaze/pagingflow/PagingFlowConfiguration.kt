@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import ru.snowmaze.pagingflow.sources.MaxItemsConfiguration
 
 /**
  * Configuration for [PagingFlow]
@@ -15,20 +16,7 @@ data class PagingFlowConfiguration<Key : Any>(
      */
     val defaultParamsProvider: () -> LoadParams<Key>,
 
-    /**
-     * Defines the maximum number of pages that may be loaded before pages should be dropped
-     */
-    val maxItemsCount: Int? = null,
-
-    /**
-     * Defines the maximum number of cached result of pages that may be reused before cache should be dropped
-     */
-    val maxCachedResultPagesCount: Int? = null,
-
-    /**
-     * Defines whether should replace dropped pages with nulls or just drop them completely
-     */
-    val enableDroppedPagesNullPlaceholders: Boolean = true,
+    val maxItemsConfiguration: MaxItemsConfiguration? = null,
 
     val processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
     val coroutineScope: CoroutineScope = CoroutineScope(processingDispatcher + SupervisorJob()),
@@ -36,16 +24,12 @@ data class PagingFlowConfiguration<Key : Any>(
 
     constructor(
         defaultParams: LoadParams<Key>,
-        maxItemsCount: Int? = null,
-        maxCachedResultPagesCount: Int? = null,
-        enableDroppedPagesNullPlaceholders: Boolean = true,
+        maxItemsConfiguration: MaxItemsConfiguration? = null,
         processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
         coroutineScope: CoroutineScope = CoroutineScope(processingDispatcher + SupervisorJob()),
     ) : this(
         defaultParamsProvider = { defaultParams },
-        maxItemsCount = maxItemsCount,
-        maxCachedResultPagesCount = maxCachedResultPagesCount,
-        enableDroppedPagesNullPlaceholders = enableDroppedPagesNullPlaceholders,
+        maxItemsConfiguration = maxItemsConfiguration,
         processingDispatcher = processingDispatcher,
         coroutineScope = coroutineScope
     )

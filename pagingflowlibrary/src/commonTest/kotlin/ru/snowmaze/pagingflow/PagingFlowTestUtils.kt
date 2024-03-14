@@ -37,11 +37,12 @@ suspend fun PagingFlow<Int, String, DefaultPagingStatus>.testLoadEverything(
                     } else testDataSource.totalCount
                 )
             }.flatten()
-            val maxItemsOffset = pagingFlowConfiguration.maxItemsCount
+            val maxItemsConfiguration = pagingFlowConfiguration.maxItemsConfiguration
+            val maxItemsOffset = maxItemsConfiguration?.maxItemsCount
             if (maxItemsOffset != null) {
                 val removeItemsCount = (ceil((overallLoadedCount - maxItemsOffset)
                     .coerceAtLeast(0) / pageSize.toDouble()) * pageSize).toInt()
-                testItems = if (pagingFlowConfiguration.enableDroppedPagesNullPlaceholders) {
+                testItems = if (maxItemsConfiguration.enableDroppedPagesNullPlaceholders) {
                     testItems.mapIndexed { index, item ->
                         if (removeItemsCount > index) null
                         else item

@@ -5,12 +5,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.utils.limitedParallelismCompat
 
 class ThrottlePagingDataChangesMedium<Key : Any, Data : Any>(
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
-    private val throttleDurationMs: Long,
-    override val config: DataChangesMediumConfig = pagingDataChangesMedium.config
+    private val throttleDurationMsProvider: () -> Long,
+    private val shouldSendAddEventWithoutDelay: Boolean = false,
+    override val config: DataChangesMediumConfig = pagingDataChangesMedium.config,
 ) : DefaultPagingDataChangesMedium<Key, Data>() {
 
     private val savedEvents = mutableListOf<DataChangedEvent<Key, Data>>()
@@ -23,15 +25,38 @@ class ThrottlePagingDataChangesMedium<Key : Any, Data : Any>(
 
             override fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
                 coroutineScope.launch(processingDispatcher) {
-                    savedEvents.addAll(events)
-                    sendEvents()
+                    var isHandled = false
+                    if (shouldSendAddEventWithoutDelay && throttleDurationMsProvider() != 0L) {
+                        for ((index, event) in events.withIndex()) {
+                            if (event is PageAddedEvent) {
+                                val notifyOnEventsArr = events.subList(0, index + 1)
+                                notifyOnEvents(notifyOnEventsArr)
+                                savedEvents.addAll(events.subList(index + 1, events.size))
+                                isHandled = true
+                                coroutineScope.launch(processingDispatcher) {
+                                    delay(throttleDurationMsProvider())
+                                    notifyOnEvents(savedEvents.toList())
+                                    savedEvents.clear()
+                                }
+                                break
+                            }
+                        }
+                    }
+                    if (!isHandled) {
+                        savedEvents.addAll(events)
+                        sendEvents()
+                    }
                 }
             }
 
             override fun onEvent(event: DataChangedEvent<Key, Data>) {
                 coroutineScope.launch(processingDispatcher) {
-                    savedEvents.add(event)
-                    sendEvents()
+                    if (event is PageAddedEvent && shouldSendAddEventWithoutDelay) {
+                        notifyOnEvent(event)
+                    } else {
+                        savedEvents.add(event)
+                        sendEvents()
+                    }
                 }
             }
         })
@@ -40,7 +65,7 @@ class ThrottlePagingDataChangesMedium<Key : Any, Data : Any>(
     fun sendEvents() {
         job?.cancel()
         job = coroutineScope.launch(processingDispatcher) {
-            delay(throttleDurationMs)
+            delay(throttleDurationMsProvider())
             notifyOnEvents(savedEvents.toList())
             savedEvents.clear()
         }

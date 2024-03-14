@@ -44,7 +44,7 @@ class PagingTrigger(
     ) : this(
         itemCount = itemCount,
         isLoadingCallback = { pagingFlow().isLoading },
-        maxItemsCount = { pagingFlow().pagingFlowConfiguration.maxItemsCount },
+        maxItemsCount = { pagingFlow().pagingFlowConfiguration.maxItemsConfiguration?.maxItemsCount },
         currentStartIndexProvider = currentStartIndex,
         prefetchDownDistance = prefetchDownDistance,
         prefetchUpDistance = prefetchUpDistance,

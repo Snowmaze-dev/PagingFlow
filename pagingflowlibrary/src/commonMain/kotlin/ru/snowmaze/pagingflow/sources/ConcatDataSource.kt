@@ -85,9 +85,17 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
     }
 
     fun removeDataSource(dataSource: DataSource<Key, Data, SourcePagingStatus>) {
-        dataSources.removeDataSource(dataSource)
+        val dataSourceIndex = dataSources.getSourceIndex(dataSource)
+        if (dataSourceIndex == -1) return
+        removeDataSource(dataSourceIndex)
+    }
+
+    fun removeDataSource(dataSourceIndex: Int) {
+        dataSources.removeDataSource(dataSourceIndex)
         concatDataSourceConfig.coroutineScope.launch {
-            invalidate(removeCachedData = true)
+            setDataMutex.withLock {
+                dataPagesManager.removeDataSourcePages(dataSourceIndex)
+            }
         }
     }
 
@@ -176,12 +184,10 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
             page = page,
             loadParams = loadParams
         ) { newNextKey, isPaginationDown ->
-            setDataMutex.withLock {
-                val hasNext = newNextKey != null
-                val stateFlow = if (isPaginationDown) _downPagingStatus
-                else _upPagingStatus
-                stateFlow.value = stateFlow.value.mapHasNext(hasNext)
-            }
+            val hasNext = newNextKey != null
+            val stateFlow = if (isPaginationDown) _downPagingStatus
+            else _upPagingStatus
+            stateFlow.value = stateFlow.value.mapHasNext(hasNext)
         }
         result.copy(
             dataFlow = result.dataFlow,

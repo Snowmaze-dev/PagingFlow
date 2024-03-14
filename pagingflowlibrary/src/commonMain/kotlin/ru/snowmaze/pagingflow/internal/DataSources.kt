@@ -22,6 +22,15 @@ internal class DataSources<Key : Any, Data : Any, PagingStatus : Any> {
         _dataSources.remove(dataSource)
     }
 
+    fun removeDataSource(dataSourceIndex: Int) {
+        _dataSources.getOrNull(dataSourceIndex) ?: return
+        _dataSources.removeAt(dataSourceIndex)
+    }
+
+    fun getSourceIndex(
+        dataSource: DataSource<Key, Data, PagingStatus>
+    ) = dataSources.indexOfFirst { it == dataSource }
+
     fun findNextDataSource(
         currentDataSource: Pair<DataSource<Key, Data, PagingStatus>, Int>?,
         paginationDirection: PaginationDirection,

@@ -25,17 +25,15 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
 fun <Key : Any, Data : Any, NewData : Any> PagingFlow<Key, Data, *>.mappingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
         InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE,
-    throttleDurationMs: Long = 0L,
+    throttleDurationMsProvider: () -> Long = { 0 },
     transform: (PageChangedEvent<Key, Data>) -> List<NewData?>
-): SimpleBuildListPagingPresenter<Key, NewData> {
-    return (if (throttleDurationMs == 0L) this else ThrottlePagingDataChangesMedium(
-        this,
-        throttleDurationMs = throttleDurationMs
-    )).mappingDataPresenter(
-        invalidateBehavior = invalidateBehavior,
-        transform = transform
-    )
-}
+) = ThrottlePagingDataChangesMedium(
+    this,
+    throttleDurationMsProvider = throttleDurationMsProvider
+).mappingDataPresenter(
+    invalidateBehavior = invalidateBehavior,
+    transform = transform
+)
 
 /**
  * Creates simple presenter, which builds list from pages and have throttling mechanism
@@ -54,10 +52,8 @@ fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresent
 fun <Key : Any, Data : Any> PagingFlow<Key, Data, *>.pagingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
         InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE,
-    throttleDurationMs: Long = 0L
-): SimpleBuildListPagingPresenter<Key, Data> {
-    return (if (throttleDurationMs == 0L) this else ThrottlePagingDataChangesMedium(
-        this,
-        throttleDurationMs = throttleDurationMs,
-    )).pagingDataPresenter(invalidateBehavior)
-}
+    throttleDurationMsProvider: () -> Long = { 0 },
+) = ThrottlePagingDataChangesMedium(
+    this,
+    throttleDurationMsProvider = throttleDurationMsProvider,
+).pagingDataPresenter(invalidateBehavior)

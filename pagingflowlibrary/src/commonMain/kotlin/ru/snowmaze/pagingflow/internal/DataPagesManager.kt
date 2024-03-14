@@ -24,7 +24,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
 ) : PagingDataChangesMedium<Key, Data> {
 
     private val _dataPages = mutableListOf<DataPage<Key, Data, SourcePagingStatus>>()
-    val dataPages: List<DataPage<Key, Data, SourcePagingStatus>> get() = _dataPages
+    val dataPages get() = _dataPages
 
     private val cachedData = mutableMapOf<Int, Pair<Key?, PagingParams>>()
     val currentPagesCount get() = dataPages.size
@@ -46,6 +46,12 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
         dataChangedCallbacks.remove(callback)
     }
 
+    fun removeDataSourcePages(dataSourceIndex: Int) {
+        _dataPages.removeAll(_dataPages.filter {
+            it.dataSourceIndex == dataSourceIndex
+        })
+    }
+
     fun getCachedData(index: Int) = cachedData[index]
 
     fun savePage(
@@ -55,7 +61,9 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
         loadParams: LoadParams<Key>,
         onLastPageNextKeyChanged: suspend (Key?, Boolean) -> Unit
     ) {
-        if (concatDataSourceConfig.maxItemsCount != null) isNeedToTrim = true
+        if (concatDataSourceConfig.maxItemsConfiguration?.maxItemsCount?.takeIf {
+            it != 0
+        } != null) isNeedToTrim = true
         result.cachedResult?.let { cachedData[page.pageIndex] = page.currentPageKey to it }
         val isExistingPage = dataPages.getOrNull(newIndex) != null
         val isPaginationDown = loadParams.paginationDirection == PaginationDirection.DOWN
@@ -112,7 +120,8 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                                 key = currentKey,
                                 pageIndex = page.pageIndex,
                                 items = value.data,
-                                sourceIndex = page.dataSourceIndex
+                                sourceIndex = page.dataSourceIndex,
+                                params = value.params
                             )
                         }
                     }
@@ -126,12 +135,14 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                             pageIndex = page.pageIndex,
                             items = value.data,
                             sourceIndex = page.dataSourceIndex,
-                            changeType = PageChangedEvent.ChangeType.CHANGE_FROM_NULLS_TO_ITEMS
+                            changeType = PageChangedEvent.ChangeType.CHANGE_FROM_NULLS_TO_ITEMS,
+                            params = value.params
                         ) else PageAddedEvent(
                             key = currentKey,
                             pageIndex = page.pageIndex,
                             items = value.data,
-                            sourceIndex = page.dataSourceIndex
+                            sourceIndex = page.dataSourceIndex,
+                            params = value.params
                         )
                         if (trimEvent == null) {
                             callDataChangedCallbacks { pageAddEvent }
@@ -145,8 +156,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                 if (isPaginationDown) {
                     isLastPageChanged = page == dataPages.lastOrNull()
                     page.nextPageKey = value.nextPageKey
-                }
-                else {
+                } else {
                     isLastPageChanged = page == dataPages.firstOrNull { it.dataFlow != null }
                     page.previousPageKey = value.nextPageKey
                 }
@@ -162,7 +172,8 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
     private fun trimPages(isPaginationDown: Boolean): DataChangedEvent<Key, Data>? {
         if (!isNeedToTrim) return null
         isNeedToTrim = false
-        val maxItemsCount = concatDataSourceConfig.maxItemsCount.takeIf { it != 0 } ?: return null
+        val config = concatDataSourceConfig.maxItemsConfiguration
+        val maxItemsCount = config?.maxItemsCount?.takeIf { it != 0 } ?: return null
         if (dataPages.sumOf { it.dataFlow?.value?.data?.size ?: 0 } > maxItemsCount) {
 
             // заменить на удаляемую страницу
@@ -171,7 +182,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
             val page = dataPages.getOrNull(pageIndex) ?: return null
 
             // TODO поменять расчёт индекса для удаления кэша
-            val maxCachedResultPagesCount = concatDataSourceConfig.maxCachedResultPagesCount
+            val maxCachedResultPagesCount = config.maxCachedResultPagesCount
             if (maxCachedResultPagesCount != null) {
                 val pageAbsoluteIndex = page.pageIndex
                 val removeCacheIndex = if (isPaginationDown) {
@@ -182,7 +193,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                 cachedData.remove(removeCacheIndex)
             }
 
-            if (concatDataSourceConfig.shouldFillRemovedPagesWithNulls && isPaginationDown) {
+            if (config.enableDroppedPagesNullPlaceholders && isPaginationDown) {
                 val lastData = page.dataFlow?.value?.data ?: return null
                 val lastDataSize = lastData.size
                 page.listenJob.cancel()

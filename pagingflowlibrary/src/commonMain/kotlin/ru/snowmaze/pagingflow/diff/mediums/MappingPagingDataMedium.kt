@@ -26,6 +26,7 @@ class MappingPagingDataMedium<Key : Any, Data : Any, NewData : Any>(
                             pageIndex = it.pageIndex,
                             sourceIndex = it.sourceIndex,
                             items = transform(it) as List<NewData>,
+                            params = it.params
                         )
                     },
                     onPageChanged = {
@@ -34,6 +35,7 @@ class MappingPagingDataMedium<Key : Any, Data : Any, NewData : Any>(
                             pageIndex = it.pageIndex,
                             sourceIndex = it.sourceIndex,
                             items = transform(it) as List<NewData>,
+                            params = it.params
                         )
                     },
                     onPageRemovedEvent = { it as PageRemovedEvent<Key, NewData> },

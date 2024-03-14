@@ -50,6 +50,10 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
         concatDataSource.removeDataSource(dataSource)
     }
 
+    fun removeDataSource(dataSourceIndex: Int) {
+        concatDataSource.removeDataSource(dataSourceIndex)
+    }
+
     /**
      * @see [ConcatDataSource.addDataChangedCallback]
      */
@@ -146,11 +150,9 @@ fun <Key : Any, Data : Any, PagingStatus : Any> buildPagingFlow(
     ConcatDataSource(
         ConcatDataSourceConfig(
             defaultParamsProvider = configuration.defaultParamsProvider,
-            maxItemsCount = configuration.maxItemsCount,
-            maxCachedResultPagesCount = configuration.maxCachedResultPagesCount,
+            maxItemsConfiguration = configuration.maxItemsConfiguration,
             processingDispatcher = configuration.processingDispatcher,
             coroutineScope = configuration.coroutineScope,
-            shouldFillRemovedPagesWithNulls = configuration.enableDroppedPagesNullPlaceholders
         )
     ), configuration
 ).apply(builder)
