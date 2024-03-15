@@ -1,7 +1,9 @@
 package ru.snowmaze.pagingflow.utils
 
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import ru.snowmaze.pagingflow.PaginationDirection
@@ -18,10 +20,11 @@ class PagingTrigger(
     val maxItemsCount: () -> Int? = { null },
     val prefetchDownDistance: Int = 1,
     val prefetchUpDistance: Int = prefetchDownDistance,
-    private val debounceTimeMillis: Int = 500,
+    private val throttleTimeMillis: Int = 500,
     val paginationDownEnabled: Boolean = true,
     val paginationUpEnabled: Boolean = true,
-    private val coroutineScope: CoroutineScope = GlobalScope,
+    private val saveLastThrottledEvent: Boolean = true,
+    private val coroutineScope: CoroutineScope,
     var currentTimeMillisProvider: () -> Long = {
         Clock.System.now().toEpochMilliseconds()
     },
@@ -33,10 +36,11 @@ class PagingTrigger(
         currentStartIndex: () -> Int = { 0 },
         prefetchDownDistance: Int = 1,
         prefetchUpDistance: Int = prefetchDownDistance,
-        debounceTimeMillis: Int = 500,
+        throttleTimeMillis: Int = 500,
         paginationDownEnabled: Boolean = true,
         paginationUpEnabled: Boolean = true,
-        coroutineScope: CoroutineScope = GlobalScope,
+        saveLastThrottledEvent: Boolean = true,
+        coroutineScope: CoroutineScope,
         currentTimeMillisProvider: () -> Long = { Clock.System.now().toEpochMilliseconds() },
         onEndReached: suspend (PaginationDirection) -> Unit = { direction ->
             pagingFlow().loadNextPageWithResult(direction)
@@ -48,15 +52,17 @@ class PagingTrigger(
         currentStartIndexProvider = currentStartIndex,
         prefetchDownDistance = prefetchDownDistance,
         prefetchUpDistance = prefetchUpDistance,
-        debounceTimeMillis = debounceTimeMillis,
+        throttleTimeMillis = throttleTimeMillis,
         paginationDownEnabled = paginationDownEnabled,
         paginationUpEnabled = paginationUpEnabled,
+        saveLastThrottledEvent = saveLastThrottledEvent,
         coroutineScope = coroutineScope,
         currentTimeMillisProvider = currentTimeMillisProvider,
         onEndReached = onEndReached
     )
 
     private var _isLoading = false
+    private var job: Job? = null
 
     val isLoading get() = _isLoading || isLoadingCallback()
     private var lastTimeTriggered = 0L
@@ -65,9 +71,16 @@ class PagingTrigger(
     fun onItemVisible(index: Int): Boolean {
         if (isLoading) return false
         val currentTime = currentTimeMillisProvider()
-        if (debounceTimeMillis != 0 &&
-            debounceTimeMillis > currentTime - lastTimeTriggered
-        ) return false
+        job?.cancel()
+        if (throttleTimeMillis != 0 &&
+            throttleTimeMillis > currentTime - lastTimeTriggered
+        ) {
+            if (saveLastThrottledEvent) job = coroutineScope.launch(Dispatchers.Main) {
+                delay(throttleTimeMillis.toLong())
+                onItemVisible(index)
+            }
+            return false
+        }
         val maxPagesCount = maxItemsCount()
         val itemCount = itemCount()
         val relativeStartIndex = if (maxPagesCount == null) index else {

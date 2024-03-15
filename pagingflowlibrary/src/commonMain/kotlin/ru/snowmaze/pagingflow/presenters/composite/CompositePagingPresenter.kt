@@ -1,6 +1,6 @@
 package ru.snowmaze.pagingflow.presenters.composite
 
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
@@ -52,7 +52,7 @@ open class CompositePagingPresenter<Key : Any, Data : Any> internal constructor(
         }
         pagingDataChangesMedium.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
 
-            override fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
+            override suspend fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
                 updateData {
                     for (event in events) {
                         applyEvent(event)
@@ -103,8 +103,8 @@ open class CompositePagingPresenter<Key : Any, Data : Any> internal constructor(
         }
     }
 
-    protected open fun updateData(update: () -> List<DataChangedEvent<Key, Data>>) {
-        coroutineScope.launch(processingDispatcher) {
+    protected open suspend fun updateData(update: () -> List<DataChangedEvent<Key, Data>>) {
+        withContext(processingDispatcher) {
             val events = update()
             if (events.lastOrNull() !is InvalidateEvent<*, *>) buildList(events)
         }

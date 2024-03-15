@@ -133,6 +133,9 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
                 additionalData = additionalData ?: PagingParams(),
                 throwable = loadData.throwable
             )
+            is LoadResult.NotLoading<Key, Data, PagingStatus> -> LoadNextPageResult.NothingToLoad(
+                additionalData = additionalData ?: PagingParams(),
+            )
         }
     }
 

@@ -21,7 +21,6 @@ import ru.snowmaze.pagingflow.internal.DataPagesManager
 import ru.snowmaze.pagingflow.internal.DataSources
 import ru.snowmaze.pagingflow.params.DataKey
 import ru.snowmaze.pagingflow.params.PagingParams
-import ru.snowmaze.pagingflow.result.simpleResult
 
 class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
     private val concatDataSourceConfig: ConcatDataSourceConfig<Key>,
@@ -106,21 +105,26 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         val dataPages = dataPagesManager.dataPages
         val isPaginationDown = loadParams.paginationDirection == PaginationDirection.DOWN
         val paginationDirection = loadParams.paginationDirection
+
+        // getting last page and nextPageKey
         val lastPageIndex = if (isPaginationDown) dataPages.lastIndex
         else dataPages.indexOfFirst { it.dataFlow != null }
-
         val lastPage = dataPages.getOrNull(lastPageIndex)
         val nextPageKey = if (isPaginationDown) lastPage?.nextPageKey else lastPage?.previousPageKey
 
+        // finding next data source
+        val newAbsoluteIndex = (lastPage?.pageIndex ?: 0) + if (isPaginationDown) 1 else -1
         val dataSourceWithIndex = dataSources.findNextDataSource(
             currentDataSource = lastPage?.dataSource,
-            isThereKey = nextPageKey != null,
+            isThereKey = nextPageKey != null || newAbsoluteIndex == 0,
             paginationDirection = paginationDirection
-        ) ?: return simpleResult(emptyList())
-        val newIndex = if (isPaginationDown) lastPageIndex + 1
-        else lastPageIndex - 1
+        ) ?: return LoadResult.NotLoading()
+
+        // setting status that we loading
         if (isPaginationDown) _downPagingStatus.value = PagingStatus.Loading()
         else _upPagingStatus.value = PagingStatus.Loading()
+
+        // picking currentKey and getting cache in case it was saved earlier
         val dataSource = dataSourceWithIndex.first
         val currentKey = nextPageKey ?: if (dataPages.isEmpty()) {
             dataSource.defaultLoadParams?.key ?: loadParams.key
@@ -129,9 +133,14 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         val pageAbsoluteIndex = if (lastPage == null) 0
         else if (isPaginationDown) lastPage.pageIndex + 1 else lastPage.pageIndex - 1
         var cachedResultPair = dataPagesManager.getCachedData(pageAbsoluteIndex)
+
+        // if page key changed don't use cache
+        // TODO do cache delete in pages manager in case of key change
         if (cachedResultPair != null) {
             if (cachedResultPair.first != currentKey) cachedResultPair = null
         }
+
+        // loading next page of data
         val nextLoadParams = LoadParams(
             pageSize = dataSource.defaultLoadParams?.pageSize ?: loadParams.pageSize,
             paginationDirection = paginationDirection,
@@ -147,6 +156,8 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
                 (dataSource.pagingUnhandledErrorsHandler ?: pagingUnhandledErrorsHandler)
             errorHandler.handle(e)
         }
+
+        // setting new status after loading completed
         val status = when (result) {
             is LoadResult.Success<*, *, *> -> PagingStatus.Success(
                 sourcePagingStatus = result.status,
@@ -157,27 +168,36 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
                 sourcePagingStatus = result.status,
                 throwable = result.throwable
             )
+
+            is LoadResult.NotLoading -> PagingStatus.Success(
+                sourcePagingStatus = result.status,
+                hasNextPage = false
+            )
         }
         if (isPaginationDown) _downPagingStatus.value = status
         else _upPagingStatus.value = status
-        if (result is LoadResult.Failure) {
+        if (result !is LoadResult.Success) {
 
             return result as LoadResult<Key, Data, SourcePagingStatus>
         }
         result as LoadResult.Success<Key, Data, SourcePagingStatus>
+
+        // saving page to pages manager
         val listenJob = SupervisorJob()
+        val previousPageKey = if (isPaginationDown) lastPage?.currentPageKey
+        else result.nextPageKey
         val page = DataPage(
             dataFlow = MutableStateFlow(null),
             nextPageKey = if (isPaginationDown) result.nextPageKey
-            else dataPages.getOrNull(lastPageIndex)?.currentPageKey,
+            else lastPage?.currentPageKey,
             dataSource = dataSourceWithIndex,
-            previousPageKey = if (isPaginationDown) dataPages.getOrNull(lastPageIndex)?.currentPageKey
-            else result.nextPageKey,
+            previousPageKey = previousPageKey,
             currentPageKey = currentKey,
             listenJob = listenJob,
             pageIndex = pageAbsoluteIndex,
             dataSourceIndex = dataSourceWithIndex.second
         )
+        val newIndex = lastPageIndex + if (isPaginationDown) 1 else -1
         dataPagesManager.savePage(
             newIndex = newIndex,
             result = result,
@@ -189,6 +209,8 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
             else _upPagingStatus
             stateFlow.value = stateFlow.value.mapHasNext(hasNext)
         }
+
+        // preparing result
         result.copy(
             dataFlow = result.dataFlow,
             nextPageKey = result.nextPageKey,

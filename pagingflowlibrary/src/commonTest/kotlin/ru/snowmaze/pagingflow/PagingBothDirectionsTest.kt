@@ -4,7 +4,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.invoke
 import kotlinx.coroutines.test.runTest
+import ru.snowmaze.pagingflow.params.PagingLibraryKeys
+import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
+import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import ru.snowmaze.pagingflow.sources.MaxItemsConfiguration
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -42,15 +45,20 @@ class PagingBothDirectionsTest {
             addDataSource(TestDataSource(totalCount))
             addDataSource(TestDataSource(totalCount))
         }
-        val presenter = pagingFlow.pagingDataPresenter(throttleDurationMsProvider =  { 2 })
+        val presenter = pagingFlow.pagingDataPresenter(
+            throttleDurationMsProvider = { 2 },
+        )
 
         var hasNext = true
         while (hasNext) {
-            hasNext =
-                pagingFlow.loadNextPageWithResult(PaginationDirection.DOWN).asSuccess().hasNext
-            Dispatchers.Default { delay(5) }
+            hasNext = pagingFlow.loadNextPageWithResult(
+                PaginationDirection.DOWN,
+                pagingParams = PagingParams {
+                    put(PagingLibraryKeys.AwaitFirstDataSet, null)
+                }
+            ).asSuccess().hasNext
         }
-        Dispatchers.Default { delay(15L) }
+        Dispatchers.Default { delay(30) }
         val maxItemsCount = pagingFlow.pagingFlowConfiguration.maxItemsConfiguration?.maxItemsCount!!
         assertTrue(
             maxItemsCount >= presenter.dataFlow.value.size,
@@ -65,7 +73,7 @@ class PagingBothDirectionsTest {
             hasNext =
                 pagingFlow.loadNextPageWithResult(PaginationDirection.UP).asSuccess().hasNext
         }
-        Dispatchers.Default { delay(15L) }
+        Dispatchers.Default { delay(30L) }
         assertTrue(
             maxItemsCount >= presenter.dataFlow.value.size,
             "expected $maxItemsCount but was ${presenter.dataFlow.value.size}"
@@ -106,10 +114,9 @@ class PagingBothDirectionsTest {
         }
         loadedData = presenter.dataFlow.value
         assertEquals(testDataSource.getItems(pageSize * removePagesOffset), loadedData)
-        assertEquals(
-            false,
-            pagingFlow.loadNextPageWithResult(PaginationDirection.UP).asSuccess().hasNext
-        )
+        assertTrue(pagingFlow.loadNextPageWithResult(
+            PaginationDirection.UP
+        ) is LoadNextPageResult.NothingToLoad)
 
         pagingFlow.testLoadEverything(
             listOf(testDataSource),

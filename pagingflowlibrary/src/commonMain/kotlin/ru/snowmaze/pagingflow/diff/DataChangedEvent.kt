@@ -51,3 +51,7 @@ class PageRemovedEvent<Key : Any, Data : Any>(
  * @see [PagingFlow.invalidate]
  */
 class InvalidateEvent<Key : Any, Data : Any> : DataChangedEvent<Key, Data>()
+
+class AwaitDataSetEvent<Key : Any, Data : Any>(
+    val callback: () -> Unit
+) : DataChangedEvent<Key, Data>()

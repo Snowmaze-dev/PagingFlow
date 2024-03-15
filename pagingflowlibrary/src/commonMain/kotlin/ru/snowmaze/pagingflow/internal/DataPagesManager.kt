@@ -1,10 +1,13 @@
 package ru.snowmaze.pagingflow.internal
 
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.PaginationDirection
+import ru.snowmaze.pagingflow.diff.AwaitDataSetEvent
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
@@ -13,10 +16,11 @@ import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
-import ru.snowmaze.pagingflow.params.DefaultKeys
+import ru.snowmaze.pagingflow.params.PagingLibraryKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.sources.ConcatDataSourceConfig
+import ru.snowmaze.pagingflow.sources.MaxItemsConfiguration
 
 internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>(
     private val concatDataSourceConfig: ConcatDataSourceConfig<Key>,
@@ -29,7 +33,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
     private val cachedData = mutableMapOf<Int, Pair<Key?, PagingParams>>()
     val currentPagesCount get() = dataPages.size
 
-    private var isNeedToTrim = false
+    private var lastPaginationDirection = true
 
     private val dataChangedCallbacks = mutableListOf<DataChangedCallback<Key, Data>>()
 
@@ -54,16 +58,13 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
 
     fun getCachedData(index: Int) = cachedData[index]
 
-    fun savePage(
+    suspend fun savePage(
         newIndex: Int,
         result: LoadResult.Success<Key, Data, SourcePagingStatus>,
         page: DataPage<Key, Data, SourcePagingStatus>,
         loadParams: LoadParams<Key>,
-        onLastPageNextKeyChanged: suspend (Key?, Boolean) -> Unit
+        onLastPageNextKeyChanged: suspend (Key?, Boolean) -> Unit,
     ) {
-        if (concatDataSourceConfig.maxItemsConfiguration?.maxItemsCount?.takeIf {
-            it != 0
-        } != null) isNeedToTrim = true
         result.cachedResult?.let { cachedData[page.pageIndex] = page.currentPageKey to it }
         val isExistingPage = dataPages.getOrNull(newIndex) != null
         val isPaginationDown = loadParams.paginationDirection == PaginationDirection.DOWN
@@ -73,18 +74,24 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
             if (isPaginationDown) _dataPages.add(page)
             else _dataPages.add(0, page)
         }
-        val invalidateData = loadParams.pagingParams?.getOrNull(DefaultKeys.InvalidateData) ?: false
+        val invalidateData =
+            loadParams.pagingParams?.getOrNull(PagingLibraryKeys.InvalidateData) ?: false
+        val awaitFirstPageTime =
+            if (loadParams.pagingParams?.containsKey(PagingLibraryKeys.AwaitFirstDataSet) == true) {
+                loadParams.pagingParams.getOrNull(PagingLibraryKeys.AwaitFirstDataSet) ?: 1000L
+            } else null
         collectPageData(
             page = page,
             result = result,
             invalidateData = invalidateData,
             isExistingPage = isExistingPage,
             isPaginationDown = isPaginationDown,
+            awaitFirstPageTime = awaitFirstPageTime,
             onNextKeyChanged = onLastPageNextKeyChanged
         )
     }
 
-    fun invalidate(
+    suspend fun invalidate(
         skipPage: DataPage<Key, Data, SourcePagingStatus>? = null,
         removeCachedData: Boolean = true,
     ) {
@@ -98,39 +105,43 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
         callDataChangedCallbacks { InvalidateEvent() }
     }
 
-    private fun collectPageData(
+    private suspend inline fun collectPageData(
         page: DataPage<Key, Data, SourcePagingStatus>,
         result: LoadResult.Success<Key, Data, SourcePagingStatus>,
         invalidateData: Boolean,
         isExistingPage: Boolean,
         isPaginationDown: Boolean,
-        onNextKeyChanged: suspend (Key?, Boolean) -> Unit
+        awaitFirstPageTime: Long?,
+        crossinline onNextKeyChanged: suspend (Key?, Boolean) -> Unit
     ) {
         val coroutineContext = concatDataSourceConfig.processingDispatcher + page.listenJob
         var isValueSet = false
         val currentKey = page.currentPageKey
+        lastPaginationDirection = isPaginationDown
+        var isFirst = true
+        var firstDataCallback: (() -> Unit)? = null
+        val awaitFirstPageSet = awaitFirstPageTime != null
+
         concatDataSourceConfig.coroutineScope.launch(coroutineContext) {
             result.dataFlow?.collect { value ->
-                page.dataFlow?.value = value
-                if (page.dataFlow?.value == null) return@collect
-                if (isValueSet) {
-                    setDataMutex.withLock {
-                        callDataChangedCallbacks {
-                            PageChangedEvent(
-                                key = currentKey,
-                                pageIndex = page.pageIndex,
-                                items = value.data,
-                                sourceIndex = page.dataSourceIndex,
-                                params = value.params
-                            )
-                        }
-                    }
-                } else {
-                    isValueSet = true
-                    if (invalidateData) invalidate(page)
-                    setDataMutex.withLock {
-                        val trimEvent = trimPages(isPaginationDown)
-                        val pageAddEvent = if (isExistingPage) PageChangedEvent(
+                setDataMutex.withLock {
+                    page.dataFlow?.value = value
+                    if (page.dataFlow?.value == null) return@collect
+                    val trimEvents = trimPages(lastPaginationDirection)
+                    val event = if (isValueSet) {
+                        PageChangedEvent(
+                            key = currentKey,
+                            pageIndex = page.pageIndex,
+                            items = value.data,
+                            sourceIndex = page.dataSourceIndex,
+                            params = value.params
+                        )
+                    } else {
+                        isValueSet = true
+
+                        // TODO обработка AwaitDataLoad
+                        if (invalidateData) invalidate(page)
+                        if (isExistingPage) PageChangedEvent(
                             key = currentKey,
                             pageIndex = page.pageIndex,
                             items = value.data,
@@ -144,37 +155,76 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                             sourceIndex = page.dataSourceIndex,
                             params = value.params
                         )
-                        if (trimEvent == null) {
-                            callDataChangedCallbacks { pageAddEvent }
+                    }
+                    val shouldAwaitFirst = awaitFirstPageSet && isFirst
+                    val awaitEvent: AwaitDataSetEvent<Key, Data>? = if (shouldAwaitFirst) {
+                        AwaitDataSetEvent { firstDataCallback?.invoke() }
+                    } else null
+                    isFirst = false
+                    if (trimEvents.isNullOrEmpty()) {
+                        if (awaitEvent != null) {
+                            dataChangedCallbacks.forEach {
+                                it.onEvents(listOf(awaitEvent, event))
+                            }
                         } else {
-                            val events = listOf(trimEvent, pageAddEvent)
-                            dataChangedCallbacks.forEach { it.onEvents(events) }
+                            dataChangedCallbacks.forEach { it.onEvent(event) }
                         }
+                    } else {
+                        val indexes = buildSet(trimEvents.size ?: 0) {
+                            for (trimEvent in trimEvents ?: emptyList()) {
+                                when (trimEvent) {
+                                    is PageRemovedEvent -> add(trimEvent.pageIndex)
+                                    is PageChangedEvent -> add(trimEvent.pageIndex)
+                                }
+                            }
+                        }
+                        val shouldSendEvent = !indexes.contains(page.pageIndex)
+
+                        val events = ArrayList<DataChangedEvent<Key, Data>>(
+                            trimEvents.size + if (shouldSendEvent) 1 else 0
+                                    + if (awaitEvent == null) 0 else 1
+                        )
+                        if (awaitEvent != null) events.add(awaitEvent)
+                        if (shouldSendEvent) events.add(event)
+                        events.addAll(trimEvents)
+                        dataChangedCallbacks.forEach { it.onEvents(events) }
+                    }
+                    val isLastPageChanged: Boolean
+                    if (isPaginationDown) {
+                        isLastPageChanged = page == dataPages.lastOrNull()
+                        page.nextPageKey = value.nextPageKey
+                    } else {
+                        isLastPageChanged = page == dataPages.firstOrNull { it.dataFlow != null }
+                        page.previousPageKey = value.nextPageKey
+                    }
+                    if (isLastPageChanged) onNextKeyChanged(value.nextPageKey, isPaginationDown)
+                }
+            }
+        }
+        if (awaitFirstPageSet) {
+            withTimeoutOrNull(awaitFirstPageTime ?: 1000L) {
+                suspendCancellableCoroutine<Unit> { cont ->
+                    firstDataCallback = {
+                        firstDataCallback = null
+                        cont.resumeWith(Result.success(Unit))
+                    }
+                    cont.invokeOnCancellation {
+                        firstDataCallback = null
                     }
                 }
-                val isLastPageChanged: Boolean
-                if (isPaginationDown) {
-                    isLastPageChanged = page == dataPages.lastOrNull()
-                    page.nextPageKey = value.nextPageKey
-                } else {
-                    isLastPageChanged = page == dataPages.firstOrNull { it.dataFlow != null }
-                    page.previousPageKey = value.nextPageKey
-                }
-                if (isLastPageChanged) onNextKeyChanged(value.nextPageKey, isPaginationDown)
             }
         }
     }
 
     /**
      * Removes pages that not needed anymore
-     * Also can replace removed pages to null pages if [ConcatDataSourceConfig.shouldFillRemovedPagesWithNulls] is true
+     * Also can replace removed pages to null pages if [MaxItemsConfiguration.enableDroppedPagesNullPlaceholders] is true
      */
-    private fun trimPages(isPaginationDown: Boolean): DataChangedEvent<Key, Data>? {
-        if (!isNeedToTrim) return null
-        isNeedToTrim = false
-        val config = concatDataSourceConfig.maxItemsConfiguration
-        val maxItemsCount = config?.maxItemsCount?.takeIf { it != 0 } ?: return null
-        if (dataPages.sumOf { it.dataFlow?.value?.data?.size ?: 0 } > maxItemsCount) {
+    private fun trimPages(isPaginationDown: Boolean): List<DataChangedEvent<Key, Data>>? {
+        val trimConfig = concatDataSourceConfig.maxItemsConfiguration ?: return null
+        val maxItemsCount = trimConfig.maxItemsCount.takeIf { it != 0 } ?: return null
+        val itemsCount = dataPages.sumOf { it.dataFlow?.value?.data?.size ?: 0 }
+        if (itemsCount > maxItemsCount) {
 
             // заменить на удаляемую страницу
             val pageIndex = (if (isPaginationDown) dataPages.indexOfFirst { it.dataFlow != null }
@@ -182,7 +232,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
             val page = dataPages.getOrNull(pageIndex) ?: return null
 
             // TODO поменять расчёт индекса для удаления кэша
-            val maxCachedResultPagesCount = config.maxCachedResultPagesCount
+            val maxCachedResultPagesCount = trimConfig.maxCachedResultPagesCount
             if (maxCachedResultPagesCount != null) {
                 val pageAbsoluteIndex = page.pageIndex
                 val removeCacheIndex = if (isPaginationDown) {
@@ -193,40 +243,48 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                 cachedData.remove(removeCacheIndex)
             }
 
-            if (config.enableDroppedPagesNullPlaceholders && isPaginationDown) {
+            if (trimConfig.enableDroppedPagesNullPlaceholders && isPaginationDown) {
                 val lastData = page.dataFlow?.value?.data ?: return null
                 val lastDataSize = lastData.size
                 page.listenJob.cancel()
                 page.dataFlow = null
-                return PageChangedEvent(
-                    key = page.currentPageKey,
-                    pageIndex = page.pageIndex,
-                    items = buildList(lastDataSize) {
-                        repeat(lastDataSize) {
-                            add(null)
-                        }
-                    },
-                    sourceIndex = page.dataSourceIndex,
-                    changeType = PageChangedEvent.ChangeType.CHANGE_TO_NULLS
+                return listOf(
+                    PageChangedEvent(
+                        key = page.currentPageKey,
+                        pageIndex = page.pageIndex,
+                        items = buildList(lastDataSize) {
+                            repeat(lastDataSize) {
+                                add(null)
+                            }
+                        },
+                        sourceIndex = page.dataSourceIndex,
+                        changeType = PageChangedEvent.ChangeType.CHANGE_TO_NULLS
+                    )
                 )
             } else {
                 page.listenJob.cancel()
                 _dataPages.removeAt(pageIndex)
-                page.dataFlow?.value?.data?.let {
-                    return PageRemovedEvent(
-                        key = page.currentPageKey,
-                        pageIndex = page.pageIndex,
-                        sourceIndex = page.dataSourceIndex,
-                        itemsCount = it.size
-                    )
-                }
                 page.dataFlow = null
+
+                val trimEvent = PageRemovedEvent<Key, Data>(
+                    key = page.currentPageKey,
+                    pageIndex = page.pageIndex,
+                    sourceIndex = page.dataSourceIndex,
+                    itemsCount = page.dataFlow?.value?.data?.size ?: 0
+                )
+                val anotherEvents = trimPages(isPaginationDown)
+
+                return if (anotherEvents.isNullOrEmpty()) listOf(trimEvent)
+                else buildList(1 + anotherEvents.size) {
+                    addAll(anotherEvents)
+                    add(trimEvent)
+                }
             }
         }
         return null
     }
 
-    private inline fun callDataChangedCallbacks(block: () -> DataChangedEvent<Key, Data>?) {
+    private suspend inline fun callDataChangedCallbacks(block: () -> DataChangedEvent<Key, Data>?) {
         val event = block() ?: return
         dataChangedCallbacks.forEach { it.onEvent(event) }
     }

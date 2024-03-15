@@ -43,11 +43,11 @@ class MappingPagingDataMedium<Key : Any, Data : Any, NewData : Any>(
                 )
             }
 
-            override fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
+            override suspend fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
                 notifyOnEvents(events.mapNotNull { handleEvent(it) })
             }
 
-            override fun onEvent(event: DataChangedEvent<Key, Data>) {
+            override suspend fun onEvent(event: DataChangedEvent<Key, Data>) {
                 notifyOnEvent(handleEvent(event) ?: return)
             }
         })

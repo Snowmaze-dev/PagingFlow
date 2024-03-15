@@ -61,7 +61,7 @@ fun <Key : Any, Data : Any, PagingStatus : Any> DataSource<Key, Data, PagingStat
     additionalData: PagingParams? = null,
     cachedResult: PagingParams? = null,
 ) = LoadResult.Success(
-    dataFlow = flow { emit(UpdatableData(data, nextPageKey)) },
+    dataFlow = flow { emit(UpdatableData(data, nextPageKey, additionalData)) },
     nextPageKey = nextPageKey,
     status = status,
     additionalData = additionalData,
@@ -75,7 +75,7 @@ fun <Key : Any, Data : Any, PagingStatus : Any> DataSource<Key, Data, PagingStat
     additionalData: PagingParams? = null,
     cachedResult: PagingParams? = null,
 ) = LoadResult.Success(
-    dataFlow = dataFlow.map { UpdatableData(it, nextPageKey) },
+    dataFlow = dataFlow.map { UpdatableData(it, nextPageKey, additionalData) },
     nextPageKey = nextPageKey,
     status = status,
     additionalData = additionalData,

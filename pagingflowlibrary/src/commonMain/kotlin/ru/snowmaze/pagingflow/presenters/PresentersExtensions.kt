@@ -8,7 +8,7 @@ import ru.snowmaze.pagingflow.diff.mediums.ThrottlePagingDataChangesMedium
 
 /**
  * Creates mapping presenter, which maps only changed pages and have throttling mechanism
- * @see pagingDataPresenter for arguments docs
+ * @see pagingDataPresenter for arguments docs on arguments
  */
 fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mappingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
@@ -22,23 +22,29 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
     invalidateBehavior = invalidateBehavior
 )
 
+/**
+ * @param throttleDurationMsProvider provider of duration of throttle window
+ * @param shouldThrottleAddPagesEvents defines whether should throttle add pages events or not
+ * @param transform mapping lambda
+ */
 fun <Key : Any, Data : Any, NewData : Any> PagingFlow<Key, Data, *>.mappingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
         InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE,
     throttleDurationMsProvider: () -> Long = { 0 },
+    shouldThrottleAddPagesEvents: Boolean = false,
     transform: (PageChangedEvent<Key, Data>) -> List<NewData?>
 ) = ThrottlePagingDataChangesMedium(
     this,
-    throttleDurationMsProvider = throttleDurationMsProvider
+    throttleDurationMsProvider = throttleDurationMsProvider,
+    shouldThrottleAddPagesEvents = shouldThrottleAddPagesEvents
 ).mappingDataPresenter(
     invalidateBehavior = invalidateBehavior,
     transform = transform
 )
 
 /**
- * Creates simple presenter, which builds list from pages and have throttling mechanism
+ * Creates simple presenter, which builds list from pages
  * @param invalidateBehavior behavior of invalidate, by default it clears list after new value received, it means that list wouldn't blink when invalidate happens
- * @param throttleDurationMs duration of throttle window
  * @see InvalidateBehavior
  */
 fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresenter(
@@ -49,11 +55,17 @@ fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresent
     invalidateBehavior = invalidateBehavior
 )
 
+/**
+ * @param throttleDurationMsProvider provider of duration of throttle window
+ * @param shouldThrottleAddPagesEvents defines whether should throttle add pages events or not
+ */
 fun <Key : Any, Data : Any> PagingFlow<Key, Data, *>.pagingDataPresenter(
     invalidateBehavior: InvalidateBehavior =
         InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE,
     throttleDurationMsProvider: () -> Long = { 0 },
+    shouldThrottleAddPagesEvents: Boolean = false
 ) = ThrottlePagingDataChangesMedium(
     this,
     throttleDurationMsProvider = throttleDurationMsProvider,
+    shouldThrottleAddPagesEvents = shouldThrottleAddPagesEvents
 ).pagingDataPresenter(invalidateBehavior)

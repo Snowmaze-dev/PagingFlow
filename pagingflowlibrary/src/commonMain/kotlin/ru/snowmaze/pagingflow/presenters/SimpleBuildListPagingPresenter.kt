@@ -2,6 +2,7 @@ package ru.snowmaze.pagingflow.presenters
 
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import ru.snowmaze.pagingflow.diff.AwaitDataSetEvent
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
@@ -27,7 +28,9 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
     init {
         pagingDataChangesMedium.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
 
-            fun MutableMap<Int, PageChangedEvent<Key, Data>>.applyEvent(event: DataChangedEvent<Key, Data>) {
+            fun MutableMap<Int, PageChangedEvent<Key, Data>>.applyEvent(
+                event: DataChangedEvent<Key, Data>
+            ) {
                 event.handle(
                     onPageAdded = { this[it.pageIndex] = it },
                     onPageChanged = { this[it.pageIndex] = it },
@@ -36,7 +39,7 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
                 )
             }
 
-            override fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
+            override suspend fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
                 updateData {
                     for (event in events) {
                         applyEvent(event)
@@ -54,8 +57,8 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
         changeDataJob = Job()
     }
 
-    protected open fun updateData(
-        update: MutableMap<Int, PageChangedEvent<Key, Data>>.() -> List<DataChangedEvent<Key, Data>>
+    protected open suspend fun updateData(
+        update: suspend MutableMap<Int, PageChangedEvent<Key, Data>>.() -> List<DataChangedEvent<Key, Data>>
     ) {
         coroutineScope.launch(processingDispatcher + changeDataJob) {
             val result = pageIndexes.update()
@@ -64,7 +67,10 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
                 pageIndexesKeys = pageIndexes.keys.sorted()
                 buildList(result)
             }
-        }
+            for (event in result) {
+                if (event is AwaitDataSetEvent) event.callback()
+            }
+        }.join()
     }
 
     /**

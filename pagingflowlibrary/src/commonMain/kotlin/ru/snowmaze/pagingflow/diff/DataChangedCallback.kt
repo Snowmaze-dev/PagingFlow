@@ -6,9 +6,9 @@ package ru.snowmaze.pagingflow.diff
  */
 interface DataChangedCallback<Key : Any, Data : Any> {
 
-    fun onEvents(events: List<DataChangedEvent<Key, Data>>)
+    suspend fun onEvents(events: List<DataChangedEvent<Key, Data>>)
 
-    fun onEvent(event: DataChangedEvent<Key, Data>) {
+    suspend fun onEvent(event: DataChangedEvent<Key, Data>) {
         onEvents(listOf(event))
     }
 }

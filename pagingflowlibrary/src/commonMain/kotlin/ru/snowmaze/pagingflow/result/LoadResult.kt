@@ -43,4 +43,12 @@ sealed class LoadResult<Key : Any, Data : Any, SourcePagingStatus : Any> {
         override val additionalData: PagingParams? = null,
         val throwable: Throwable
     ) : LoadResult<Key, Data, PagingStatus>()
+
+    /**
+     * Result object for [DataSource.load] which indicates that theres is nothing to load now
+     */
+    data class NotLoading<Key : Any, Data : Any, PagingStatus : Any>(
+        override val status: PagingStatus? = null,
+        override val additionalData: PagingParams? = null
+    ) : LoadResult<Key, Data, PagingStatus>()
 }

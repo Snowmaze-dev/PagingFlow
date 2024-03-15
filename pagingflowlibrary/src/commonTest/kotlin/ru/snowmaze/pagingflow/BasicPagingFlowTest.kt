@@ -5,10 +5,11 @@ import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
+import ru.snowmaze.pagingflow.sources.MaxItemsConfiguration
 import kotlin.random.Random
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class BasicPagingFlowTest {
@@ -16,7 +17,7 @@ class BasicPagingFlowTest {
     val pageSize = Random.nextInt(5, 30)
 
     private val basePagingFlowConfiguration = PagingFlowConfiguration(
-        defaultParams = LoadParams(pageSize, 0),
+        defaultParams = LoadParams<Int>(pageSize),
         processingDispatcher = testDispatcher
     )
 
@@ -31,6 +32,34 @@ class BasicPagingFlowTest {
 
         pagingFlow.testLoadEverything(listOf(testDataSource), pagingPresenter = presenter)
         invalidateAndCheckLoadingRight(pagingFlow, testDataSource, pagingDataPresenter = presenter)
+    }
+
+    @Test
+    fun testThreePaginationForwardAndThenBackwards() = runTest {
+        val testDataSource = TestDataSource(pageSize * 3)
+        val pagingFlow = buildPagingFlow(
+            basePagingFlowConfiguration.copy(
+                maxItemsConfiguration = MaxItemsConfiguration(
+                    pageSize * 2,
+                    enableDroppedPagesNullPlaceholders = false
+                ),
+            )
+        ) {
+            addDataSource(testDataSource)
+        }
+        val presenter = pagingFlow.pagingDataPresenter()
+        pagingFlow.loadNextPageWithResult()
+        pagingFlow.loadNextPageWithResult()
+        pagingFlow.loadNextPageWithResult()
+        assertContentEquals(
+            testDataSource.getItems(testDataSource.totalCount).takeLast(pageSize * 2),
+            presenter.dataFlow.value
+        )
+        pagingFlow.loadNextPageWithResult(PaginationDirection.UP)
+        assertContentEquals(
+            testDataSource.getItems(pageSize * 2),
+            presenter.dataFlow.value
+        )
     }
 
     @Test
@@ -74,7 +103,7 @@ class BasicPagingFlowTest {
             listOf(firstTestDataSource, secondTestDataSource, thirdTestDataSource),
             pagingPresenter = presenter
         )
-        assertFalse(pagingFlow.loadNextPageWithResult().asSuccess().hasNext)
+        assertTrue(pagingFlow.loadNextPageWithResult() is LoadNextPageResult.NothingToLoad)
         invalidateAndCheckLoadingRight(pagingFlow, firstTestDataSource, presenter)
     }
 

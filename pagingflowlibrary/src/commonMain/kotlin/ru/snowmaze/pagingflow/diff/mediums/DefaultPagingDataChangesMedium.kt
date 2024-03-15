@@ -21,24 +21,24 @@ abstract class DefaultPagingDataChangesMedium<Key : Any, Data : Any> : PagingDat
         dataChangedCallbacks.forEach(block)
     }
 
-    protected inline fun notifyOnEvent(event: DataChangedEvent<Key, Data>) {
+    protected suspend inline fun notifyOnEvent(event: DataChangedEvent<Key, Data>) {
         callDataChangedCallbacks { onEvent(event) }
     }
 
-    protected inline fun notifyOnEvents(events: List<DataChangedEvent<Key, Data>>) {
+    protected suspend inline fun notifyOnEvents(events: List<DataChangedEvent<Key, Data>>) {
         callDataChangedCallbacks { onEvents(events) }
     }
 
     protected fun createDefaultDataChangedCallback(
     ) = object : DataChangedCallback<Key, Data> {
 
-        override fun onEvent(event: DataChangedEvent<Key, Data>) {
+        override suspend fun onEvent(event: DataChangedEvent<Key, Data>) {
             callDataChangedCallbacks {
                 onEvent(event)
             }
         }
 
-        override fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
+        override suspend fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
             callDataChangedCallbacks {
                 onEvents(events)
             }

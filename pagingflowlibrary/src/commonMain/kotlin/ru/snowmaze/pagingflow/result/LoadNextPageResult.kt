@@ -20,4 +20,8 @@ sealed class LoadNextPageResult<Key, Data> {
         override val additionalData: PagingParams,
         val throwable: Throwable
     ) : LoadNextPageResult<Key, Data>()
+
+    data class NothingToLoad<Key : Any, Data : Any>(
+        override val additionalData: PagingParams,
+    ) : LoadNextPageResult<Key, Data>()
 }
