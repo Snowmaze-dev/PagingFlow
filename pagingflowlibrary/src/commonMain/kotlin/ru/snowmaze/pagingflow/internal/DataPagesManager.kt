@@ -185,8 +185,13 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                                     + if (awaitEvent == null) 0 else 1
                         )
                         if (awaitEvent != null) events.add(awaitEvent)
-                        if (shouldSendEvent) events.add(event)
-                        events.addAll(trimEvents)
+                        if (isPaginationDown) {
+                            if (shouldSendEvent) events.add(event)
+                            events.addAll(trimEvents)
+                        } else {
+                            events.addAll(trimEvents)
+                            if (shouldSendEvent) events.add(event)
+                        }
                         dataChangedCallbacks.forEach { it.onEvents(events) }
                     }
                     val isLastPageChanged: Boolean
