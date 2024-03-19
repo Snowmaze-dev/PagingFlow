@@ -15,7 +15,8 @@ import ru.snowmaze.pagingflow.PagingFlow
 class PagingTrigger(
     private val isLoadingCallback: () -> Boolean,
     private val onEndReached: suspend (PaginationDirection) -> Unit,
-    var itemCount: () -> Int = { 0 },
+    var itemCount: () -> Int,
+    val pageSize: () -> Int,
     var currentStartIndexProvider: () -> Int = { 0 },
     val maxItemsCount: () -> Int? = { null },
     val prefetchDownDistance: Int = 1,
@@ -23,6 +24,7 @@ class PagingTrigger(
     private val throttleTimeMillis: Int = 500,
     val paginationDownEnabled: Boolean = true,
     val paginationUpEnabled: Boolean = true,
+    private val shouldTryPaginateBackOnMaxItemsOffset: Boolean = false,
     private val saveLastThrottledEvent: Boolean = true,
     private val coroutineScope: CoroutineScope,
     var currentTimeMillisProvider: () -> Long = {
@@ -39,6 +41,7 @@ class PagingTrigger(
         throttleTimeMillis: Int = 500,
         paginationDownEnabled: Boolean = true,
         paginationUpEnabled: Boolean = true,
+        shouldTryPaginateBackOnMaxItemsOffset: Boolean = false,
         saveLastThrottledEvent: Boolean = true,
         coroutineScope: CoroutineScope,
         currentTimeMillisProvider: () -> Long = { Clock.System.now().toEpochMilliseconds() },
@@ -49,12 +52,14 @@ class PagingTrigger(
         itemCount = itemCount,
         isLoadingCallback = { pagingFlow().isLoading },
         maxItemsCount = { pagingFlow().pagingFlowConfiguration.maxItemsConfiguration?.maxItemsCount },
+        pageSize = { pagingFlow().pagingFlowConfiguration.defaultParamsProvider().pageSize },
         currentStartIndexProvider = currentStartIndex,
         prefetchDownDistance = prefetchDownDistance,
         prefetchUpDistance = prefetchUpDistance,
         throttleTimeMillis = throttleTimeMillis,
         paginationDownEnabled = paginationDownEnabled,
         paginationUpEnabled = paginationUpEnabled,
+        shouldTryPaginateBackOnMaxItemsOffset = shouldTryPaginateBackOnMaxItemsOffset,
         saveLastThrottledEvent = saveLastThrottledEvent,
         coroutineScope = coroutineScope,
         currentTimeMillisProvider = currentTimeMillisProvider,
@@ -66,7 +71,6 @@ class PagingTrigger(
 
     val isLoading get() = _isLoading || isLoadingCallback()
     private var lastTimeTriggered = 0L
-    private var lastIndex = 0
 
     fun onItemVisible(index: Int): Boolean {
         if (isLoading) return false
@@ -81,20 +85,20 @@ class PagingTrigger(
             }
             return false
         }
-        val maxPagesCount = maxItemsCount()
         val itemCount = itemCount()
-        val relativeStartIndex = if (maxPagesCount == null) index else {
+        val maxItemsCount = maxItemsCount()
+        val relativeStartIndex = if (maxItemsCount == null) index else {
             index - currentStartIndexProvider()
         }
-        val isScrolledDown = index > lastIndex
-        val canPaginateBottom = paginationDownEnabled && isScrolledDown
-        val canPaginateUp = paginationUpEnabled && !isScrolledDown
-        lastIndex = index
-        val direction = if (canPaginateBottom && index >= (itemCount - prefetchDownDistance)) {
+        val direction = if (paginationDownEnabled && index >= (itemCount - prefetchDownDistance)) {
             PaginationDirection.DOWN
-        } else if (canPaginateUp && prefetchUpDistance >= relativeStartIndex) {
-            PaginationDirection.UP
-        } else return false
+        } else if (paginationUpEnabled &&
+            if (shouldTryPaginateBackOnMaxItemsOffset && maxItemsCount != null) {
+                val pageSize = pageSize()
+                prefetchUpDistance * ((maxItemsCount / pageSize) - 1) >= relativeStartIndex
+            } else prefetchUpDistance >= relativeStartIndex
+        ) PaginationDirection.UP
+        else return false
         _isLoading = true
         coroutineScope.launch {
             onEndReached(direction)

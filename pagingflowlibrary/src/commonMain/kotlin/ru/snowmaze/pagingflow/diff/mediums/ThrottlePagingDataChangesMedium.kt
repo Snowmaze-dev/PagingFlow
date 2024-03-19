@@ -32,9 +32,8 @@ class ThrottlePagingDataChangesMedium<Key : Any, Data : Any>(
                             if (event is PageAddedEvent) {
                                 val toIndex = index + 1
                                 val notifyOnEventsArr = savedEvents + events.subList(0, toIndex)
-                                notifyOnEvents(notifyOnEventsArr)
-
                                 savedEvents.clear()
+                                notifyOnEvents(notifyOnEventsArr)
                                 if (toIndex == events.size) {
                                     newEvents = emptyList()
                                     break
@@ -54,7 +53,12 @@ class ThrottlePagingDataChangesMedium<Key : Any, Data : Any>(
             override suspend fun onEvent(event: DataChangedEvent<Key, Data>) {
                 withContext(processingDispatcher) {
                     if (event is PageAddedEvent && !shouldThrottleAddPagesEvents) {
-                        notifyOnEvent(event)
+                        if (savedEvents.isEmpty()) notifyOnEvent(event)
+                        else {
+                            val newList = savedEvents + event
+                            savedEvents.clear()
+                            notifyOnEvents(newList)
+                        }
                     } else {
                         savedEvents.add(event)
                         sendEvents()

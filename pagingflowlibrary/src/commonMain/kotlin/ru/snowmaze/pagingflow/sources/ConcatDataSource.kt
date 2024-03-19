@@ -113,7 +113,7 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         val nextPageKey = if (isPaginationDown) lastPage?.nextPageKey else lastPage?.previousPageKey
 
         // finding next data source
-        val newAbsoluteIndex = (lastPage?.pageIndex ?: 0) + if (isPaginationDown) 1 else -1
+        val newAbsoluteIndex = (lastPage?.pageIndex ?: -1) + if (isPaginationDown) 1 else -1
         val dataSourceWithIndex = dataSources.findNextDataSource(
             currentDataSource = lastPage?.dataSource,
             isThereKey = nextPageKey != null || newAbsoluteIndex == 0,
