@@ -11,8 +11,9 @@ internal class DataSources<Key : Any, Data : Any, PagingStatus : Any> {
     /**
      * Adds data source to end of chain
      */
-    fun addDataSource(dataSource: DataSource<Key, Data, PagingStatus>) {
-        _dataSources.add(dataSource)
+    fun addDataSource(dataSource: DataSource<Key, Data, PagingStatus>, index: Int? = null) {
+        if (index == null) _dataSources.add(dataSource)
+        else _dataSources.add(index, dataSource)
     }
 
     /**
@@ -22,9 +23,10 @@ internal class DataSources<Key : Any, Data : Any, PagingStatus : Any> {
         _dataSources.remove(dataSource)
     }
 
-    fun removeDataSource(dataSourceIndex: Int) {
-        _dataSources.getOrNull(dataSourceIndex) ?: return
+    fun removeDataSource(dataSourceIndex: Int): Boolean {
+        _dataSources.getOrNull(dataSourceIndex) ?: return false
         _dataSources.removeAt(dataSourceIndex)
+        return true
     }
 
     fun getSourceIndex(
@@ -39,7 +41,7 @@ internal class DataSources<Key : Any, Data : Any, PagingStatus : Any> {
         if (isThereKey && currentDataSource?.first != null) return currentDataSource
         val sourceIndex = if (currentDataSource?.first == null) -1
         else {
-            val foundSourceIndex = dataSources.indexOf(currentDataSource.first)
+            val foundSourceIndex = getSourceIndex(currentDataSource.first)
             if (foundSourceIndex == -1) throw IllegalStateException(
                 "Cant find current data sources. Looks like bug in library. Report to developer."
             )
@@ -48,5 +50,11 @@ internal class DataSources<Key : Any, Data : Any, PagingStatus : Any> {
         val checkingIndex =
             sourceIndex + if (paginationDirection == PaginationDirection.DOWN) 1 else -1
         return dataSources.getOrNull(checkingIndex)?.let { it to checkingIndex }
+    }
+
+    fun moveDataSource(oldIndex: Int, newIndex: Int) {
+        val old = dataSources.getOrNull(oldIndex) ?: return
+        _dataSources.removeAt(oldIndex)
+        _dataSources.add(newIndex.coerceAtMost(dataSources.size), old)
     }
 }

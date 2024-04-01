@@ -24,12 +24,12 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
     protected var _startIndex = 0
     override val startIndex get() = _startIndex
 
-    protected fun onInvalidateInternal() {
+    protected fun onInvalidateInternal(isFullInvalidate: Boolean) {
         onInvalidateAdditionalAction()
         val previousList = dataFlow.value
-        if (invalidateBehavior == InvalidateBehavior.INVALIDATE_IMMEDIATELY) buildList(
-            listOf(InvalidateEvent())
-        )
+        if (invalidateBehavior == InvalidateBehavior.INVALIDATE_IMMEDIATELY ||
+            isFullInvalidate
+        ) buildList(listOf(InvalidateEvent(isFullInvalidate)))
         else isInvalidated = true
         afterInvalidatedAction(previousList)
     }

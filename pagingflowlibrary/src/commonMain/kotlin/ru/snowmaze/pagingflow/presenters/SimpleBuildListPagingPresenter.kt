@@ -35,7 +35,7 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
                     onPageAdded = { this[it.pageIndex] = it },
                     onPageChanged = { this[it.pageIndex] = it },
                     onPageRemovedEvent = { remove(it.pageIndex) },
-                    onInvalidate = { onInvalidateInternal() }
+                    onInvalidate = { onInvalidateInternal(it.isFullInvalidate) }
                 )
             }
 
@@ -53,7 +53,6 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
     override fun onInvalidateAdditionalAction() {
         pageIndexes.clear()
         pageIndexesKeys = emptyList()
-        changeDataJob.cancel()
         changeDataJob = Job()
     }
 

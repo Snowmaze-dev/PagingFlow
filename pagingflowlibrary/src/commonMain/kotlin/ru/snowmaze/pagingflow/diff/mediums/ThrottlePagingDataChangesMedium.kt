@@ -28,19 +28,14 @@ class ThrottlePagingDataChangesMedium<Key : Any, Data : Any>(
                 withContext(processingDispatcher) {
                     var newEvents = events
                     if (!shouldThrottleAddPagesEvents && throttleDurationMsProvider() != 0L) {
-                        for ((index, event) in events.withIndex()) {
-                            if (event is PageAddedEvent) {
-                                val toIndex = index + 1
-                                val notifyOnEventsArr = savedEvents + events.subList(0, toIndex)
-                                savedEvents.clear()
-                                notifyOnEvents(notifyOnEventsArr)
-                                if (toIndex == events.size) {
-                                    newEvents = emptyList()
-                                    break
-                                }
-                                newEvents = events.subList(toIndex, events.size)
-                                break
-                            }
+                        val lastIndex = events.indexOfLast { it is PageAddedEvent<Key, Data> }
+                        if (lastIndex != -1) {
+                            val toIndex = lastIndex + 1
+                            val notifyEvents = savedEvents + events.subList(0, toIndex)
+                            savedEvents.clear()
+                            notifyOnEvents(notifyEvents)
+                            newEvents = if (toIndex == events.size) emptyList()
+                            else events.subList(toIndex, events.size)
                         }
                     }
                     if (newEvents.isNotEmpty()) {

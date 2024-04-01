@@ -71,8 +71,14 @@ class PagingTrigger(
 
     val isLoading get() = _isLoading || isLoadingCallback()
     private var lastTimeTriggered = 0L
+    private var lastIndex = 0
+
+    fun checkLastIndexAgain() {
+        onItemVisible(lastIndex)
+    }
 
     fun onItemVisible(index: Int): Boolean {
+        lastIndex = index
         if (isLoading) return false
         val currentTime = currentTimeMillisProvider()
         job?.cancel()

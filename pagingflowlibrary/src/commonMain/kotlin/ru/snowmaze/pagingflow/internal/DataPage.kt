@@ -10,8 +10,8 @@ internal data class DataPage<Key : Any, Data : Any, PagingStatus : Any>(
     var previousPageKey: Key?,
     val currentPageKey: Key?,
     var nextPageKey: Key?,
-    val dataSource: Pair<DataSource<Key, Data, PagingStatus>, Int>,
+    var dataSourceWithIndex: Pair<DataSource<Key, Data, PagingStatus>, Int>,
     val listenJob: Job,
-    val pageIndex: Int,
-    val dataSourceIndex: Int
+    var pageIndex: Int,
+    var dataSourceIndex: Int
 )

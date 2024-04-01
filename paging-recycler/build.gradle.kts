@@ -36,4 +36,6 @@ dependencies {
     api(libs.androidx.recyclerview)
     api(projects.pagingflowlibrary)
     api(libs.kotlinx.coroutines.core)
+    testImplementation(libs.junit)
+    implementation(libs.kotlinx.coroutines.test)
 }

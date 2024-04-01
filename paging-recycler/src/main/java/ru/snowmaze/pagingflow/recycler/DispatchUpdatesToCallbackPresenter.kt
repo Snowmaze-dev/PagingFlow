@@ -70,9 +70,9 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
                 pagingMedium.config.processingDispatcher
             ) {
                 val diffResult = PagingDiffUtil.calculateDiff(
-                    diffCallback = itemCallback,
                     oldList = pagesIndexes.getValue(event.pageIndex) as List<Data>,
-                    newList = event.items as List<Data>
+                    newList = event.items as List<Data>,
+                    diffCallback = itemCallback,
                 )
                 withContext(mainDispatcher) {
                     diffResult.dispatchUpdatesTo(offsetListUpdateCallback)

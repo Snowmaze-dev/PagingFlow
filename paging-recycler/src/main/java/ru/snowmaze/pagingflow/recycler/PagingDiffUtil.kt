@@ -6,9 +6,9 @@ import androidx.recyclerview.widget.ListUpdateCallback
 object PagingDiffUtil {
 
     fun <T : Any> calculateDiff(
-        diffCallback: DiffUtil.ItemCallback<T>,
         oldList: List<T>,
-        newList: List<T>
+        newList: List<T>,
+        diffCallback: DiffUtil.ItemCallback<T>,
     ): DiffUtil.DiffResult {
         return DiffUtil.calculateDiff(
             object : DiffUtil.Callback() {
@@ -23,10 +23,11 @@ object PagingDiffUtil {
                 }
 
                 override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean {
-                    val oldItem = oldList[oldItemPosition]
-                    val newItem = oldList[newItemPosition]
+                    val oldItem = oldList.getOrNull(oldItemPosition)
+                    val newItem = newList.getOrNull(newItemPosition)
                     return when {
                         oldItem === newItem -> true
+                        newItem == null || oldItem == null -> return false
                         else -> diffCallback.areItemsTheSame(oldItem, newItem)
                     }
                 }
@@ -36,7 +37,7 @@ object PagingDiffUtil {
                     newItemPosition: Int
                 ): Boolean {
                     val oldItem = oldList[oldItemPosition]
-                    val newItem = oldList[newItemPosition]
+                    val newItem = newList[newItemPosition]
 
                     return when {
                         oldItem === newItem -> true

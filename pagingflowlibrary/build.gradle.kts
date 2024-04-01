@@ -6,7 +6,9 @@ plugins {
 
 kotlin {
     jvmToolchain(11)
-    android()
+    android {
+        publishAllLibraryVariants()
+    }
     jvm()
     js(IR) {
         browser {
@@ -20,7 +22,6 @@ kotlin {
     listOf(
         iosX64(),
         iosArm64(),
-        iosSimulatorArm64()
     ).forEach {
         it.binaries.framework {
             baseName = "pagingflowlibrary"
@@ -33,6 +34,7 @@ kotlin {
             dependencies {
                 implementation(libs.kotlinx.coroutines.core)
                 implementation(libs.kotlinx.datetime)
+                implementation(libs.difference)
             }
         }
         val commonTest by getting {
@@ -41,6 +43,12 @@ kotlin {
                 implementation(libs.kotlinx.coroutines.test)
                 implementation(libs.kotlinx.datetime)
             }
+        }
+        val androidMain by getting {
+            dependsOn(commonMain)
+        }
+        val androidTest by getting {
+            dependsOn(commonTest)
         }
         val jsMain by getting {
             dependencies {
@@ -51,15 +59,15 @@ kotlin {
     }
 }
 
-publishing {
-    publications {
-        withType<MavenPublication> {
-            version = "1.0.4-alpha"
-            group = "ru.snowmaze.pagingflow"
-            val split = artifactId.split("-")
-            val flavor = split.getOrNull(1)
-            val postfix = if (flavor == null) "" else "-$flavor"
-            artifactId = "common$postfix"
+afterEvaluate {
+    publishing {
+        publications {
+            withType<MavenPublication> {
+                version = "1.0.5-alpha"
+                group = "ru.snowmaze.pagingflow"
+                val postfix = if (name == "androidRelease") "android" else name
+                artifactId = "common-$postfix"
+            }
         }
     }
 }

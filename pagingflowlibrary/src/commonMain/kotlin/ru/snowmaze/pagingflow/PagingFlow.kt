@@ -14,6 +14,7 @@ import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.mappingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import ru.snowmaze.pagingflow.result.LoadResult
+import ru.snowmaze.pagingflow.utils.DiffOperation
 
 /**
  * Main class of library which holds state of pagination
@@ -54,6 +55,14 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
         concatDataSource.removeDataSource(dataSourceIndex)
     }
 
+    fun setDataSources(
+        dataSourceList: List<DataSource<Key, Data, PagingStatus>>,
+        diff: (
+            oldList: List<DataSource<Key, Data, PagingStatus>>,
+            newList: List<DataSource<Key, Data, PagingStatus>>
+        ) -> List<DiffOperation<DataSource<Key, Data, PagingStatus>>>
+    ) = concatDataSource.setDataSources(dataSourceList, diff)
+
     /**
      * @see [ConcatDataSource.addDataChangedCallback]
      */
@@ -67,7 +76,6 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
     override fun removeDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
         concatDataSource.removeDataChangedCallback(callback)
     }
-
 
     /**
      * Loads next page async
@@ -133,7 +141,8 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
                 additionalData = additionalData ?: PagingParams(),
                 throwable = loadData.throwable
             )
-            is LoadResult.NotLoading<Key, Data, PagingStatus> -> LoadNextPageResult.NothingToLoad(
+
+            is LoadResult.NothingToLoad<Key, Data, PagingStatus> -> LoadNextPageResult.NothingToLoad(
                 additionalData = additionalData ?: PagingParams(),
             )
         }

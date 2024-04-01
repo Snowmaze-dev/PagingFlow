@@ -47,7 +47,7 @@ open class CompositePagingPresenter<Key : Any, Data : Any> internal constructor(
                 onPageRemovedEvent = {
                     dataSourcesSections[it.sourceIndex]?.items?.remove(it.pageIndex)
                 },
-                onInvalidate = { onInvalidateInternal() }
+                onInvalidate = { onInvalidateInternal(it.isFullInvalidate) }
             )
         }
         pagingDataChangesMedium.addDataChangedCallback(object : DataChangedCallback<Key, Data> {

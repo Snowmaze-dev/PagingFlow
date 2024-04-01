@@ -1,5 +1,6 @@
 [versions]
 agp = "7.4.2"
+difference = "1.0.0"
 kotlin = "1.8.22"
 compose = "1.5.4"
 compose-compiler = "1.5.4"
@@ -24,6 +25,7 @@ recyclerview = "1.3.2"
 
 [libraries]
 androidx-recyclerview = { module = "androidx.recyclerview:recyclerview", version.ref = "recyclerview" }
+difference = { module = "dev.andrewbailey.difference:difference", version.ref = "difference" }
 kotlin-test = { module = "org.jetbrains.kotlin:kotlin-test", version.ref = "kotlin" }
 androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidx-activityCompose" }
 compose-ui = { module = "androidx.compose.ui:ui", version.ref = "compose" }

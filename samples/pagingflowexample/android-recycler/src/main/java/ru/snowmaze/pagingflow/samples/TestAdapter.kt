@@ -5,9 +5,7 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.updatePadding
-import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
-import ru.snowmaze.pagingflow.PagingFlow
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.recycler.PagingFlowAdapter
 import ru.snowmaze.pagingflow.utils.PagingTrigger
