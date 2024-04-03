@@ -37,6 +37,10 @@ class PagingFlow<Key : Any, Data : Any, PagingStatus : Any>(
 
     override val config = concatDataSource.config
 
+    val firstPageIndex: Int? get() = concatDataSource.firstPageIndex
+
+    val pagesCount: Int get() = concatDataSource.pagesCount
+
     /**
      * @see [ConcatDataSource.addDataSource]
      */

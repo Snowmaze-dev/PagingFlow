@@ -5,10 +5,8 @@ sealed class PagingStatus<SourcePagingStatus : Any> {
     abstract val hasNextPage: Boolean
 
     class Initial<SourcePagingStatus : Any> internal constructor(
-    ) : PagingStatus<SourcePagingStatus>() {
-
-        override val hasNextPage = true
-    }
+        override val hasNextPage: Boolean
+    ) : PagingStatus<SourcePagingStatus>()
 
     data class Success<SourcePagingStatus : Any>(
         val sourcePagingStatus: SourcePagingStatus? = null,

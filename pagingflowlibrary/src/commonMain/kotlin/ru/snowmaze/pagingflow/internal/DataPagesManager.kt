@@ -31,7 +31,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
     private val _dataPages = mutableListOf<DataPage<Key, Data, SourcePagingStatus>>()
     val dataPages get() = _dataPages
 
-    private val cachedData = mutableMapOf<Int, Pair<Key?, PagingParams>>()
+    private var cachedData = mutableMapOf<Int, Pair<Key?, PagingParams>>()
     val currentPagesCount get() = dataPages.size
 
     private var lastPaginationDirection = true
@@ -68,9 +68,11 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
     }
 
     fun updateIndexes() {
+        val newCachedData = mutableMapOf<Int, Pair<Key?, PagingParams>>()
         for (index in _dataPages.indices) {
             _dataPages[index].apply {
                 val dataSource = dataSourceWithIndex.first
+                cachedData[pageIndex]?.let { newCachedData[index] = it }
                 pageIndex = index
                 dataSourceIndex = dataSourcesManager.getSourceIndex(dataSource)
                 dataSourceWithIndex = dataSource to dataSourceIndex
@@ -84,6 +86,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                 } else null
             }
         }
+        cachedData = newCachedData
     }
 
     suspend fun resendAllPages() {
@@ -112,6 +115,7 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
         page: DataPage<Key, Data, SourcePagingStatus>,
         loadParams: LoadParams<Key>,
         shouldReplaceOnConflict: Boolean,
+        onPageRemoved: (inBeginning: Boolean, pageIndex: Int) -> Unit,
         onLastPageNextKeyChanged: suspend (Key?, Boolean) -> Unit,
     ) {
         result.cachedResult?.let { cachedData[page.pageIndex] = page.currentPageKey to it }
@@ -132,7 +136,8 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
             isExistingPage = isExistingPage,
             isPaginationDown = isPaginationDown,
             awaitFirstPageTime = awaitFirstPageTime,
-            onNextKeyChanged = onLastPageNextKeyChanged
+            onPageRemoved = onPageRemoved,
+            onNextKeyChanged = onLastPageNextKeyChanged,
         )
     }
 
@@ -159,22 +164,24 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
         isExistingPage: Boolean,
         isPaginationDown: Boolean,
         awaitFirstPageTime: Long?,
+        crossinline onPageRemoved: (inBeginning: Boolean, pageIndex: Int) -> Unit,
         crossinline onNextKeyChanged: suspend (Key?, Boolean) -> Unit
     ) {
-        val coroutineContext = concatDataSourceConfig.processingDispatcher + page.listenJob
         var isValueSet = false
-        val currentKey = page.currentPageKey
         lastPaginationDirection = isPaginationDown
         var isFirst = true
         var firstDataCallback: (() -> Unit)? = null
         val awaitFirstPageSet = awaitFirstPageTime != null
 
-        concatDataSourceConfig.coroutineScope.launch(coroutineContext) {
+        concatDataSourceConfig.coroutineScope.launch(
+            concatDataSourceConfig.processingDispatcher + page.listenJob
+        ) {
             result.dataFlow?.collect { value ->
                 setDataMutex.withLock {
                     page.dataFlow?.value = value
                     if (page.dataFlow?.value == null) return@collect
                     val trimEvents = trimPages(lastPaginationDirection)
+                    val currentKey = page.currentPageKey
                     val event = if (isValueSet) {
                         PageChangedEvent(
                             key = currentKey,
@@ -217,11 +224,17 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                             dataChangedCallbacks.forEach { it.onEvent(event) }
                         }
                     } else {
-                        val indexes = buildSet(trimEvents.size ?: 0) {
-                            for (trimEvent in trimEvents ?: emptyList()) {
+                        val indexes = buildSet(trimEvents.size) {
+                            for (trimEvent in trimEvents) {
                                 when (trimEvent) {
-                                    is PageRemovedEvent -> add(trimEvent.pageIndex)
-                                    is PageChangedEvent -> add(trimEvent.pageIndex)
+                                    is PageRemovedEvent -> {
+                                        onPageRemoved(isPaginationDown, trimEvent.pageIndex)
+                                        add(trimEvent.pageIndex)
+                                    }
+                                    is PageChangedEvent -> {
+                                        onPageRemoved(isPaginationDown, trimEvent.pageIndex)
+                                        add(trimEvent.pageIndex)
+                                    }
                                 }
                             }
                         }
@@ -232,13 +245,8 @@ internal class DataPagesManager<Key : Any, Data : Any, SourcePagingStatus : Any>
                                     + if (awaitEvent == null) 0 else 1
                         )
                         if (awaitEvent != null) events.add(awaitEvent)
-                        if (isPaginationDown) {
-                            if (shouldSendEvent) events.add(event)
-                            events.addAll(trimEvents)
-                        } else {
-                            events.addAll(trimEvents)
-                            if (shouldSendEvent) events.add(event)
-                        }
+                        if (shouldSendEvent) events.add(event)
+                        events.addAll(trimEvents)
                         dataChangedCallbacks.forEach { it.onEvents(events) }
                     }
                     val isLastPageChanged: Boolean

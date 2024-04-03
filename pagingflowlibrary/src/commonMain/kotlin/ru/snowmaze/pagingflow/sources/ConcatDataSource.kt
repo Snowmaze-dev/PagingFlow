@@ -35,11 +35,15 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
     private val setDataMutex = Mutex()
 
     private val _upPagingStatus = MutableStateFlow<PagingStatus<SourcePagingStatus>>(
-        PagingStatus.Initial()
+        PagingStatus.Initial(hasNextPage = false)
     )
     private val _downPagingStatus = MutableStateFlow<PagingStatus<SourcePagingStatus>>(
-        PagingStatus.Initial()
+        PagingStatus.Initial(hasNextPage = true)
     )
+    val firstPageIndex get() = dataPagesManager.dataPages
+        .firstOrNull { it.dataFlow != null }?.pageIndex
+
+    val pagesCount get() = dataPagesManager.dataPages.count { it.dataFlow != null }
 
     val upPagingStatus = _upPagingStatus.asStateFlow()
     val downPagingStatus = _downPagingStatus.asStateFlow()
@@ -287,13 +291,20 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
             result = result,
             page = page,
             loadParams = loadParams,
-            shouldReplaceOnConflict = shouldReplaceOnConflict
-        ) { newNextKey, isPaginationDown ->
-            val hasNext = newNextKey != null
-            val stateFlow = if (isPaginationDown) _downPagingStatus
-            else _upPagingStatus
-            stateFlow.value = stateFlow.value.mapHasNext(hasNext)
-        }
+            shouldReplaceOnConflict = shouldReplaceOnConflict,
+            onPageRemoved = { inBeginning, pageIndex ->
+                changeHasNextStatus(
+                    inEnd = !inBeginning,
+                    hasNext = true
+                )
+            },
+            onLastPageNextKeyChanged = { newNextKey, isPaginationDown ->
+                changeHasNextStatus(
+                    inEnd = isPaginationDown,
+                    hasNext = newNextKey != null
+                )
+            }
+        )
         if (!shouldReplaceOnConflict) dataPagesManager.updateIndexes()
 
         // preparing result
@@ -317,10 +328,16 @@ class ConcatDataSource<Key : Any, Data : Any, SourcePagingStatus : Any>(
         )
     }
 
+    private fun changeHasNextStatus(inEnd: Boolean, hasNext: Boolean) {
+        val stateFlow = if (inEnd) _downPagingStatus else _upPagingStatus
+        stateFlow.value = stateFlow.value.mapHasNext(hasNext)
+    }
+
     private fun PagingStatus<SourcePagingStatus>.mapHasNext(
         hasNext: Boolean,
     ) = when (this) {
         is PagingStatus.Success -> PagingStatus.Success(sourcePagingStatus, hasNext)
+        is PagingStatus.Initial -> PagingStatus.Initial(hasNext)
         else -> this
     }
 
