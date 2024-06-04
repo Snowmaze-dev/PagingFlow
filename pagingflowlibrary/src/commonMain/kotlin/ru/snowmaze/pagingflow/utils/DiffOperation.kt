@@ -23,16 +23,16 @@ sealed class DiffOperation<T> {
     ) : DiffOperation<T>()
 }
 
-fun PagingFlow<*, *, *>.setDataSourcesWithDiff(sources: List<DataSource<*, *, *>>) =
+suspend fun PagingFlow<*, *>.setDataSourcesWithDiff(sources: List<DataSource<*, *>>) =
     setDataSources(sources as List<Nothing>) { oldList, newList ->
         val difference = differenceOf(oldList, newList)
         buildList {
-            var added = mutableMapOf<Int, Int>()
+            val added = mutableMapOf<Int, Int>()
             fun remove(index: Int, count: Int) {
                 add(DiffOperation.Remove(index, count))
             }
 
-            fun addOperation(index: Int, items: List<DataSource<*, *, *>>) {
+            fun addOperation(index: Int, items: List<DataSource<*, *>>) {
                 added[index] = (added[index] ?: 0) + 1
                 add(DiffOperation.Add(index, items.size, items))
             }

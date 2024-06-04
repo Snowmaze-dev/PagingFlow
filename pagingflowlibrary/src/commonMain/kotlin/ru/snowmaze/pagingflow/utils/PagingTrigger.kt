@@ -33,7 +33,7 @@ class PagingTrigger(
 ) {
 
     constructor(
-        pagingFlow: () -> PagingFlow<*, *, *>,
+        pagingFlow: () -> PagingFlow<*, *>,
         itemCount: () -> Int = { 0 },
         currentStartIndex: () -> Int = { 0 },
         prefetchDownDistance: Int = 1,

@@ -1,14 +1,16 @@
-package ru.snowmaze.pagingflow
+package ru.snowmaze.pagingflow.sources
 
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.flow
+import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.result.LoadResult
-import ru.snowmaze.pagingflow.result.simpleResult
-import ru.snowmaze.pagingflow.sources.SegmentedDataSource
+import ru.snowmaze.pagingflow.result.result
 
 class TestDataSource(
-    override val totalCount: Int
-) : SegmentedDataSource<String, DefaultPagingStatus>() {
+    override val totalCount: Int,
+    private val delay: Long = 0L
+) : SegmentedDataSource<String>() {
 
-    var currentStatus: DefaultPagingStatus? = null
     var currentException: Exception? = null
 
     private val items = buildList {
@@ -23,9 +25,12 @@ class TestDataSource(
         loadParams: LoadParams<Int>,
         startIndex: Int,
         endIndex: Int
-    ): LoadResult<Int, String, DefaultPagingStatus> {
+    ): LoadResult<Int, String> {
         val exception = currentException
         if (exception != null) throw exception
-        return simpleResult(items.subList(startIndex, endIndex), status = currentStatus)
+        return result(dataFlow = flow {
+            delay(delay)
+            emit(items.subList(startIndex, endIndex))
+        })
     }
 }

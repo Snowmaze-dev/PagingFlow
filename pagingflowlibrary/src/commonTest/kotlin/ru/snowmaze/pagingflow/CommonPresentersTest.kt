@@ -4,10 +4,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.invoke
 import kotlinx.coroutines.test.runTest
-import ru.snowmaze.pagingflow.diff.mediums.MappingPagingDataMedium
+import ru.snowmaze.pagingflow.diff.mediums.MappingPagingDataChangesMedium
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.composite.CompositePagingPresenterBuilder
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
+import ru.snowmaze.pagingflow.sources.TestDataSource
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -30,7 +31,7 @@ class CommonPresentersTest {
         }
         val prependItems = listOf(-1, -5)
         val presenter = CompositePagingPresenterBuilder.create(
-            pagingDataChangesMedium = MappingPagingDataMedium(pagingFlow) { event ->
+            pagingDataChangesMedium = MappingPagingDataChangesMedium(pagingFlow) { event ->
                 event.items.mapIndexed { _: Int, s: String? ->
                     s?.let { s.split(" ")[1].toInt() }
                 }
@@ -47,12 +48,12 @@ class CommonPresentersTest {
         )
         assertEquals(
             prependItems + List(totalCount) { index: Int -> index },
-            presenter.dataFlow.value
+            presenter.data
         )
         pagingFlow.invalidate()
         assertEquals(
             prependItems,
-            presenter.dataFlow.value
+            presenter.data
         )
     }
 
@@ -74,13 +75,13 @@ class CommonPresentersTest {
         Dispatchers.Default { delay(30L) }
         assertEquals(
             pageSize,
-            presenter.dataFlow.value.size
+            presenter.data.size
         )
         pagingFlow.invalidate()
         Dispatchers.Default { delay(30L) }
         assertEquals(
             0,
-            presenter.dataFlow.value.size
+            presenter.data.size
         )
     }
 }

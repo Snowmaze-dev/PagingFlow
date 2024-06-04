@@ -30,31 +30,19 @@ kotlin {
     }
 
     sourceSets {
-        val commonMain by getting {
-            dependencies {
-                implementation(libs.kotlinx.coroutines.core)
-                implementation(libs.kotlinx.datetime)
-                implementation(libs.difference)
-            }
+        commonMain.dependencies {
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.datetime)
+            implementation(libs.difference)
         }
-        val commonTest by getting {
-            dependencies {
-                implementation(libs.kotlin.test)
-                implementation(libs.kotlinx.coroutines.test)
-                implementation(libs.kotlinx.datetime)
-            }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+            implementation(libs.kotlinx.coroutines.test)
+            implementation(libs.kotlinx.datetime)
         }
-        val androidMain by getting {
-            dependsOn(commonMain)
-        }
-        val androidTest by getting {
-            dependsOn(commonTest)
-        }
-        val jsMain by getting {
-            dependencies {
-                implementation(libs.kotlinx.coroutines.core)
-                implementation(libs.kotlinx.datetime)
-            }
+        jsMain.dependencies {
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.datetime)
         }
     }
 }
@@ -63,7 +51,7 @@ afterEvaluate {
     publishing {
         publications {
             withType<MavenPublication> {
-                version = "1.0.6-alpha"
+                version = "1.0.8-alpha"
                 group = "ru.snowmaze.pagingflow"
                 val postfix = if (name == "androidRelease") "android" else name
                 artifactId = "common-$postfix"

@@ -1,12 +1,12 @@
-package ru.snowmaze.pagingflow
+package ru.snowmaze.pagingflow.sources
 
+import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.result.simpleResult
-import ru.snowmaze.pagingflow.sources.SegmentedDataSource
 
 class DefinedItemsTestDataSource<T : Any>(
     val key: String, val items: List<T>
-) : SegmentedDataSource<T, DefaultPagingStatus>() {
+) : SegmentedDataSource<T>() {
 
     override val totalCount = items.size
 
@@ -14,7 +14,7 @@ class DefinedItemsTestDataSource<T : Any>(
         loadParams: LoadParams<Int>,
         startIndex: Int,
         endIndex: Int
-    ): LoadResult<Int, T, DefaultPagingStatus> {
+    ): LoadResult<Int, T> {
         return simpleResult(items.subList(startIndex, endIndex))
     }
 

@@ -2,59 +2,85 @@ package ru.snowmaze.pagingflow.presenters
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.launch
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.utils.limitedParallelismCompat
+import kotlin.concurrent.Volatile
 
+inline fun <Data : Any> defaultPresenterFlowCreator(): () -> MutableSharedFlow<List<Data?>> = {
+    MutableSharedFlow(1)
+}
+
+/**
+ * Base class for list building presenters.
+ * It manages state and invalidate behavior of presenter
+ */
 abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
     protected val invalidateBehavior: InvalidateBehavior,
     protected val coroutineScope: CoroutineScope,
-    processingDispatcher: CoroutineDispatcher
+    processingDispatcher: CoroutineDispatcher,
+    presenterFlow: () -> MutableSharedFlow<List<Data?>> = defaultPresenterFlowCreator()
 ) : PagingDataPresenter<Key, Data> {
 
-    private val _dataFlow = MutableStateFlow<List<Data?>>(emptyList())
-    override val dataFlow: StateFlow<List<Data?>> = _dataFlow.asStateFlow()
+    protected val _dataFlow = presenterFlow()
+    override val dataFlow = _dataFlow.asSharedFlow()
+    override var data: List<Data?> = emptyList()
     protected val processingDispatcher = processingDispatcher.limitedParallelismCompat(1)
 
-    protected var isInvalidated = false
+    private var lastInvalidateBehavior: InvalidateBehavior? = null
 
+    @Volatile
     protected var _startIndex = 0
     override val startIndex get() = _startIndex
 
-    protected fun onInvalidateInternal(isFullInvalidate: Boolean) {
+    init {
+        coroutineScope.launch {
+            _dataFlow.emit(emptyList())
+        }
+    }
+
+    protected suspend fun onInvalidateInternal(
+        specifiedInvalidateBehavior: InvalidateBehavior? = null,
+    ) {
+        if (data.isEmpty()) return
+        val invalidateBehavior = specifiedInvalidateBehavior ?: invalidateBehavior
         onInvalidateAdditionalAction()
-        val previousList = dataFlow.value
-        if (invalidateBehavior == InvalidateBehavior.INVALIDATE_IMMEDIATELY ||
-            isFullInvalidate
-        ) buildList(listOf(InvalidateEvent(isFullInvalidate)))
-        else isInvalidated = true
-        afterInvalidatedAction(previousList)
+        val previousList = data
+        if (invalidateBehavior == InvalidateBehavior.INVALIDATE_IMMEDIATELY) {
+            buildList(listOf(InvalidateEvent(invalidateBehavior)))
+        } else lastInvalidateBehavior = invalidateBehavior
+        afterInvalidatedAction(invalidateBehavior, previousList)
     }
 
     protected open fun onInvalidateAdditionalAction() {}
 
-    protected open fun afterInvalidatedAction(previousList: List<Data?>) {}
+    protected open fun afterInvalidatedAction(
+        invalidateBehavior: InvalidateBehavior,
+        previousList: List<Data?>
+    ) {
+    }
 
-    protected fun buildList(events: List<DataChangedEvent<Key, Data>>) {
-        val previousList = _dataFlow.value
+    protected suspend fun buildList(events: List<DataChangedEvent<Key, Data>>) {
+        val previousList = data
         val result = buildListInternal()
-        if (isInvalidated && invalidateBehavior ==
-            InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE
-        ) _dataFlow.value = emptyList()
-        this.isInvalidated = false
-        _dataFlow.value = result
+        if (lastInvalidateBehavior == InvalidateBehavior.SEND_EMPTY_LIST_BEFORE_NEXT_VALUE_SET) {
+            _dataFlow.emit(emptyList())
+        }
+        this.lastInvalidateBehavior = null
+        data = result
+        _dataFlow.emit(result)
         onItemsSet(events, previousList)
     }
 
-    protected open fun onItemsSet(
+    protected open suspend fun onItemsSet(
         events: List<DataChangedEvent<Key, Data>>,
         previousList: List<Data?>
     ) {
 
     }
 
-    protected abstract fun buildListInternal(): List<Data?>
+    protected abstract suspend fun buildListInternal(): List<Data?>
 }

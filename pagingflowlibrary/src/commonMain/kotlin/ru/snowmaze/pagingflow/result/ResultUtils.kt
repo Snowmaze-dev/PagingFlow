@@ -18,7 +18,7 @@ import kotlin.contracts.contract
  * Extension function which helps to calculate next key based on current offset and pagination direction
  * @return next key or null if theres no next page or next key below 0
  */
-fun DataSource<*, *, *>.positiveOffset(
+fun DataSource<*, *>.positiveOffset(
     paginationDirection: PaginationDirection,
     currentOffset: Int,
     pageSize: Int,
@@ -35,62 +35,56 @@ fun LoadParams<Int>.positiveOffset(
     else (currentOffset - pageSize).takeIf { it >= 0 }).takeIf { hasNextPage }
 }
 
-fun <Key : Any, Data : Any, PagingStatus : Any> LoadResult<Key, Data, PagingStatus>.mapSuccess(
-    transform: (LoadResult.Success<Key, Data, PagingStatus>) -> LoadResult<Key, Data, PagingStatus>
-): LoadResult<Key, Data, PagingStatus> {
+fun <Key : Any, Data : Any> LoadResult<Key, Data>.mapSuccess(
+    transform: (LoadResult.Success<Key, Data>) -> LoadResult<Key, Data>
+): LoadResult<Key, Data> {
     contract {
         callsInPlace(transform, InvocationKind.EXACTLY_ONCE)
     }
-    return if (this is LoadResult.Success<Key, Data, PagingStatus>) transform(this) else this
+    return if (this is LoadResult.Success<Key, Data>) transform(this) else this
 }
 
-fun <T : Any, Key : Any, Data : Any, PagingStatus : Any> Result<T>.toLoadResult(
-    onFailure: (Throwable) -> LoadResult<Key, Data, PagingStatus> = {
+fun <T : Any, Key : Any, Data : Any> Result<T>.toLoadResult(
+    onFailure: (Throwable) -> LoadResult<Key, Data> = {
         LoadResult.Failure(throwable = it)
     },
-    onSuccess: (T) -> LoadResult<Key, Data, PagingStatus>
-): LoadResult<Key, Data, PagingStatus> = fold(
+    onSuccess: (T) -> LoadResult<Key, Data>
+): LoadResult<Key, Data> = fold(
     onSuccess = onSuccess,
     onFailure = onFailure
 )
 
-fun <Key : Any, Data : Any, PagingStatus : Any> DataSource<Key, Data, PagingStatus>.simpleResult(
+fun <Key : Any, Data : Any> DataSource<Key, Data>.simpleResult(
     data: List<Data>,
     nextPageKey: Key? = null,
-    status: PagingStatus? = null,
     additionalData: PagingParams? = null,
     cachedResult: PagingParams? = null,
 ) = LoadResult.Success(
     dataFlow = flow { emit(UpdatableData(data, nextPageKey, additionalData)) },
     nextPageKey = nextPageKey,
-    status = status,
-    additionalData = additionalData,
+    returnData = additionalData,
     cachedResult = cachedResult
 )
 
-fun <Key : Any, Data : Any, PagingStatus : Any> DataSource<Key, Data, PagingStatus>.result(
+fun <Key : Any, Data : Any> DataSource<Key, Data>.result(
     dataFlow: Flow<List<Data>>,
     nextPageKey: Key? = null,
-    status: PagingStatus? = null,
     additionalData: PagingParams? = null,
     cachedResult: PagingParams? = null,
 ) = LoadResult.Success(
     dataFlow = dataFlow.map { UpdatableData(it, nextPageKey, additionalData) },
     nextPageKey = nextPageKey,
-    status = status,
-    additionalData = additionalData,
+    returnData = additionalData,
     cachedResult = cachedResult
 )
 
-fun <Key : Any, Data : Any, PagingStatus : Any> DataSource<Key, Data, PagingStatus>.useLastPageResult(
+fun <Key : Any, Data : Any> DataSource<Key, Data>.useLastPageResult(
     nextPageKey: Key? = null,
-    status: PagingStatus? = null,
     additionalData: PagingParams? = null,
     cachedResult: PagingParams? = null,
-) = LoadResult.Success<Key, Data, PagingStatus>(
+) = LoadResult.Success<Key, Data>(
     dataFlow = null,
     nextPageKey = nextPageKey,
-    status = status,
-    additionalData = additionalData,
+    returnData = additionalData,
     cachedResult = cachedResult
 )

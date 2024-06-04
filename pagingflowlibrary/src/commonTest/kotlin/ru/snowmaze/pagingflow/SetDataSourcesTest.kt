@@ -5,6 +5,7 @@ import kotlinx.coroutines.test.runTest
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
+import ru.snowmaze.pagingflow.sources.DefinedItemsTestDataSource
 import ru.snowmaze.pagingflow.utils.setDataSourcesWithDiff
 import kotlin.random.Random
 import kotlin.test.Test
@@ -20,7 +21,7 @@ class SetDataSourcesTest {
         val thirdDataSource = DefinedItemsTestDataSource("3", listOf(3))
         val fourthDataSource = DefinedItemsTestDataSource("4", listOf(4))
         val fifthDataSource = DefinedItemsTestDataSource("5", listOf(5))
-        val pagingFlow = buildPagingFlow<Int, Int, DefaultPagingStatus>(
+        val pagingFlow = buildPagingFlow<Int, Int>(
             PagingFlowConfiguration(LoadParams(3), processingDispatcher = testDispatcher),
         ) {
             addDataSource(firstDataSource)
@@ -34,7 +35,7 @@ class SetDataSourcesTest {
         }
         assertContentEquals(
             (firstDataSource.items + secondDataSource.items + thirdDataSource.items + fourthDataSource.items),
-            presenter.dataFlow.value
+            presenter.data
         )
 
         pagingFlow.testSetSources(
@@ -90,14 +91,14 @@ class SetDataSourcesTest {
         }
     }
 
-    private suspend fun PagingFlow<Int, Int, DefaultPagingStatus>.testSetSources(
+    private suspend fun PagingFlow<Int, Int>.testSetSources(
         presenter: PagingDataPresenter<Int, Int>,
         sources: List<DefinedItemsTestDataSource<Int>>
     ) {
-        setDataSourcesWithDiff(sources).join()
+        setDataSourcesWithDiff(sources)
         do {
             val result = loadNextPageWithResult()
         } while (result is LoadNextPageResult.Success && result.hasNext)
-        assertContentEquals(sources.map { it.items }.flatten(), presenter.dataFlow.value)
+        assertContentEquals(sources.map { it.items }.flatten(), presenter.data)
     }
 }

@@ -3,12 +3,13 @@ package ru.snowmaze.pagingflow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
+import ru.snowmaze.pagingflow.sources.TestDataSource
 import kotlin.math.ceil
 import kotlin.test.assertEquals
 
 val testDispatcher = UnconfinedTestDispatcher()
 
-suspend fun PagingFlow<Int, String, DefaultPagingStatus>.testLoadEverything(
+suspend fun PagingFlow<Int, String>.testLoadEverything(
     dataSources: List<TestDataSource>,
     shouldTestItems: Boolean = true,
     pagingPresenter: PagingDataPresenter<Int, String>
@@ -16,11 +17,11 @@ suspend fun PagingFlow<Int, String, DefaultPagingStatus>.testLoadEverything(
     val pageSize = pagingFlowConfiguration.defaultParamsProvider().pageSize
     var dataSourceIndex = 0
     var currentDataSource = dataSources[dataSourceIndex]
-    var currentSourceLoadedCount = pagingPresenter.dataFlow.value.size
+    var currentSourceLoadedCount = pagingPresenter.data.size
     var currentLoadSize = currentDataSource.defaultLoadParams?.pageSize ?: pageSize
     var currentTotalCount = currentDataSource.totalCount
     val loadingSources = mutableListOf(currentDataSource)
-    var overallLoadedCount = pagingPresenter.dataFlow.value.size
+    var overallLoadedCount = pagingPresenter.data.size
     val overallTotalCountOfItems = dataSources.sumOf { it.totalCount }
 
     while (true) {
@@ -53,7 +54,7 @@ suspend fun PagingFlow<Int, String, DefaultPagingStatus>.testLoadEverything(
             }
             assertEquals(
                 testItems,
-                pagingPresenter.dataFlow.value
+                pagingPresenter.data
             )
         }
         if (currentLoadSize == 0) {

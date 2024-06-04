@@ -5,9 +5,11 @@ package ru.snowmaze.pagingflow.params
  * @see PagingLibraryKeys
  * @see DataKey
  */
-class PagingParams(map: Map<String, Any> = emptyMap()) {
+class PagingParams(map: Map<String, Any?> = emptyMap()) {
 
     companion object {
+
+        val EMPTY = PagingParams()
 
         fun Map<DataKey<*>, Any>.pagingParams() = PagingParams(mapKeys { it.key.key })
     }
@@ -42,8 +44,7 @@ class PagingParams(map: Map<String, Any> = emptyMap()) {
 
     fun <T> remove(key: DataKey<T>) = internalMap.remove(key.key) as? T
 
-    fun <T> put(key: DataKey<T>, value: T?) = if (value == null) internalMap.remove(key.key)
-    else internalMap.put(key.key, value)
+    fun <T> put(key: DataKey<T>, value: T?) = internalMap.put(key.key, value)
 
     fun containsValue(value: Any) = internalMap.containsValue(value)
 
@@ -55,6 +56,14 @@ class PagingParams(map: Map<String, Any> = emptyMap()) {
         return getStringKeysMap().toString()
     }
 }
+
+fun <T : Any> PagingParams(pair: Pair<DataKey<T>, T>) = PagingParams {
+    put(pair.first, pair.second)
+}
+
+fun PagingParams(vararg pairs: Pair<DataKey<out Any?>, Any?>) = PagingParams(buildMap(pairs.size) {
+    putAll(pairs = pairs.map { it.first.key to it.second })
+})
 
 fun PagingParams.contains(key: DataKey<*>) = containsKey(key)
 

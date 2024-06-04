@@ -5,7 +5,7 @@ import ru.snowmaze.pagingflow.PagingFlow
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
 
-suspend fun <Key : Any, Data : Any, PagingStatus : Any> PagingFlow<Key, Data, PagingStatus>.loadPagesUntil(
+suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadPagesUntil(
     paginationDirection: PaginationDirection =
         pagingFlowConfiguration.defaultParamsProvider().paginationDirection,
     maxLoadPages: Int? = null,

@@ -11,8 +11,8 @@ abstract class DefaultPagingDataChangesMedium<Key : Any, Data : Any> : PagingDat
         dataChangedCallbacks.add(callback)
     }
 
-    override fun removeDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
-        dataChangedCallbacks.remove(callback)
+    override fun removeDataChangedCallback(callback: DataChangedCallback<Key, Data>): Boolean {
+        return dataChangedCallbacks.remove(callback)
     }
 
     protected inline fun callDataChangedCallbacks(

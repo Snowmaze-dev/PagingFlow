@@ -2,6 +2,7 @@ package ru.snowmaze.pagingflow.diff
 
 import ru.snowmaze.pagingflow.PagingFlow
 import ru.snowmaze.pagingflow.params.PagingParams
+import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 
 open class DataChangedEvent<Key : Any, Data : Any>
 
@@ -17,6 +18,8 @@ open class PageChangedEvent<Key : Any, Data : Any>(
     val changeType: ChangeType = ChangeType.COMMON_CHANGE,
     val params: PagingParams? = null,
 ) : DataChangedEvent<Key, Data>() {
+
+    inline val notNullList get() = items as List<Data>
 
     fun requireParams() =
         params ?: throw IllegalStateException("Params of page event required to be not null.")
@@ -51,7 +54,7 @@ class PageRemovedEvent<Key : Any, Data : Any>(
  * @see [PagingFlow.invalidate]
  */
 class InvalidateEvent<Key : Any, Data : Any>(
-    val isFullInvalidate: Boolean = false
+    val invalidateBehavior: InvalidateBehavior? = null
 ) : DataChangedEvent<Key, Data>()
 
 class AwaitDataSetEvent<Key : Any, Data : Any>(

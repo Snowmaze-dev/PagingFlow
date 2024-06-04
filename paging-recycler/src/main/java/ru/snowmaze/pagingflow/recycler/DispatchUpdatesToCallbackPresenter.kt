@@ -29,7 +29,7 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
     private var beforeInvalidateListSize = 0
     private var wasInvalidated = false
 
-    override fun onItemsSet(
+    override suspend fun onItemsSet(
         events: List<DataChangedEvent<Any, Data>>,
         previousList: List<Data?>
     ) {
@@ -84,8 +84,11 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
         pagesIndexes[event.pageIndex] = event.items
     }
 
-    override fun afterInvalidatedAction(previousList: List<Data?>) {
-        super.afterInvalidatedAction(previousList)
+
+    override fun afterInvalidatedAction(
+        invalidateBehavior: InvalidateBehavior,
+        previousList: List<Data?>
+    ) {
         coroutineScope.launch(mainDispatcher) {
             pagesIndexes.clear()
             if (invalidateBehavior == InvalidateBehavior.INVALIDATE_IMMEDIATELY) {

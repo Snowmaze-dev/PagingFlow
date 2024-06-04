@@ -7,22 +7,22 @@ import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.UpdatableData
 import ru.snowmaze.pagingflow.result.LoadResult
 
-class SinglePageDataSource<Key : Any, Data : Any, PagingStatus : Any>(
+class SinglePageDataSource<Key : Any, Data : Any>(
     private val dataFlow: Flow<UpdatableData<Key, Data>>,
-) : DataSource<Key, Data, PagingStatus> {
+) : DataSource<Key, Data> {
     override suspend fun load(
         loadParams: LoadParams<Key>,
-    ) = LoadResult.Success<Key, Data, PagingStatus>(dataFlow = dataFlow)
+    ) = LoadResult.Success<Key, Data>(dataFlow = dataFlow)
 }
 
-fun <Key : Any, Data : Any, PagingStatus : Any> DataSource<Key, Data, PagingStatus>.singlePage(
+fun <Key : Any, Data : Any> DataSource<Key, Data>.singlePage(
     itemsFlow: Flow<List<Data>>,
-) = SinglePageDataSource<Key, Data, PagingStatus>(itemsFlow.map { items ->
+) = SinglePageDataSource<Key, Data>(itemsFlow.map { items ->
     UpdatableData(items, null)
 })
 
-fun <Key : Any, Data : Any, PagingStatus : Any> DataSource<Key, Data, PagingStatus>.singlePage(
+fun <Key : Any, Data : Any> DataSource<Key, Data>.singlePage(
     items: List<Data>,
-) = SinglePageDataSource<Key, Data, PagingStatus>(
+) = SinglePageDataSource<Key, Data>(
     flow { emit(UpdatableData(items, null)) }
 )

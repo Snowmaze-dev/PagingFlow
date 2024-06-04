@@ -24,7 +24,7 @@ abstract class PagingFlowAdapter<Data : Any, VH : ViewHolder>(
     itemCallback: DiffUtil.ItemCallback<Data>,
     pagingDataChangesMedium: PagingDataChangesMedium<out Any, Data>,
     private val pagingTrigger: PagingTrigger,
-    invalidateBehavior: InvalidateBehavior = InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE,
+    invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
     mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) : RecyclerView.Adapter<VH>() {
 

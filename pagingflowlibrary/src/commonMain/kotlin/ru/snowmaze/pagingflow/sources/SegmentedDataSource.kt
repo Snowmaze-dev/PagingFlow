@@ -7,12 +7,11 @@ import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.UpdatableData
 import ru.snowmaze.pagingflow.result.mapSuccess
 
-abstract class SegmentedDataSource<Data : Any, PagingStatus : Any> :
-    DataSource<Int, Data, PagingStatus> {
+abstract class SegmentedDataSource<Data : Any> : DataSource<Int, Data> {
 
     abstract val totalCount: Int
 
-    override suspend fun load(loadParams: LoadParams<Int>): LoadResult<Int, Data, PagingStatus> {
+    override suspend fun load(loadParams: LoadParams<Int>): LoadResult<Int, Data> {
         val startIndex = loadParams.key ?: 0
         val pageSize = (totalCount - startIndex).coerceAtMost(loadParams.pageSize)
         val isDown = loadParams.paginationDirection == PaginationDirection.DOWN
@@ -32,5 +31,5 @@ abstract class SegmentedDataSource<Data : Any, PagingStatus : Any> :
         loadParams: LoadParams<Int>,
         startIndex: Int,
         endIndex: Int
-    ): LoadResult<Int, Data, PagingStatus>
+    ): LoadResult<Int, Data>
 }

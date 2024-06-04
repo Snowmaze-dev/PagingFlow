@@ -6,8 +6,8 @@ import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
+import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.handle
 import ru.snowmaze.pagingflow.internal.CompositePresenterSection
 import ru.snowmaze.pagingflow.presenters.BuildListPagingPresenter
@@ -36,7 +36,7 @@ open class CompositePagingPresenter<Key : Any, Data : Any> internal constructor(
 
         updateSectionsData()
 
-        val applyEvent: (event: DataChangedEvent<Key, Data>) -> Unit = { event ->
+        val applyEvent: suspend (event: DataChangedEvent<Key, Data>) -> Unit = { event ->
             event.handle(
                 onPageAdded = {
                     dataSourcesSections[it.sourceIndex]?.items?.set(it.pageIndex, it)
@@ -47,7 +47,9 @@ open class CompositePagingPresenter<Key : Any, Data : Any> internal constructor(
                 onPageRemovedEvent = {
                     dataSourcesSections[it.sourceIndex]?.items?.remove(it.pageIndex)
                 },
-                onInvalidate = { onInvalidateInternal(it.isFullInvalidate) }
+                onInvalidate = {
+                    onInvalidateInternal(specifiedInvalidateBehavior = it.invalidateBehavior)
+                }
             )
         }
         pagingDataChangesMedium.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
@@ -70,7 +72,7 @@ open class CompositePagingPresenter<Key : Any, Data : Any> internal constructor(
         updateSectionsData()
     }
 
-    override fun buildListInternal(): List<Data?> {
+    override suspend fun buildListInternal(): List<Data?> {
         return buildList(sections.sumOf { section ->
             section.items.keys.sumOf {
                 section.items.getValue(it).items.size
@@ -103,7 +105,7 @@ open class CompositePagingPresenter<Key : Any, Data : Any> internal constructor(
         }
     }
 
-    protected open suspend fun updateData(update: () -> List<DataChangedEvent<Key, Data>>) {
+    protected open suspend fun updateData(update: suspend () -> List<DataChangedEvent<Key, Data>>) {
         withContext(processingDispatcher) {
             val events = update()
             if (events.lastOrNull() !is InvalidateEvent<*, *>) buildList(events)

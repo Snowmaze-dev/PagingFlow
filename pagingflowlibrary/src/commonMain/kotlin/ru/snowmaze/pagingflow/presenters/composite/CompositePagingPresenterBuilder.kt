@@ -15,7 +15,7 @@ class CompositePagingPresenterBuilder<Key : Any, Data : Any>(
 
         fun <Key : Any, Data : Any> create(
             pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
-            invalidateBehavior: InvalidateBehavior = InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE,
+            invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
             config: DataChangesMediumConfig = pagingDataChangesMedium.config,
             builder: CompositePagingPresenterBuilder<Key, Data>.() -> Unit
         ) = CompositePagingPresenterBuilder(
