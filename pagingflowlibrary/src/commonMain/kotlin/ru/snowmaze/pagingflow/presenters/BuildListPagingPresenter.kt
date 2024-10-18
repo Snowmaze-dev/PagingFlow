@@ -2,95 +2,88 @@ package ru.snowmaze.pagingflow.presenters
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
-import ru.snowmaze.pagingflow.diff.DataChangedCallback
-import ru.snowmaze.pagingflow.diff.mediums.DataChangesMedium
+import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.diff.InvalidateEvent
+import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.utils.limitedParallelismCompat
+import kotlin.concurrent.Volatile
 
-open class BuildListPagingPresenter<Key : Any, Data : Any>(
-    dataChangesMedium: DataChangesMedium<Key, Data>,
-    private val invalidateBehavior: InvalidateBehavior,
-    val coroutineScope: CoroutineScope,
-    processingDispatcher: CoroutineDispatcher
-) : PagingDataPresenter<Key, Data>() {
-
-    private val _dataFlow = MutableStateFlow<List<Data?>>(emptyList())
-    override val dataFlow: StateFlow<List<Data?>> = _dataFlow.asStateFlow()
-
-    protected val pageIndexes = mutableMapOf<Int, List<Data?>>()
-    protected var pageIndexesKeys = emptyList<Int>()
-    protected var changeDataJob: Job = Job()
-    protected var isInvalidated = false
-    protected val processingDispatcher = processingDispatcher.limitedParallelismCompat(1)
-
-    init {
-        dataChangesMedium.addDataChangedCallback(object : DataChangedCallback<Key, Data> {
-
-            override fun onPageAdded(
-                key: Key?,
-                pageIndex: Int,
-                sourceIndex: Int,
-                items: List<Data>
-            ) = updateData { this[pageIndex] = items }
-
-            override fun onPageChanged(
-                key: Key?,
-                pageIndex: Int,
-                sourceIndex: Int,
-                items: List<Data?>
-            ) = updateData { this[pageIndex] = items }
-
-            override fun onPageRemoved(key: Key?, pageIndex: Int, sourceIndex: Int) {
-                updateData { remove(pageIndex) }
-            }
-
-            override fun onInvalidate() = onInvalidateInternal()
-        })
-    }
-
-    protected open fun onInvalidateInternal() {
-        coroutineScope.launch(processingDispatcher) {
-            pageIndexes.clear()
-            pageIndexesKeys = emptyList()
-            if (invalidateBehavior == InvalidateBehavior.INVALIDATE_IMMEDIATELY) buildList()
-            else isInvalidated = true
-            changeDataJob.cancel()
-            changeDataJob = Job()
-        }
-    }
-
-    protected open fun updateData(update: MutableMap<Int, List<Data?>>.() -> Unit) {
-        coroutineScope.launch(processingDispatcher + changeDataJob) {
-            pageIndexes.update()
-            pageIndexesKeys = pageIndexes.keys.sorted()
-            buildList()
-        }
-    }
-
-    protected fun buildList() {
-        val result = buildList(pageIndexesKeys.sumOf { pageIndexes.getValue(it).size }) {
-            for (pageIndex in pageIndexesKeys) {
-                addAll(pageIndexes.getValue(pageIndex))
-            }
-        }
-        if (isInvalidated && invalidateBehavior ==
-            InvalidateBehavior.INVALIDATE_AND_SEND_EMPTY_LIST_BEFORE_NEXT_VALUE
-        ) _dataFlow.value = emptyList()
-        this.isInvalidated = false
-        _dataFlow.value = result
-    }
-
-    /**
-     * Rebuilds list
-     */
-    fun forceRebuildList() {
-        coroutineScope.launch(processingDispatcher) {
-            buildList()
-        }
-    }
+inline fun <Data : Any> defaultPresenterFlowCreator(): () -> MutableSharedFlow<LatestData<Data>> = {
+    MutableSharedFlow(1)
 }
 
+/**
+ * Base class for list building presenters.
+ * It manages state and invalidate behavior of presenter
+ */
+abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
+    protected val invalidateBehavior: InvalidateBehavior,
+    protected val coroutineScope: CoroutineScope,
+    processingDispatcher: CoroutineDispatcher,
+    presenterFlow: () -> MutableSharedFlow<LatestData<Data>> = defaultPresenterFlowCreator()
+) : PagingDataPresenter<Key, Data> {
+
+    protected val _dataFlow = presenterFlow()
+    override val latestDataFlow = _dataFlow.asSharedFlow()
+    override var latestData = LatestData<Data>(emptyList())
+    protected val processingDispatcher = processingDispatcher.limitedParallelismCompat(1)
+
+    private var lastInvalidateBehavior: InvalidateBehavior? = null
+
+    @Volatile
+    protected var _startIndex = 0
+    override val startIndex get() = _startIndex
+
+    init {
+        coroutineScope.launch {
+            _dataFlow.emit(latestData)
+        }
+    }
+
+    protected suspend fun onInvalidateInternal(
+        specifiedInvalidateBehavior: InvalidateBehavior? = null,
+    ) {
+        if (latestData.data.isEmpty()) return
+        val invalidateBehavior = specifiedInvalidateBehavior ?: invalidateBehavior
+        onInvalidateAdditionalAction()
+        val previousData = latestData
+        if (invalidateBehavior == InvalidateBehavior.INVALIDATE_IMMEDIATELY) {
+            buildList(listOf(InvalidateEvent(invalidateBehavior)))
+        } else lastInvalidateBehavior = invalidateBehavior
+        afterInvalidatedAction(invalidateBehavior, previousData)
+    }
+
+    protected open fun onInvalidateAdditionalAction() {}
+
+    protected open fun afterInvalidatedAction(
+        invalidateBehavior: InvalidateBehavior,
+        previousData: LatestData<Data>
+    ) {
+    }
+
+    protected suspend fun buildList(events: List<DataChangedEvent<Key, Data>>) {
+        val previousList = latestData
+        val result = buildListInternal()
+        if (lastInvalidateBehavior == InvalidateBehavior.SEND_EMPTY_LIST_BEFORE_NEXT_VALUE_SET) {
+            _dataFlow.emit(LatestData(emptyList()))
+        }
+        this.lastInvalidateBehavior = null
+        latestData = LatestData(result, events.mapNotNull {
+            if (it is PageChangedEvent) it.params else null
+        })
+        _dataFlow.emit(latestData)
+        onItemsSet(events, previousList)
+    }
+
+    protected open suspend fun onItemsSet(
+        events: List<DataChangedEvent<Key, Data>>,
+        previousData: LatestData<Data>
+    ) {
+
+    }
+
+    protected abstract suspend fun buildListInternal(): List<Data?>
+}

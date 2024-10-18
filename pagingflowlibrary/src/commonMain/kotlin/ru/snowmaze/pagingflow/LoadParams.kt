@@ -8,4 +8,9 @@ data class LoadParams<T>(
     val paginationDirection: PaginationDirection = PaginationDirection.DOWN,
     val pagingParams: PagingParams? = null,
     val cachedResult: PagingParams? = null
-)
+) {
+
+    fun requireKey() = requireNotNull(key)
+
+    fun requirePagingParams() = requireNotNull(pagingParams)
+}

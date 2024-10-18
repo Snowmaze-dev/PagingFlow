@@ -1,12 +1,16 @@
 package ru.snowmaze.pagingflow
 
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
+import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
+import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
+import ru.snowmaze.pagingflow.sources.MaxItemsConfiguration
+import ru.snowmaze.pagingflow.sources.TestDataSource
 import kotlin.random.Random
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -14,11 +18,8 @@ class BasicPagingFlowTest {
 
     val pageSize = Random.nextInt(5, 30)
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     private val basePagingFlowConfiguration = PagingFlowConfiguration(
-        defaultParams = LoadParams(pageSize, 0),
-        maxPagesCount = null,
-        mainDispatcher = testDispatcher,
+        defaultParams = LoadParams<Int>(pageSize),
         processingDispatcher = testDispatcher
     )
 
@@ -29,10 +30,38 @@ class BasicPagingFlowTest {
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
             addDataSource(testDataSource)
         }
-        val presenter = pagingFlow.pagingDataPresenter(throttleDurationMs = 0)
+        val presenter = pagingFlow.pagingDataPresenter()
 
-        pagingFlow.testLoadEverything(listOf(testDataSource), pageSize, pagingPresenter = presenter)
+        pagingFlow.testLoadEverything(listOf(testDataSource), pagingPresenter = presenter)
         invalidateAndCheckLoadingRight(pagingFlow, testDataSource, pagingDataPresenter = presenter)
+    }
+
+    @Test
+    fun testThreePaginationForwardAndThenBackwards() = runTest {
+        val testDataSource = TestDataSource(pageSize * 3)
+        val pagingFlow = buildPagingFlow(
+            basePagingFlowConfiguration.copy(
+                maxItemsConfiguration = MaxItemsConfiguration(
+                    pageSize * 2,
+                    enableDroppedPagesNullPlaceholders = false
+                ),
+            )
+        ) {
+            addDataSource(testDataSource)
+        }
+        val presenter = pagingFlow.pagingDataPresenter()
+        pagingFlow.loadNextPageWithResult()
+        pagingFlow.loadNextPageWithResult()
+        pagingFlow.loadNextPageWithResult()
+        assertContentEquals(
+            testDataSource.getItems(testDataSource.totalCount).takeLast(pageSize * 2),
+            presenter.data
+        )
+        pagingFlow.loadNextPageWithResult(PaginationDirection.UP)
+        assertContentEquals(
+            testDataSource.getItems(pageSize * 2),
+            presenter.data
+        )
     }
 
     @Test
@@ -45,7 +74,7 @@ class BasicPagingFlowTest {
         testDataSource.currentException = IllegalArgumentException()
         val result = pagingFlow.loadNextPageWithResult()
         assertTrue(result is LoadNextPageResult.Failure<Int, String>)
-        assertTrue(pagingFlow.downPagingStatus.value is PagingStatus.Failure<DefaultPagingStatus>)
+        assertTrue(pagingFlow.downPagingStatus.value is PagingStatus.Failure)
     }
 
     @Test
@@ -58,24 +87,35 @@ class BasicPagingFlowTest {
             addDataSource(secondTestDataSource)
             addDataSource(thirdTestDataSource)
         }
-        val presenter = pagingFlow.pagingDataPresenter(throttleDurationMs = 0)
+        val presenter = pagingFlow.pagingDataPresenter(
+            invalidateBehavior = InvalidateBehavior.INVALIDATE_IMMEDIATELY
+        )
+        var hasNext = true
+        while (hasNext) {
+            hasNext = pagingFlow.loadNextPageWithResult().asSuccess().hasNext
+        }
+        assertEquals(
+            firstTestDataSource.totalCount + secondTestDataSource.totalCount + thirdTestDataSource.totalCount,
+            presenter.data.size
+        )
+        pagingFlow.invalidate()
 
         pagingFlow.testLoadEverything(
             listOf(firstTestDataSource, secondTestDataSource, thirdTestDataSource),
-            pageSize,
             pagingPresenter = presenter
         )
+        assertTrue(pagingFlow.loadNextPageWithResult() is LoadNextPageResult.NothingToLoad)
         invalidateAndCheckLoadingRight(pagingFlow, firstTestDataSource, presenter)
     }
 
     private suspend fun invalidateAndCheckLoadingRight(
-        pagingFlow: PagingFlow<Int, String, DefaultPagingStatus>,
+        pagingFlow: PagingFlow<Int, String>,
         firstSource: TestDataSource,
-        pagingDataPresenter: PagingDataPresenter<Int, String>
+        pagingDataPresenter: PagingDataPresenter<Int, String>,
     ) {
         pagingFlow.invalidate()
         val resultAfterValidate = pagingFlow.loadNextPageWithResult()
         assertEquals(true, resultAfterValidate.asSuccess().hasNext)
-        assertEquals(firstSource.getItems(pageSize), pagingDataPresenter.dataFlow.value)
+        assertEquals(firstSource.getItems(pageSize), pagingDataPresenter.data)
     }
 }

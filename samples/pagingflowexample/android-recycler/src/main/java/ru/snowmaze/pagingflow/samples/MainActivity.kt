@@ -1,7 +1,7 @@
 package ru.snowmaze.pagingflow.samples
 
 import android.os.Bundle
-import android.util.Log
+import android.view.View
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
@@ -11,7 +11,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.launch
-import ru.snowmaze.pagingflow.presenters.itemCount
 import ru.snowmaze.pagingflow.utils.PagingTrigger
 import ru.snowmaze.pagingflow.samples.TestViewModel.Companion.PREFETCH_DISTANCE
 import ru.snowmaze.samples.pagingflow.R
@@ -19,15 +18,14 @@ import ru.snowmaze.samples.pagingflow.R
 class MainActivity : AppCompatActivity() {
 
     // TODO сделать пример отображения заглушек, тип возвращаем Flow с айтемами типа Stub, а потом когда подгрузятся элементы возвращаем в эту Flow уже нормальный список
-
     val viewModel by viewModels<TestViewModel>()
     private val recyclerAdapter by lazy {
         TestAdapter(
             PagingTrigger(
                 pagingFlow = { viewModel.pagingFlow },
-                prefetchDistance = PREFETCH_DISTANCE,
-                itemCount = viewModel.pagingDataPresenter::itemCount
-            )
+                prefetchDownDistance = PREFETCH_DISTANCE
+            ),
+            pagingDataChangesMedium = viewModel.pagingDataChangesMedium
         )
     }
 
@@ -44,10 +42,9 @@ class MainActivity : AppCompatActivity() {
             layoutManager = LinearLayoutManager(context)
             this.adapter = recyclerAdapter
         }
-        lifecycleScope.launch {
-            viewModel.pagingDataPresenter.dataFlow.collect {
-                Log.d("MyActivity", "list $it")
-                recyclerAdapter.submitList(it)
+        findViewById<View>(R.id.button).setOnClickListener {
+            lifecycleScope.launch {
+                viewModel.pagingFlow.invalidate()
             }
         }
     }

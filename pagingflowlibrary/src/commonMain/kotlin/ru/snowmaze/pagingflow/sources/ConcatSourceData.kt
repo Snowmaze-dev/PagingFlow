@@ -2,7 +2,8 @@ package ru.snowmaze.pagingflow.sources
 
 import ru.snowmaze.pagingflow.params.PagingParams
 
-class ConcatSourceData<Key : Any>(
+data class ConcatSourceData<Key : Any>(
     val currentKey: Key?,
-    val additionalData: PagingParams?
+    val returnData: PagingParams?,
+    val hasNext: Boolean
 )

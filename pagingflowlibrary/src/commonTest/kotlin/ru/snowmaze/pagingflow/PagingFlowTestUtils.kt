@@ -2,39 +2,62 @@ package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
+import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
+import ru.snowmaze.pagingflow.sources.TestDataSource
+import kotlin.math.ceil
 import kotlin.test.assertEquals
 
 val testDispatcher = UnconfinedTestDispatcher()
 
-suspend fun PagingFlow<Int, String, DefaultPagingStatus>.testLoadEverything(
+suspend fun PagingFlow<Int, String>.testLoadEverything(
     dataSources: List<TestDataSource>,
-    pageSize: Int,
     shouldTestItems: Boolean = true,
     pagingPresenter: PagingDataPresenter<Int, String>
 ) {
+    val pageSize = pagingFlowConfiguration.defaultParamsProvider().pageSize
     var dataSourceIndex = 0
     var currentDataSource = dataSources[dataSourceIndex]
-    var currentSourceLoadedCount = 0
+    var currentSourceLoadedCount = pagingPresenter.data.size
     var currentLoadSize = currentDataSource.defaultLoadParams?.pageSize ?: pageSize
     var currentTotalCount = currentDataSource.totalCount
     val loadingSources = mutableListOf(currentDataSource)
+    var overallLoadedCount = pagingPresenter.data.size
+    val overallTotalCountOfItems = dataSources.sumOf { it.totalCount }
 
     while (true) {
         val result = loadNextPageWithResult()
         currentSourceLoadedCount += currentLoadSize
-        assertEquals(currentTotalCount != currentSourceLoadedCount, result.asSuccess().hasNext)
+        overallLoadedCount += currentLoadSize
+        assertEquals(overallLoadedCount != overallTotalCountOfItems, result.asSuccess().hasNext)
         currentLoadSize = (currentTotalCount - currentSourceLoadedCount).coerceAtMost(pageSize)
-        if (shouldTestItems) assertEquals(
-            loadingSources.mapIndexed { index, testDataSource ->
+        if (shouldTestItems) {
+            var testItems: List<String?> = loadingSources.mapIndexed { index, testDataSource ->
                 testDataSource.getItems(
                     if (index == loadingSources.lastIndex) {
                         currentSourceLoadedCount
                     } else testDataSource.totalCount
                 )
-            }.flatten(),
-            pagingPresenter.dataFlow.value
-        )
+            }.flatten()
+            val maxItemsConfiguration = pagingFlowConfiguration.maxItemsConfiguration
+            val maxItemsOffset = maxItemsConfiguration?.maxItemsCount
+            if (maxItemsOffset != null) {
+                val removeItemsCount = (ceil((overallLoadedCount - maxItemsOffset)
+                    .coerceAtLeast(0) / pageSize.toDouble()) * pageSize).toInt()
+                testItems = if (maxItemsConfiguration.enableDroppedPagesNullPlaceholders) {
+                    testItems.mapIndexed { index, item ->
+                        if (removeItemsCount > index) null
+                        else item
+                    }
+                } else {
+                    testItems.drop(removeItemsCount)
+                }
+            }
+            assertEquals(
+                testItems,
+                pagingPresenter.data
+            )
+        }
         if (currentLoadSize == 0) {
             currentDataSource = dataSources.getOrNull(++dataSourceIndex) ?: break
             currentSourceLoadedCount = 0

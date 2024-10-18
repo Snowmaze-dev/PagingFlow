@@ -4,6 +4,7 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import ru.snowmaze.pagingflow.sources.MaxItemsConfiguration
 
 /**
  * Configuration for [PagingFlow]
@@ -11,44 +12,24 @@ import kotlinx.coroutines.SupervisorJob
 data class PagingFlowConfiguration<Key : Any>(
 
     /**
-     * Defines params fields from which will be used as default values to load data
+     * Defines provider of params which will be used as default params to load data from sources
      */
     val defaultParamsProvider: () -> LoadParams<Key>,
 
-    /**
-     * Defines the maximum number of pages that may be loaded before pages should be dropped
-     */
-    val maxPagesCount: Int? = null,
+    val maxItemsConfiguration: MaxItemsConfiguration? = null,
 
-    /**
-     * Defines the maximum number of cached result of pages that may be reused before cache should be dropped
-     */
-    val maxCachedResultPagesCount: Int? = null,
-
-    /**
-     * Defines whether should replace dropped pages with nulls or just drop them completely
-     */
-    val enableDroppedPagesNullPlaceholders: Boolean = true,
-
-    val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
     val processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
-    val coroutineScope: CoroutineScope = CoroutineScope(mainDispatcher + SupervisorJob()),
+    val coroutineScope: CoroutineScope = CoroutineScope(processingDispatcher + SupervisorJob()),
 ) {
 
     constructor(
         defaultParams: LoadParams<Key>,
-        maxPagesCount: Int? = null,
-        maxCachedResultPagesCount: Int? = null,
-        enableDroppedPagesNullPlaceholders: Boolean = true,
-        mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
+        maxItemsConfiguration: MaxItemsConfiguration? = null,
         processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
-        coroutineScope: CoroutineScope = CoroutineScope(mainDispatcher + SupervisorJob()),
+        coroutineScope: CoroutineScope = CoroutineScope(processingDispatcher + SupervisorJob()),
     ) : this(
         defaultParamsProvider = { defaultParams },
-        maxPagesCount = maxPagesCount,
-        maxCachedResultPagesCount = maxCachedResultPagesCount,
-        enableDroppedPagesNullPlaceholders = enableDroppedPagesNullPlaceholders,
-        mainDispatcher = mainDispatcher,
+        maxItemsConfiguration = maxItemsConfiguration,
         processingDispatcher = processingDispatcher,
         coroutineScope = coroutineScope
     )

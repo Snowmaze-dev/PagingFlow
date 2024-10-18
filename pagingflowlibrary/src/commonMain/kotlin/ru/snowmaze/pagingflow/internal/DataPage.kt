@@ -5,13 +5,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import ru.snowmaze.pagingflow.UpdatableData
 import ru.snowmaze.pagingflow.sources.DataSource
 
-internal data class DataPage<Key : Any, Data : Any, PagingStatus : Any>(
+internal data class DataPage<Key : Any, Data : Any>(
     var dataFlow: MutableStateFlow<UpdatableData<Key, Data>?>?,
     var previousPageKey: Key?,
     val currentPageKey: Key?,
     var nextPageKey: Key?,
-    val dataSource: DataSource<Key, Data, PagingStatus>,
+    var dataSourceWithIndex: Pair<DataSource<Key, Data>, Int>,
     val listenJob: Job,
-    val pageIndex: Int,
-    val dataSourceIndex: Int
+    var pageIndex: Int,
+    var dataSourceIndex: Int
 )

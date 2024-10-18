@@ -1,6 +1,7 @@
 package ru.snowmaze.pagingflow.samples
 
 import ru.snowmaze.pagingflow.LoadParams
+import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.result.simpleResult
 import ru.snowmaze.pagingflow.sources.SegmentedDataSource
 
@@ -19,7 +20,9 @@ class TestDataSource(
         loadParams: LoadParams<Int>,
         startIndex: Int,
         endIndex: Int
-    ) = simpleResult(items.subList(startIndex, endIndex))
+    ): LoadResult.Success<Int, String, Any> {
+        return simpleResult(items.subList(startIndex, endIndex))
+    }
 
 //    override suspend fun loadData(
 //        loadParams: LoadParams<Int>,

@@ -11,8 +11,8 @@ android {
         applicationId = "ru.snowmaze.samples.pagingflow.compose"
         minSdk = 21
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -29,10 +29,6 @@ android {
             )
         }
     }
-    java {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
     kotlin {
         jvmToolchain(11)
     }
@@ -41,6 +37,10 @@ android {
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.4.8"
+    }
+    compileOptions {
+        sourceCompatibility(JavaVersion.VERSION_11)
+        targetCompatibility(JavaVersion.VERSION_11)
     }
 //    packaging {
 //        resources {
