@@ -1,14 +1,18 @@
 package ru.snowmaze.pagingflow.sources
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.PagingStatus
@@ -19,9 +23,12 @@ import ru.snowmaze.pagingflow.internal.DataPage
 import ru.snowmaze.pagingflow.internal.DataPagesManager
 import ru.snowmaze.pagingflow.internal.DataSources
 import ru.snowmaze.pagingflow.params.DataKey
+import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
+import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.result.LoadResult
+import ru.snowmaze.pagingflow.result.mapParams
 import ru.snowmaze.pagingflow.utils.DiffOperation
 import ru.snowmaze.pagingflow.utils.toInfo
 
@@ -32,10 +39,12 @@ class ConcatDataSource<Key : Any, Data : Any>(
     companion object {
         fun <Key : Any> concatDataSourceResultKey() =
             DataKey<ConcatSourceData<Key>>("concat_data_source_result")
+
+        private fun <Key : Any, Data : Any> sourceResultKey() =
+            DataKey<LoadResult<Key, Data>>("source_result_key")
     }
 
     private val loadPageMutex = Mutex()
-    private val setDataMutex = Mutex()
 
     private val _upPagingStatus = MutableStateFlow<PagingStatus>(
         PagingStatus.Initial(hasNextPage = false)
@@ -49,6 +58,8 @@ class ConcatDataSource<Key : Any, Data : Any>(
     val pagesInfo get() = dataPagesManager.dataPages.map { it.toInfo() }
 
     val pagesCount get() = dataPagesManager.dataPages.count { it.dataFlow != null }
+    val concatSourceResultKey = concatDataSourceResultKey<Key>()
+    private val sourceResultKey = sourceResultKey<Key, Data>()
 
     val upPagingStatus = _upPagingStatus.asStateFlow()
     val downPagingStatus = _downPagingStatus.asStateFlow()
@@ -64,7 +75,7 @@ class ConcatDataSource<Key : Any, Data : Any>(
 
     private val dataPagesManager = DataPagesManager(
         concatDataSourceConfig = concatDataSourceConfig,
-        setDataMutex = setDataMutex,
+        setDataMutex = loadPageMutex,
         dataSourcesManager = dataSourcesManager
     )
 
@@ -151,9 +162,7 @@ class ConcatDataSource<Key : Any, Data : Any>(
         try {
             dataSourcesManager.moveDataSource(oldIndex, newMaxIndex)
             dataPagesManager.movePages(oldIndex, newMaxIndex)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        } catch (e: Exception) { }
     }
 
     suspend fun setDataSources(
@@ -172,11 +181,7 @@ class ConcatDataSource<Key : Any, Data : Any>(
 
                 is DiffOperation.Add<DataSource<Key, Data>> -> {
                     for (item in (operation.items ?: continue).withIndex()) {
-                        setDataMutex.lock(dataPagesManager)
                         insert(item.value, operation.index + item.index)
-                        if (setDataMutex.holdsLock(dataPagesManager)) {
-                            setDataMutex.unlock(dataPagesManager)
-                        }
                     }
                 }
 
@@ -193,22 +198,61 @@ class ConcatDataSource<Key : Any, Data : Any>(
     override suspend fun load(
         loadParams: LoadParams<Key>,
     ) = loadPageMutex.withLock {
-        setDataMutex.lock(dataPagesManager)
         val dataPages = dataPagesManager.dataPages
         val isPaginationDown = loadParams.paginationDirection == PaginationDirection.DOWN
 
-        // getting last page and nextPageKey
-        val lastPageIndex = if (isPaginationDown) dataPages.lastIndex
-        else dataPages.indexOfFirst { it.dataFlow != null }
-        try {
-            loadData(
-                loadParams = loadParams,
-                lastPageIndex = lastPageIndex,
-                shouldReplaceOnConflict = true
-            )
-        } finally {
-            if (setDataMutex.holdsLock(dataPagesManager)) setDataMutex.unlock(dataPagesManager)
+        val lastPageIndex = {
+
+            // getting last page and nextPageKey
+            if (isPaginationDown) dataPages.lastIndex
+            else dataPages.indexOfFirst { it.dataFlow != null }
         }
+
+        val loadSeveralPages = loadParams.pagingParams
+            ?.getOrNull(PagingLibraryParamsKeys.LoadSeveralPages)
+
+        if (loadSeveralPages != null) {
+            var lastResult: LoadResult<Key, Data>? = null
+            val resultPagingParams = mutableListOf<PagingParams?>()
+            while (true) {
+                val currentResult = lastResult?.returnData?.get(sourceResultKey) ?: lastResult
+                val currentLoadParams = loadSeveralPages.getPagingParams(
+                    currentResult as? LoadResult<Any, Any>
+                ) ?: break
+                lastResult = loadData(
+                    loadParams = loadParams.copy(pagingParams = currentLoadParams),
+                    lastPageIndex = lastPageIndex(),
+                    shouldReplaceOnConflict = true
+                )
+                resultPagingParams += lastResult.returnData
+                if (lastResult is LoadResult.NothingToLoad) break
+                else if (lastResult is LoadResult.Failure) continue
+                loadSeveralPages.onSuccess?.invoke(
+                    lastResult.returnData?.get(sourceResultKey) as LoadResult.Success<Any, Any>
+                )
+            }
+            lastResult ?: throw IllegalArgumentException("Should load at least one pagination.")
+            lastResult = lastResult.mapParams(
+                lastResult.returnData?.let { PagingParams(it) } ?: PagingParams()
+            )
+            val returnData = lastResult.returnData
+            returnData?.getOrNull(concatSourceResultKey)?.returnData?.let { PagingParams(it) }?.let {
+                returnData.put(concatSourceResultKey, returnData[concatSourceResultKey].copy(
+                    returnData = it
+                ))
+            }
+            (returnData?.getOrNull(concatSourceResultKey)?.returnData ?: returnData)?.put(
+                ReturnPagingLibraryKeys.PagingParamsList,
+                resultPagingParams.map {
+                    it?.getOrNull(concatSourceResultKey)?.returnData ?: it
+                }
+            )
+            return@withLock lastResult
+        } else loadData(
+            loadParams = loadParams,
+            lastPageIndex = lastPageIndex(),
+            shouldReplaceOnConflict = true
+        )
     }
 
     private suspend fun loadData(
@@ -311,7 +355,29 @@ class ConcatDataSource<Key : Any, Data : Any>(
             pageIndex = pageAbsoluteIndex,
             dataSourceIndex = dataSourceWithIndex.second
         )
+
         val newIndex = lastPageIndex + if (isPaginationDown) 1 else -1
+        val shouldReturnAwaitJob =
+            loadParams.pagingParams?.getOrNull(PagingLibraryParamsKeys.ReturnAwaitJob) == true
+        val dataSetCallbackFlow = MutableStateFlow<(() -> Unit)?>(null)
+        var job: Job? = null
+        if (shouldReturnAwaitJob) {
+            job = config.coroutineScope.launch {
+                withTimeoutOrNull(10000) {
+                    suspendCancellableCoroutine { cont ->
+                        val callback = {
+                            cont.resumeWith(Result.success(Unit))
+                        }
+                        dataSetCallbackFlow.value = callback
+                        cont.invokeOnCancellation {
+                            dataSetCallbackFlow.value = null
+                        }
+                    }
+                }
+            }
+            dataSetCallbackFlow.first { it != null }
+        }
+
         dataPagesManager.savePage(
             newIndex = newIndex,
             result = result,
@@ -324,6 +390,7 @@ class ConcatDataSource<Key : Any, Data : Any>(
                     hasNext = true
                 )
             },
+            dataSetCallbackFlow = dataSetCallbackFlow,
             onLastPageNextKeyChanged = { newNextKey, isPaginationDown ->
                 changeHasNextStatus(
                     inEnd = isPaginationDown,
@@ -338,6 +405,9 @@ class ConcatDataSource<Key : Any, Data : Any>(
             if (!shouldReplaceOnConflict) dataPagesManager.updateIndexes()
         }
 
+        val resultData = result.returnData ?: if (job != null) PagingParams() else null
+        job?.let { resultData?.put(ReturnPagingLibraryKeys.DataSetJob, job) }
+
         // preparing result
         return result.copy(
             dataFlow = result.dataFlow,
@@ -347,10 +417,11 @@ class ConcatDataSource<Key : Any, Data : Any>(
                     concatDataSourceResultKey(),
                     ConcatSourceData(
                         currentKey = currentKey,
-                        returnData = result.returnData,
+                        returnData = resultData,
                         hasNext = status.hasNextPage
                     )
                 )
+                put(sourceResultKey, result)
             }
         )
     }

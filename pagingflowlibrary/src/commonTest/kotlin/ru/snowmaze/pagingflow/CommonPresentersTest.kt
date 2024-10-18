@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.runTest
 import ru.snowmaze.pagingflow.diff.mediums.MappingPagingDataChangesMedium
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.composite.CompositePagingPresenterBuilder
+import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.sources.TestDataSource
 import kotlin.random.Random

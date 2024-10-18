@@ -2,6 +2,7 @@ package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
+import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import ru.snowmaze.pagingflow.sources.TestDataSource
 import kotlin.math.ceil

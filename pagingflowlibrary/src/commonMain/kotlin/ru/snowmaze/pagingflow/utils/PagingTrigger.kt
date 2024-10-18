@@ -67,43 +67,56 @@ class PagingTrigger(
     )
 
     private var _isLoading = false
-    private var job: Job? = null
+    private var downJob: Job? = null
+    private var upJob: Job? = null
 
     val isLoading get() = _isLoading || isLoadingCallback()
     private var lastTimeTriggered = 0L
-    private var lastIndex = 0
+    private var lastIndexDown = 0
+    private var lastIndexUp = 0
 
-    fun checkLastIndexAgain() {
-        onItemVisible(lastIndex)
+    fun checkLastIndexAgain(scrollDirection: PaginationDirection? = null) {
+        onItemVisible(
+            index = if (scrollDirection == PaginationDirection.DOWN) lastIndexDown
+            else lastIndexUp,
+            scrollDirection = scrollDirection
+        )
     }
 
-    fun onItemVisible(index: Int): Boolean {
-        lastIndex = index
+    fun onItemVisible(index: Int, scrollDirection: PaginationDirection? = null): Boolean {
+        if (scrollDirection == PaginationDirection.DOWN) lastIndexDown = index
+        else lastIndexUp = index
         if (isLoading) return false
         val currentTime = currentTimeMillisProvider()
-        job?.cancel()
+        if (scrollDirection == PaginationDirection.DOWN) downJob?.cancel()
+        else upJob?.cancel()
         if (throttleTimeMillis != 0 &&
             throttleTimeMillis > currentTime - lastTimeTriggered
         ) {
-            if (saveLastThrottledEvent) job = coroutineScope.launch(Dispatchers.Main) {
-                delay(throttleTimeMillis.toLong())
-                onItemVisible(index)
+            if (saveLastThrottledEvent) {
+                val repeatJob = coroutineScope.launch(Dispatchers.Main) {
+                    delay(throttleTimeMillis.toLong())
+                    onItemVisible(index)
+                }
+                if (scrollDirection == PaginationDirection.DOWN) downJob = repeatJob
+                else upJob = repeatJob
             }
             return false
         }
         val itemCount = itemCount()
         val maxItemsCount = maxItemsCount()
-        val relativeStartIndex = if (maxItemsCount == null) index else {
-            index - currentStartIndexProvider()
-        }
         val direction = if (paginationDownEnabled && index >= (itemCount - prefetchDownDistance)) {
             PaginationDirection.DOWN
-        } else if (paginationUpEnabled &&
-            if (shouldTryPaginateBackOnMaxItemsOffset && maxItemsCount != null) {
+        } else if (paginationUpEnabled) {
+            val relativeStartIndex = if (maxItemsCount == null) index else {
+                index - currentStartIndexProvider()
+            }
+            val shouldLoadUp = if (shouldTryPaginateBackOnMaxItemsOffset && maxItemsCount != null) {
                 val pageSize = pageSize()
                 prefetchUpDistance * ((maxItemsCount / pageSize) - 1) >= relativeStartIndex
             } else prefetchUpDistance >= relativeStartIndex
-        ) PaginationDirection.UP
+            if (shouldLoadUp) PaginationDirection.UP else return false
+        }
         else return false
         _isLoading = true
         coroutineScope.launch {

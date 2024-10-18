@@ -3,6 +3,7 @@ package ru.snowmaze.pagingflow.presenters
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import ru.snowmaze.pagingflow.diff.AwaitDataSetEvent
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
@@ -20,7 +21,7 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
     invalidateBehavior: InvalidateBehavior,
     config: DataChangesMediumConfig = pagingDataChangesMedium.config,
-    presenterFlow: () -> MutableSharedFlow<List<Data?>> = defaultPresenterFlowCreator()
+    presenterFlow: () -> MutableSharedFlow<LatestData<Data>> = defaultPresenterFlowCreator()
 ) : BuildListPagingPresenter<Key, Data>(
     invalidateBehavior = invalidateBehavior,
     coroutineScope = config.coroutineScope,
@@ -86,17 +87,20 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
     protected open suspend fun updateData(
         update: suspend MutableMap<Int, PageChangedEvent<Key, Data>>.() -> List<DataChangedEvent<Key, Data>>
     ) {
-        coroutineScope.launch(processingDispatcher) {
+        withContext(processingDispatcher) {
             val result = pageIndexes.update()
-            val lastEvent = result.lastOrNull()
-            if (lastEvent != null && lastEvent !is InvalidateEvent) {
-                pageIndexesKeys = pageIndexes.keys.sorted()
-                buildList(result)
+            try {
+                val lastEvent = result.lastOrNull()
+                if (lastEvent != null && lastEvent !is InvalidateEvent) {
+                    pageIndexesKeys = pageIndexes.keys.sorted()
+                    buildList(result)
+                }
+            } finally {
+                for (event in result) {
+                    if (event is AwaitDataSetEvent) event.callback()
+                }
             }
-            for (event in result) {
-                if (event is AwaitDataSetEvent) event.callback()
-            }
-        }.join()
+        }
     }
 
     /**

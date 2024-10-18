@@ -18,7 +18,7 @@ import ru.snowmaze.pagingflow.diff.mediums.DebounceBufferPagingDataChangesMedium
  */
 fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mapDataPresenter(
     invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
-    presenterFlow: () -> MutableSharedFlow<List<NewData?>> = defaultPresenterFlowCreator(),
+    presenterFlow: () -> MutableSharedFlow<LatestData<NewData>> = defaultPresenterFlowCreator(),
     transform: (PageChangedEvent<Key, Data>) -> List<NewData?>
 ) = SimpleBuildListPagingPresenter(
     pagingDataChangesMedium = MappingPagingDataChangesMedium(
@@ -34,7 +34,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
  */
 fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mapDataFlowPresenter(
     invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
-    presenterFlow: () -> MutableSharedFlow<List<NewData?>> = defaultPresenterFlowCreator(),
+    presenterFlow: () -> MutableSharedFlow<LatestData<NewData>> = defaultPresenterFlowCreator(),
     transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>
 ) = SimpleBuildListPagingPresenter(
     pagingDataChangesMedium = MappingFlowPagingDataChangesMedium(
@@ -57,7 +57,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
     debounceBufferDurationMsProvider: () -> Long = { 0 },
     shouldThrottleAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
-    presenterFlow: () -> MutableSharedFlow<List<NewData?>> = defaultPresenterFlowCreator(),
+    presenterFlow: () -> MutableSharedFlow<LatestData<NewData>> = defaultPresenterFlowCreator(),
     transform: (PageChangedEvent<Key, Data>) -> List<NewData?>
 ) = DebounceBufferPagingDataChangesMedium(
     pagingDataChangesMedium = MappingPagingDataChangesMedium(
@@ -79,7 +79,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
     debounceBufferDurationMsProvider: () -> Long = { 0 },
     shouldThrottleAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
-    presenterFlow: () -> MutableSharedFlow<List<NewData?>> = defaultPresenterFlowCreator(),
+    presenterFlow: () -> MutableSharedFlow<LatestData<NewData>> = defaultPresenterFlowCreator(),
     transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>
 ) = DebounceBufferPagingDataChangesMedium(
     pagingDataChangesMedium = MappingFlowPagingDataChangesMedium(
@@ -100,7 +100,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
  */
 fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresenter(
     invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
-    presenterFlow: () -> MutableSharedFlow<List<Data?>> = defaultPresenterFlowCreator()
+    presenterFlow: () -> MutableSharedFlow<LatestData<Data>> = defaultPresenterFlowCreator()
 ) = SimpleBuildListPagingPresenter(
     pagingDataChangesMedium = this,
     invalidateBehavior = invalidateBehavior,
@@ -118,7 +118,7 @@ fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresent
     debounceBufferDurationMsProvider: () -> Long = { 0 },
     shouldThrottleAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
-    presenterFlow: () -> MutableSharedFlow<List<Data?>> = defaultPresenterFlowCreator()
+    presenterFlow: () -> MutableSharedFlow<LatestData<Data>> = defaultPresenterFlowCreator()
 ) = DebounceBufferPagingDataChangesMedium(
     if (shouldBufferEvents) BufferEventsDataChangesMedium(this) else this,
     debounceBufferDurationMsProvider = debounceBufferDurationMsProvider,

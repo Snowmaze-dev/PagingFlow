@@ -10,7 +10,7 @@ interface DataKey<T> {
         /**
          * Creates default key with specified [key]
          */
-        operator fun <T> invoke(key: String) = DefaultKey<T>(key)
+        inline operator fun <T> invoke(key: String) = DefaultKey<T>(key)
     }
 
     val key: String

@@ -2,7 +2,7 @@ package ru.snowmaze.pagingflow.params
 
 /**
  * Paging params where you can specify typesafe params for data sources
- * @see PagingLibraryKeys
+ * @see PagingLibraryParamsKeys
  * @see DataKey
  */
 class PagingParams(map: Map<String, Any?> = emptyMap()) {

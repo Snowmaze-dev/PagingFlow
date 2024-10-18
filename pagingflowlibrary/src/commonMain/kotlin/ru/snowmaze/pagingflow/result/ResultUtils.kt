@@ -57,34 +57,56 @@ fun <T : Any, Key : Any, Data : Any> Result<T>.toLoadResult(
 fun <Key : Any, Data : Any> DataSource<Key, Data>.simpleResult(
     data: List<Data>,
     nextPageKey: Key? = null,
-    additionalData: PagingParams? = null,
+    returnData: PagingParams? = null,
     cachedResult: PagingParams? = null,
 ) = LoadResult.Success(
-    dataFlow = flow { emit(UpdatableData(data, nextPageKey, additionalData)) },
+    dataFlow = flow { emit(UpdatableData(data, nextPageKey, returnData)) },
     nextPageKey = nextPageKey,
-    returnData = additionalData,
+    returnData = returnData,
     cachedResult = cachedResult
 )
 
 fun <Key : Any, Data : Any> DataSource<Key, Data>.result(
     dataFlow: Flow<List<Data>>,
     nextPageKey: Key? = null,
-    additionalData: PagingParams? = null,
+    returnData: PagingParams? = null,
     cachedResult: PagingParams? = null,
 ) = LoadResult.Success(
-    dataFlow = dataFlow.map { UpdatableData(it, nextPageKey, additionalData) },
+    dataFlow = dataFlow.map { UpdatableData(it, nextPageKey, returnData) },
     nextPageKey = nextPageKey,
-    returnData = additionalData,
+    returnData = returnData,
     cachedResult = cachedResult
 )
 
+/**
+ * Sends returnData in UpdatableData in flow one time and then further sends null instead of returnData
+ */
+fun <Key : Any, Data : Any> DataSource<Key, Data>.resultWithSingleReturnData(
+    dataFlow: Flow<List<Data>>,
+    nextPageKey: Key? = null,
+    returnData: PagingParams,
+    cachedResult: PagingParams? = null,
+): LoadResult.Success<Key, Data> {
+    var currentReturnData: PagingParams? = returnData
+    return LoadResult.Success(
+        dataFlow = dataFlow.map {
+            val data = UpdatableData(it, nextPageKey, currentReturnData)
+            currentReturnData = null
+            data
+        },
+        nextPageKey = nextPageKey,
+        returnData = returnData,
+        cachedResult = cachedResult
+    )
+}
+
 fun <Key : Any, Data : Any> DataSource<Key, Data>.useLastPageResult(
     nextPageKey: Key? = null,
-    additionalData: PagingParams? = null,
+    returnData: PagingParams? = null,
     cachedResult: PagingParams? = null,
 ) = LoadResult.Success<Key, Data>(
     dataFlow = null,
     nextPageKey = nextPageKey,
-    returnData = additionalData,
+    returnData = returnData,
     cachedResult = cachedResult
 )

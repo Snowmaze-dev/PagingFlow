@@ -6,7 +6,7 @@ plugins {
 
 kotlin {
     jvmToolchain(11)
-    android {
+    androidTarget {
         publishAllLibraryVariants()
     }
     jvm()
@@ -51,7 +51,7 @@ afterEvaluate {
     publishing {
         publications {
             withType<MavenPublication> {
-                version = "1.0.8-alpha"
+                version = "1.0.9-alpha"
                 group = "ru.snowmaze.pagingflow"
                 val postfix = if (name == "androidRelease") "android" else name
                 artifactId = "common-$postfix"

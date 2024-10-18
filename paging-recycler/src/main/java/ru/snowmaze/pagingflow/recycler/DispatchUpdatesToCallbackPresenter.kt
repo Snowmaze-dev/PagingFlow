@@ -11,6 +11,7 @@ import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.handle
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
+import ru.snowmaze.pagingflow.presenters.LatestData
 import ru.snowmaze.pagingflow.presenters.SimpleBuildListPagingPresenter
 
 class DispatchUpdatesToCallbackPresenter<Data : Any>(
@@ -31,7 +32,7 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
 
     override suspend fun onItemsSet(
         events: List<DataChangedEvent<Any, Data>>,
-        previousList: List<Data?>
+        previousData: LatestData<Data>
     ) {
         coroutineScope.launch(mainDispatcher) {
             for (event in events) {
@@ -87,10 +88,11 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
 
     override fun afterInvalidatedAction(
         invalidateBehavior: InvalidateBehavior,
-        previousList: List<Data?>
+        previousData: LatestData<Data>
     ) {
         coroutineScope.launch(mainDispatcher) {
             pagesIndexes.clear()
+            val previousList = previousData.data
             if (invalidateBehavior == InvalidateBehavior.INVALIDATE_IMMEDIATELY) {
                 listUpdateCallback.onRemoved(0, previousList.size)
             } else {
