@@ -8,6 +8,7 @@ import ru.snowmaze.pagingflow.diff.mediums.MappingFlowPagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.MappingPagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.DebounceBufferPagingDataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.composite.CompositePagingDataChangesMediumBuilder
 
 /**
  * Creates mapping presenter, which maps only changed pages and have throttling mechanism
@@ -20,14 +21,10 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
     invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
     presenterFlow: () -> MutableSharedFlow<LatestData<NewData>> = defaultPresenterFlowCreator(),
     transform: (PageChangedEvent<Key, Data>) -> List<NewData?>
-) = SimpleBuildListPagingPresenter(
-    pagingDataChangesMedium = MappingPagingDataChangesMedium(
-        pagingDataChangesMedium = this,
-        transform = transform
-    ),
-    invalidateBehavior = invalidateBehavior,
-    presenterFlow = presenterFlow
-)
+) = MappingPagingDataChangesMedium(
+    pagingDataChangesMedium = this,
+    transform = transform
+).pagingDataPresenter(invalidateBehavior, presenterFlow)
 
 /**
  * Maps events to flow of data
@@ -36,11 +33,10 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
     invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
     presenterFlow: () -> MutableSharedFlow<LatestData<NewData>> = defaultPresenterFlowCreator(),
     transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>
-) = SimpleBuildListPagingPresenter(
-    pagingDataChangesMedium = MappingFlowPagingDataChangesMedium(
-        pagingDataChangesMedium = this,
-        transform = transform
-    ),
+) = MappingFlowPagingDataChangesMedium(
+    pagingDataChangesMedium = this,
+    transform = transform
+).pagingDataPresenter(
     invalidateBehavior = invalidateBehavior,
     presenterFlow = presenterFlow
 )
@@ -123,4 +119,29 @@ fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresent
     if (shouldBufferEvents) BufferEventsDataChangesMedium(this) else this,
     debounceBufferDurationMsProvider = debounceBufferDurationMsProvider,
     shouldThrottleAddPagesEvents = shouldThrottleAddPagesEvents
+).pagingDataPresenter(invalidateBehavior, presenterFlow)
+
+fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.compositeDataPresenter(
+    invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
+    shouldBufferEvents: Boolean = false,
+    presenterFlow: () -> MutableSharedFlow<LatestData<NewData>> = defaultPresenterFlowCreator(),
+    builder: CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.() -> Unit
+) = CompositePagingDataChangesMediumBuilder.build(
+    if (shouldBufferEvents) BufferEventsDataChangesMedium(this) else this,
+    builder = builder
+).pagingDataPresenter(invalidateBehavior, presenterFlow)
+
+fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.compositeDataPresenter(
+    invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
+    debounceBufferDurationMsProvider: () -> Long = { 0 },
+    shouldThrottleAddPagesEvents: Boolean = false,
+    shouldBufferEvents: Boolean = false,
+    presenterFlow: () -> MutableSharedFlow<LatestData<NewData>> = defaultPresenterFlowCreator(),
+    builder: CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.() -> Unit
+) = CompositePagingDataChangesMediumBuilder.build(
+    DebounceBufferPagingDataChangesMedium(
+        if (shouldBufferEvents) BufferEventsDataChangesMedium(this) else this,
+        debounceBufferDurationMsProvider = debounceBufferDurationMsProvider,
+        shouldThrottleAddPagesEvents = shouldThrottleAddPagesEvents
+    ), builder = builder
 ).pagingDataPresenter(invalidateBehavior, presenterFlow)

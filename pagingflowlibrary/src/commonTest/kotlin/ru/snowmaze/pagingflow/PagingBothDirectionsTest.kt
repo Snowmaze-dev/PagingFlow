@@ -12,6 +12,7 @@ import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import ru.snowmaze.pagingflow.sources.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.sources.TestDataSource
+import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
@@ -32,10 +33,17 @@ class PagingBothDirectionsTest {
         )
     )
 
+    private val randomDelay = {
+        Random.nextLong(10, 100)
+    }
+
+    /**
+     * Tests library ability to work in multi thread environment
+     */
     @Test
-    fun testAsyncLoad() = runTest {
+    fun testAsyncLoad() = runTestOnDispatchersDefault {
         val totalCount = 1000
-        val testDataSource = TestDataSource(totalCount, 50)
+        val testDataSource = TestDataSource(totalCount, randomDelay)
         val pagingFlow = buildPagingFlow(
             basePagingFlowConfiguration.copy(
                 processingDispatcher = Dispatchers.Default,
@@ -45,27 +53,28 @@ class PagingBothDirectionsTest {
                 )
             )
         ) {
-            addDataSource(TestDataSource(totalCount, 50L))
-            addDataSource(TestDataSource(totalCount, 50L))
+            addDataSource(TestDataSource(totalCount, randomDelay))
+            addDataSource(TestDataSource(totalCount, randomDelay))
         }
         val presenter = pagingFlow.pagingDataPresenter(
-            debounceBufferDurationMsProvider = { 10 },
+            debounceBufferDurationMsProvider = { 20 },
         )
 
         var hasNext = true
         while (hasNext) {
-           val result = pagingFlow.loadNextPageWithResult(
+            val result = pagingFlow.loadNextPageWithResult(
                 PaginationDirection.DOWN,
                 pagingParams = PagingParams {
                     put(PagingLibraryParamsKeys.ReturnAwaitJob, true)
                 }
             ).asSuccess()
             hasNext = result.hasNext
-            result.returnData[ReturnPagingLibraryKeys.DataSetJob].join()
+            if (!hasNext) result.returnData[ReturnPagingLibraryKeys.DataSetJob].join()
             assertEquals(hasNext, pagingFlow.downPagingStatus.value.hasNextPage)
         }
-        Dispatchers.Default { delay(10) }
-        val maxItemsCount = pagingFlow.pagingFlowConfiguration.maxItemsConfiguration?.maxItemsCount!!
+        delay(150) // delay because library needs some time to trim pages
+        val maxItemsCount =
+            pagingFlow.pagingFlowConfiguration.maxItemsConfiguration?.maxItemsCount!!
         assertTrue(
             maxItemsCount >= presenter.data.size,
             "expected $maxItemsCount but was ${presenter.data.size}"
@@ -79,7 +88,7 @@ class PagingBothDirectionsTest {
             hasNext =
                 pagingFlow.loadNextPageWithResult(PaginationDirection.UP).asSuccess().hasNext
         }
-        Dispatchers.Default { delay(10) }
+        delay(150)
         assertTrue(
             maxItemsCount >= presenter.data.size,
             "expected $maxItemsCount but was ${presenter.data.size}"
@@ -120,9 +129,11 @@ class PagingBothDirectionsTest {
         }
         loadedData = presenter.data
         assertEquals(testDataSource.getItems(pageSize * removePagesOffset), loadedData)
-        assertTrue(pagingFlow.loadNextPageWithResult(
-            PaginationDirection.UP
-        ) is LoadNextPageResult.NothingToLoad)
+        assertTrue(
+            pagingFlow.loadNextPageWithResult(
+                PaginationDirection.UP
+            ) is LoadNextPageResult.NothingToLoad
+        )
 
         pagingFlow.testLoadEverything(
             listOf(testDataSource),

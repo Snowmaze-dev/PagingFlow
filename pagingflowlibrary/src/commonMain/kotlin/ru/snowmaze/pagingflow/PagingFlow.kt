@@ -1,19 +1,21 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.invoke
+import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import ru.snowmaze.pagingflow.params.LoadSeveralPagesData
+import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
+import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.mapDataPresenter
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.sources.ConcatDataSource
-import ru.snowmaze.pagingflow.sources.ConcatDataSourceConfig
+import ru.snowmaze.pagingflow.sources.PageLoaderConfig
 import ru.snowmaze.pagingflow.sources.DataSource
 import ru.snowmaze.pagingflow.utils.DiffOperation
 
@@ -29,10 +31,9 @@ class PagingFlow<Key : Any, Data : Any>(
     val pagingFlowConfiguration: PagingFlowConfiguration<Key>
 ) : PagingDataChangesMedium<Key, Data> {
 
-    private val loadMutex = Mutex()
     val upPagingStatus = concatDataSource.upPagingStatus
     val downPagingStatus = concatDataSource.downPagingStatus
-    val isLoading get() = loadMutex.isLocked
+    val isLoading get() = concatDataSource.isLoading
 
     val currentPagesCount get() = concatDataSource.currentPagesCount
 
@@ -106,10 +107,8 @@ class PagingFlow<Key : Any, Data : Any>(
     suspend fun loadNextPageWithResult(
         paginationDirection: PaginationDirection = pagingFlowConfiguration.defaultParamsProvider().paginationDirection,
         pagingParams: PagingParams? = null
-    ) = loadMutex.withLock {
-        pagingFlowConfiguration.processingDispatcher {
-            loadNextPageInternal(paginationDirection, pagingParams)
-        }
+    ) = pagingFlowConfiguration.processingDispatcher {
+        loadNextPageInternal(paginationDirection, pagingParams)
     }
 
     /**
@@ -186,7 +185,7 @@ fun <Key : Any, Data : Any> buildPagingFlow(
     builder: PagingFlow<Key, Data>.() -> Unit = {}
 ) = PagingFlow<Key, Data>(
     ConcatDataSource(
-        ConcatDataSourceConfig(
+        PageLoaderConfig(
             defaultParamsProvider = configuration.defaultParamsProvider,
             maxItemsConfiguration = configuration.maxItemsConfiguration,
             processingDispatcher = configuration.processingDispatcher,
@@ -226,6 +225,7 @@ fun <Key : Any, Data : Any> buildPagingFlow(
         addDataSource(dataSource)
     }
 }
+
 fun <Key : Any, Data : Any> buildPagingFlow(
     configuration: PagingFlowConfiguration<Key>,
     vararg dataSources: DataSource<Key, Data>
@@ -233,4 +233,51 @@ fun <Key : Any, Data : Any> buildPagingFlow(
     for (dataSource in dataSources) {
         addDataSource(dataSource)
     }
+}
+
+suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadSeveralPages(
+    paginationDirection: PaginationDirection = pagingFlowConfiguration.defaultParamsProvider()
+        .paginationDirection,
+    awaitDataSet: Boolean = false,
+    pagingParams: PagingParams? = null,
+    onSuccess: ((LoadResult.Success<Key, Data>) -> Unit)? = null,
+    getPagingParams: (LoadResult<Key, Data>?) -> PagingParams?,
+): LoadNextPageResult<Key, Data> {
+    val result = loadNextPageWithResult(
+        paginationDirection = paginationDirection,
+        pagingParams = (pagingParams ?: PagingParams()).apply {
+            put(
+                PagingLibraryParamsKeys.LoadSeveralPages, LoadSeveralPagesData(
+                    getPagingParams = {
+                        val pageLoadParams = getPagingParams(it) ?: return@LoadSeveralPagesData null
+                        if (awaitDataSet) {
+                            pageLoadParams.put(PagingLibraryParamsKeys.ReturnAwaitJob, true)
+                        }
+                        pageLoadParams
+                    },
+                    onSuccess = onSuccess
+                ) as LoadSeveralPagesData<Any, Any>
+            )
+        }
+    )
+    if (awaitDataSet) result.returnData.getOrNull(ReturnPagingLibraryKeys.PagingParamsList)
+        ?.mapNotNull {
+            it?.getOrNull(ReturnPagingLibraryKeys.DataSetJob)
+        }?.joinAll()
+    return result
+}
+
+suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPageAndAwaitDataSet(
+    paginationDirection: PaginationDirection = pagingFlowConfiguration.defaultParamsProvider()
+        .paginationDirection,
+    pagingParams: PagingParams? = null
+): LoadNextPageResult<Key, Data> {
+    val result = loadNextPageWithResult(
+        paginationDirection = paginationDirection,
+        pagingParams = (pagingParams ?: PagingParams()).apply {
+            put(PagingLibraryParamsKeys.ReturnAwaitJob, true)
+        }
+    )
+    result.returnData.getOrNull(ReturnPagingLibraryKeys.DataSetJob)?.join()
+    return result
 }

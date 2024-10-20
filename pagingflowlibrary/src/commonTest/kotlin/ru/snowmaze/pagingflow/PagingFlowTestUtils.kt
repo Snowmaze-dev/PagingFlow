@@ -1,6 +1,13 @@
 package ru.snowmaze.pagingflow
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.invoke
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
@@ -70,3 +77,13 @@ suspend fun PagingFlow<Int, String>.testLoadEverything(
 
 fun <Key : Any, Data : Any> LoadNextPageResult<Key, Data>.asSuccess() =
     this as LoadNextPageResult.Success<Key, Data>
+
+inline fun runTestOnDispatchersDefault(
+    noinline block: suspend CoroutineScope.() -> Unit
+) = runTest {
+    Dispatchers.Default.invoke(block)
+}
+
+suspend fun <T> Flow<T>.firstWithTimeout(timeout: Long = 5000, predicate: suspend (T) -> Boolean) {
+    withTimeout(timeout) { first(predicate) }
+}

@@ -19,5 +19,5 @@ internal fun <Key: Any, Data: Any> DataPage<Key, Data>.toInfo() = PageInfo(
     nextPageKey = nextPageKey,
     previousPageKey = previousPageKey,
     dataSourceWithIndex = dataSourceWithIndex,
-    data = dataFlow?.value
+    data = data
 )

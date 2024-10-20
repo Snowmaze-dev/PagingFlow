@@ -6,7 +6,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import ru.snowmaze.pagingflow.LoadParams
 
-class ConcatDataSourceConfig<Key : Any>(
+class PageLoaderConfig<Key : Any>(
     val defaultParamsProvider: () -> LoadParams<Key>,
     val processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
     val coroutineScope: CoroutineScope = CoroutineScope(processingDispatcher + SupervisorJob()),

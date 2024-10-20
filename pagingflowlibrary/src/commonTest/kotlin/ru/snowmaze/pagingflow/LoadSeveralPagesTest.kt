@@ -18,8 +18,8 @@ import kotlin.test.assertEquals
 
 class LoadSeveralPagesTest {
 
-    val pageSize = 20
-    val removePagesOffset = 4
+    private val pageSize = 20
+    private val removePagesOffset = 4
 
     private val basePagingFlowConfiguration = PagingFlowConfiguration(
         defaultParams = LoadParams(pageSize, 0),
@@ -33,7 +33,7 @@ class LoadSeveralPagesTest {
     @Test
     fun testLoadSeveralPages() = runTest {
         val totalCount = 100
-        val source = TestDataSource(totalCount, 0L)
+        val source = TestDataSource(totalCount)
         val maxItems = pageSize * 4
         val pagingFlow = buildPagingFlow(
             basePagingFlowConfiguration.copy(
@@ -50,23 +50,19 @@ class LoadSeveralPagesTest {
             debounceBufferDurationMsProvider = { 10 },
         )
         var pages = 0
-        val jobs = pagingFlow.loadNextPageWithResult(
-            pagingParams = PagingParams(
-                PagingLibraryParamsKeys.LoadSeveralPages to LoadSeveralPagesData<Int, String>(
-                    getPagingParams = {
-                        pages++
-                        if (pages > 2) null
-                        else PagingParams(PagingLibraryParamsKeys.ReturnAwaitJob to true)
-                    },
-                    onSuccess = {
-                    }
-                )
-            )
-        ).returnData[ReturnPagingLibraryKeys.PagingParamsList].mapNotNull {
-            it?.getOrNull(ReturnPagingLibraryKeys.DataSetJob)
-        }
-        assertEquals(2, jobs.size)
-        jobs.joinAll()
+        val result = pagingFlow.loadSeveralPages(
+            awaitDataSet = true,
+            getPagingParams = {
+                pages++
+                PagingParams.EMPTY.takeUnless { pages > 2 }
+            },
+        )
+        assertEquals(
+            2,
+            result.returnData[ReturnPagingLibraryKeys.PagingParamsList].mapNotNull {
+                it?.getOrNull(ReturnPagingLibraryKeys.DataSetJob)
+            }.size
+        )
         assertEquals(source.getItems(pageSize * 2), presenter.data)
 
         pages = 0

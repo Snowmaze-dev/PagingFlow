@@ -28,6 +28,8 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
 
     protected val _dataFlow = presenterFlow()
     override val latestDataFlow = _dataFlow.asSharedFlow()
+
+    @Volatile
     override var latestData = LatestData<Data>(emptyList())
     protected val processingDispatcher = processingDispatcher.limitedParallelismCompat(1)
 
@@ -83,6 +85,15 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
         previousData: LatestData<Data>
     ) {
 
+    }
+
+    /**
+     * Rebuilds list
+     */
+    fun forceRebuildList() {
+        coroutineScope.launch(processingDispatcher) {
+            buildList(emptyList())
+        }
     }
 
     protected abstract suspend fun buildListInternal(): List<Data?>

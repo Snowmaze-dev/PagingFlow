@@ -1,5 +1,6 @@
 package ru.snowmaze.pagingflow.presenters
 
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -9,9 +10,9 @@ import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
+import ru.snowmaze.pagingflow.diff.handle
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
-import ru.snowmaze.pagingflow.diff.mediums.handle
 
 /**
  * Basic implementation of list building presenter.
@@ -21,6 +22,7 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
     invalidateBehavior: InvalidateBehavior,
     config: DataChangesMediumConfig = pagingDataChangesMedium.config,
+    unsubscribeDelayWhenNoSubscribers: Long = 5000L,
     presenterFlow: () -> MutableSharedFlow<LatestData<Data>> = defaultPresenterFlowCreator()
 ) : BuildListPagingPresenter<Key, Data>(
     invalidateBehavior = invalidateBehavior,
@@ -33,14 +35,15 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
     protected var pageIndexesKeys = emptyList<Int>()
 
     init {
-        val callback = getDataChangedCallback()
-        pagingDataChangesMedium.addDataChangedCallback(callback)
+        coroutineScope.launch(processingDispatcher) {
+            val callback = getDataChangedCallback()
+            pagingDataChangesMedium.addDataChangedCallback(callback)
 
-        var firstCall = true
-        var isSubscribedAlready = true
-        coroutineScope.launch {
+            var firstCall = true
+            var isSubscribedAlready = true
             _dataFlow.subscriptionCount.collectLatest { subscriptionCount ->
                 if (subscriptionCount == 0 && !firstCall) {
+                    delay(unsubscribeDelayWhenNoSubscribers)
                     isSubscribedAlready = false
                     pagingDataChangesMedium.removeDataChangedCallback(callback)
                 } else if (subscriptionCount == 1 && !isSubscribedAlready) {
@@ -100,15 +103,6 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
                     if (event is AwaitDataSetEvent) event.callback()
                 }
             }
-        }
-    }
-
-    /**
-     * Rebuilds list
-     */
-    fun forceRebuildList() {
-        coroutineScope.launch(processingDispatcher) {
-            buildList(emptyList())
         }
     }
 

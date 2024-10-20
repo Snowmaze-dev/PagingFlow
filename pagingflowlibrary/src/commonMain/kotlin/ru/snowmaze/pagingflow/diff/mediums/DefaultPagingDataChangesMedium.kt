@@ -5,7 +5,7 @@ import ru.snowmaze.pagingflow.diff.DataChangedEvent
 
 abstract class DefaultPagingDataChangesMedium<Key : Any, Data : Any> : PagingDataChangesMedium<Key, Data> {
 
-    protected val dataChangedCallbacks = mutableListOf<DataChangedCallback<Key, Data>>()
+    protected val dataChangedCallbacks = mutableListOf<DataChangedCallback<Key, Data>>() // TODO sync
 
     override fun addDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
         dataChangedCallbacks.add(callback)
