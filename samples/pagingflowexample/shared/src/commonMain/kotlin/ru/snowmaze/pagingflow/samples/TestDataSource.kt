@@ -8,7 +8,7 @@ import ru.snowmaze.pagingflow.sources.SegmentedDataSource
 class TestDataSource(
     override val totalCount: Int,
     val withDelay: Boolean = false
-) : SegmentedDataSource<String, Any>() {
+) : SegmentedDataSource<String>() {
 
     private val items = buildList {
         repeat(totalCount) {
@@ -20,7 +20,7 @@ class TestDataSource(
         loadParams: LoadParams<Int>,
         startIndex: Int,
         endIndex: Int
-    ): LoadResult.Success<Int, String, Any> {
+    ): LoadResult.Success<Int, String> {
         return simpleResult(items.subList(startIndex, endIndex))
     }
 
