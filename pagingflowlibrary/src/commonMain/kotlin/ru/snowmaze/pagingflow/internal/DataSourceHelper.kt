@@ -4,11 +4,10 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.sources.DataSource
-import ru.snowmaze.pagingflow.sources.PageLoaderConfig
 import ru.snowmaze.pagingflow.utils.DiffOperation
 
 internal class DataSourceHelper<Key : Any, Data : Any>(
-    private val dataSourcesManager: DataSources<Key, Data>,
+    private val dataSourcesManager: DataSourcesManager<Key, Data>,
     private val dataPagesManager: DataPagesManager<Key, Data>,
     private val pageLoader: PageLoader<Key, Data>,
     private val loadDataMutex: Mutex

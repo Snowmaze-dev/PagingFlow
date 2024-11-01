@@ -3,7 +3,7 @@ package ru.snowmaze.pagingflow.internal
 import ru.snowmaze.pagingflow.sources.DataSource
 import ru.snowmaze.pagingflow.PaginationDirection
 
-internal class DataSources<Key : Any, Data : Any> {
+internal class DataSourcesManager<Key : Any, Data : Any> {
 
     private val _dataSources = mutableListOf<DataSource<Key, Data>>()
     val dataSources: List<DataSource<Key, Data>> get() = _dataSources

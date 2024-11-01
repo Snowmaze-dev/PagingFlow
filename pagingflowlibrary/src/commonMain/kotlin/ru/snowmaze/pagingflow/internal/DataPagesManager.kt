@@ -28,7 +28,7 @@ import kotlin.concurrent.Volatile
 internal class DataPagesManager<Key : Any, Data : Any>(
     private val pageLoaderConfig: PageLoaderConfig<Key>,
     private val setDataMutex: Mutex,
-    private val dataSourcesManager: DataSources<Key, Data>
+    private val dataSourcesManager: DataSourcesManager<Key, Data>
 ) : PagingDataChangesMedium<Key, Data> {
 
     private val _dataPages = mutableListOf<DataPage<Key, Data>>()

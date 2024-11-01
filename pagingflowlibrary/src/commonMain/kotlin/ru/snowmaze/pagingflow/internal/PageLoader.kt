@@ -11,7 +11,6 @@ import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.PagingStatus
 import ru.snowmaze.pagingflow.errorshandler.PagingUnhandledErrorsHandler
-import ru.snowmaze.pagingflow.params.DataKey
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
@@ -23,7 +22,7 @@ import ru.snowmaze.pagingflow.sources.ConcatSourceData
 import ru.snowmaze.pagingflow.utils.mapHasNext
 
 internal class PageLoader<Key : Any, Data : Any> constructor(
-    private val dataSourcesManager: DataSources<Key, Data>,
+    private val dataSourcesManager: DataSourcesManager<Key, Data>,
     private val dataPagesManager: DataPagesManager<Key, Data>,
     val pageLoaderConfig: PageLoaderConfig<Key>,
     private val pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler,

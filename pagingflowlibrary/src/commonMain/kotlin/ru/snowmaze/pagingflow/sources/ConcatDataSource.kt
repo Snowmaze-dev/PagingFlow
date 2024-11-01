@@ -16,7 +16,7 @@ import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.errorshandler.DefaultPagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.internal.DataPagesManager
 import ru.snowmaze.pagingflow.internal.DataSourceHelper
-import ru.snowmaze.pagingflow.internal.DataSources
+import ru.snowmaze.pagingflow.internal.DataSourcesManager
 import ru.snowmaze.pagingflow.internal.PageLoader
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
@@ -34,7 +34,7 @@ class ConcatDataSource<Key : Any, Data : Any>(
 
     private val loadDataMutex = Mutex()
 
-    private val dataSourcesManager = DataSources<Key, Data>()
+    private val dataSourcesManager = DataSourcesManager<Key, Data>()
 
     private val dataPagesManager = DataPagesManager(
         pageLoaderConfig = concatDataSourceConfig,
