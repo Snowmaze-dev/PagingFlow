@@ -236,6 +236,19 @@ fun <Key : Any, Data : Any> buildPagingFlow(
     }
 }
 
+/**
+ * Loads multiple pages at once and only then delivers events to change listeners
+ *
+ * @param paginationDirection the direction in which to load pages.
+ * @param awaitDataSet if true, waits for the data to be set to the presenter
+ * @param awaitTimeout the maximum time, in milliseconds, to wait for [awaitDataSet] completion.
+ * @param pagingParams params of loading
+ * @param onSuccess callback invoked with the result of a successful page load.
+ * @param getPagingParams a lambda that decides if additional pages should be loaded. If it returns non-null [PagingParams],
+ * the next page is loaded with these params; otherwise, loading stops.
+ *
+ * @return result of loading
+ */
 suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadSeveralPages(
     paginationDirection: PaginationDirection = pagingFlowConfiguration.defaultParamsProvider()
         .paginationDirection,
@@ -274,6 +287,17 @@ suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadSeveralPages(
     return result
 }
 
+/**
+ * Loads page and then suspends until data is set to presenter.
+ *
+ * If [timeout] is passed then it will stop waiting if this timeout was exceeded.
+ *
+ * @param paginationDirection the direction in which to load pages.
+ * @param timeout the maximum time, in milliseconds, to wait for data set to presenter.
+ * @param pagingParams params of loading
+ *
+ * @return result of loading
+ */
 suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPageAndAwaitDataSet(
     paginationDirection: PaginationDirection = pagingFlowConfiguration.defaultParamsProvider()
         .paginationDirection,
