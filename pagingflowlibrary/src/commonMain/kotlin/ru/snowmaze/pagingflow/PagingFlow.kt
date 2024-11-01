@@ -3,6 +3,7 @@ package ru.snowmaze.pagingflow
 import kotlinx.coroutines.invoke
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.params.LoadSeveralPagesData
@@ -239,13 +240,14 @@ suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadSeveralPages(
     paginationDirection: PaginationDirection = pagingFlowConfiguration.defaultParamsProvider()
         .paginationDirection,
     awaitDataSet: Boolean = false,
+    awaitTimeout: Long? = null,
     pagingParams: PagingParams? = null,
     onSuccess: ((LoadResult.Success<Key, Data>) -> Unit)? = null,
     getPagingParams: (LoadResult<Key, Data>?) -> PagingParams?,
 ): LoadNextPageResult<Key, Data> {
     val result = loadNextPageWithResult(
         paginationDirection = paginationDirection,
-        pagingParams = (pagingParams ?: PagingParams()).apply {
+        pagingParams = (pagingParams ?: PagingParams(1)).apply {
             put(
                 PagingLibraryParamsKeys.LoadSeveralPages, LoadSeveralPagesData(
                     getPagingParams = {
@@ -260,24 +262,34 @@ suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadSeveralPages(
             )
         }
     )
-    if (awaitDataSet) result.returnData.getOrNull(ReturnPagingLibraryKeys.PagingParamsList)
-        ?.mapNotNull {
-            it?.getOrNull(ReturnPagingLibraryKeys.DataSetJob)
-        }?.joinAll()
+    if (awaitDataSet) {
+        val awaitData = suspend {
+            result.returnData.getOrNull(ReturnPagingLibraryKeys.PagingParamsList)
+                ?.mapNotNull { it?.getOrNull(ReturnPagingLibraryKeys.DataSetJob) }
+                ?.joinAll()
+        }
+        if (awaitTimeout == null) awaitData()
+        else withTimeoutOrNull(awaitTimeout) { awaitData() }
+    }
     return result
 }
 
 suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPageAndAwaitDataSet(
     paginationDirection: PaginationDirection = pagingFlowConfiguration.defaultParamsProvider()
         .paginationDirection,
+    timeout: Long? = null,
     pagingParams: PagingParams? = null
 ): LoadNextPageResult<Key, Data> {
     val result = loadNextPageWithResult(
         paginationDirection = paginationDirection,
-        pagingParams = (pagingParams ?: PagingParams()).apply {
+        pagingParams = (pagingParams ?: PagingParams(1)).apply {
             put(PagingLibraryParamsKeys.ReturnAwaitJob, true)
         }
     )
-    result.returnData.getOrNull(ReturnPagingLibraryKeys.DataSetJob)?.join()
+    val awaitData = suspend {
+        result.returnData.getOrNull(ReturnPagingLibraryKeys.DataSetJob)?.join()
+    }
+    if (timeout == null) awaitData()
+    else withTimeoutOrNull(timeout) { awaitData() }
     return result
 }
