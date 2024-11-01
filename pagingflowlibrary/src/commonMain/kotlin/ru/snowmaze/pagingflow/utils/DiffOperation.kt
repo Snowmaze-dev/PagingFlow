@@ -51,7 +51,7 @@ suspend fun PagingFlow<*, *>.setDataSourcesWithDiff(sources: List<DataSource<*, 
                     }
 
                     is dev.andrewbailey.diff.DiffOperation.Move -> {
-                        move(operation.fromIndex, operation.toIndex - 1) // TODO тут баг
+                        move(operation.fromIndex, operation.toIndex - 1) // TODO perhaps bug here
                     }
 
                     is dev.andrewbailey.diff.DiffOperation.RemoveRange -> {
