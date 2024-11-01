@@ -180,7 +180,6 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         callDataChangedCallbacks { InvalidateEvent(invalidateBehavior) }
     }
 
-    // TODO добавить возможность добавить к отправке эвентов какой-то эвент с данными
     private suspend inline fun collectPageData(
         page: DataPage<Key, Data>,
         dataFlow: Flow<UpdatableData<Key, Data>>?,
