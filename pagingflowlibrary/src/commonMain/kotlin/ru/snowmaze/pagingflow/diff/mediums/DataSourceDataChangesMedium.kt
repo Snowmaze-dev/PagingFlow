@@ -1,11 +1,8 @@
 package ru.snowmaze.pagingflow.diff.mediums
 
-import ru.snowmaze.pagingflow.diff.AwaitDataSetEvent
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.EventFromDataSource
-import ru.snowmaze.pagingflow.diff.InvalidateEvent
-import ru.snowmaze.pagingflow.diff.PageChangedEvent
 
 class DataSourceDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
     dataChangesMedium: PagingDataChangesMedium<Key, Data>,

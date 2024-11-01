@@ -45,14 +45,18 @@ class CompositeMediumTest {
         assertEquals(data, presenter.latestData.data)
     }
 
+    private fun mapToInts(data: List<String>) = data.map { it.drop(5).toInt() }
+
     @Test
     fun baseMediumTest() = runTestOnDispatchersDefault {
-        val testDataSource = TestDataSource(totalCount)
+        val testDataSource = TestDataSource(pageSize * 3)
+        val testDataSource1 = TestDataSource(totalCount, startFrom = 500)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
             addDataSource(testDataSource)
+            addDataSource(testDataSource1)
         }
         var startList = listOf(123)
-        var second = listOf(123)
+        val second = listOf(1235)
         val third = listOf(12)
         val fourth = listOf(21)
         val fifth = listOf(577)
@@ -62,9 +66,8 @@ class CompositeMediumTest {
         val thirdFlow = MutableSharedFlow<List<Int>>()
         val fourthFlow = MutableSharedFlow<List<Int>>()
         val medium = CompositePagingDataChangesMediumBuilder.build(pagingFlow) {
-            dataSourceSection(0) {
-                it.map { it.drop(5).toInt() }
-            }
+            dataSourceSection(1, mapper = ::mapToInts)
+            dataSourceSection(0, mapper = ::mapToInts)
             flowSection(thirdFlow)
             flowSection(secondFlow)
             flowSection(fourthFlow)
@@ -121,28 +124,38 @@ class CompositeMediumTest {
         assertIs<PageChangedEvent<*, *>>(lastEventsWithRemove.first())
         assertIs<PageChangedEvent<*, *>>(lastEventsWithRemove[1])
         assertIs<PageChangedEvent<*, *>>(lastEventsWithRemove[2])
-        assertIs<PageRemovedEvent<*, *>>(lastEventsWithRemove[3])
+        assertIs<PageChangedEvent<*, *>>(lastEventsWithRemove[3])
+        assertIs<PageRemovedEvent<*, *>>(lastEventsWithRemove[4])
 
         firstFlow.emit(emptyList())
 
-        presenter.latestDataFlow.firstWithTimeout { it.data.size == 23 }
-        assertEquals(sourceItems + third + fifth + startList, presenter.latestData.data)
+        (sourceItems + third + fifth + startList).also { list ->
+            presenter.latestDataFlow.firstWithTimeout { it.data.size == list.size }
+            assertEquals(list, presenter.latestData.data)
+        }
 
         // testing updateWhenDataUpdated = true
         startList = listOf(1234)
 
-        pagingFlow.loadNextPageWithResult()
+        pagingFlow.loadNextPageAndAwaitDataSet()
         presenter.latestDataFlow.firstWithTimeout { it.data.size == 43 }
         assertEquals(
             testDataSource.getItems(pageSize * 2)
                 .map { it.drop(5).toInt() } + third + fifth + startList,
             presenter.latestData.data)
 
-        pagingFlow.loadNextPageWithResult()
-        delay(50)
+        pagingFlow.loadNextPageAndAwaitDataSet()
         assertEquals(
-            testDataSource.getItems(pageSize * 3).drop(pageSize)
-                .map { it.drop(5).toInt() } + third + fifth + startList,
-            presenter.latestData.data)
+            mapToInts(testDataSource.getItems(pageSize * 3).drop(pageSize))
+                 + third + fifth + startList,
+            presenter.latestData.data
+        )
+
+        pagingFlow.loadNextPageAndAwaitDataSet()
+        assertEquals(
+            mapToInts(testDataSource1.getItems(pageSize) + testDataSource.getItems(pageSize * 3).drop(pageSize * 2))
+               + third + fifth + startList,
+            presenter.latestData.data
+        )
     }
 }

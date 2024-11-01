@@ -51,7 +51,7 @@ afterEvaluate {
     publishing {
         publications {
             withType<MavenPublication> {
-                version = "1.0.9-alpha"
+                version = "1.1.0-alpha"
                 group = "ru.snowmaze.pagingflow"
                 val postfix = if (name == "androidRelease") "android" else name
                 artifactId = "common-$postfix"

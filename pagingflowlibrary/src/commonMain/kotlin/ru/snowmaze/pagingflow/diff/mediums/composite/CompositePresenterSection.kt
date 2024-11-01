@@ -21,5 +21,8 @@ internal sealed class CompositePresenterSection<Key : Any, Data : Any, NewData :
     internal class DataSourceSection<Key : Any, Data : Any, NewData : Any>(
         var dataSourceIndex: Int,
         val mapData: (List<Data>) -> List<NewData>,
-    ) : CompositePresenterSection<Key, Data, NewData>()
+    ) : CompositePresenterSection<Key, Data, NewData>() {
+
+        var removedPagesNumbers = mutableSetOf<Int>()
+    }
 }
