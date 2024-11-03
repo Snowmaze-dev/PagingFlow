@@ -216,7 +216,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
             section.removedPagesNumbers.remove(addIndex)
             result
         } else 0
-        val pickedAddIndex = addIndex - indexShift
+        val pickedAddIndex = (addIndex - indexShift).coerceAtLeast(0)
         val event = PageAddedEvent(
             key = key,
             sourceIndex = section.sourceIndex,
