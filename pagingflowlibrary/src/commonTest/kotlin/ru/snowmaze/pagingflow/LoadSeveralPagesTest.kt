@@ -2,9 +2,6 @@ package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.invoke
-import kotlinx.coroutines.joinAll
-import kotlinx.coroutines.test.runTest
 import ru.snowmaze.pagingflow.params.LoadSeveralPagesData
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
@@ -31,7 +28,7 @@ class LoadSeveralPagesTest {
     )
 
     @Test
-    fun testLoadSeveralPages() = runTest {
+    fun testLoadSeveralPages() = runTestOnDispatchersDefault {
         val totalCount = 100
         val source = TestDataSource(totalCount)
         val maxItems = pageSize * 4
@@ -66,20 +63,21 @@ class LoadSeveralPagesTest {
         assertEquals(source.getItems(pageSize * 2), presenter.data)
 
         pages = 0
-        pagingFlow.loadNextPageWithResult(
-            pagingParams = PagingParams(
-                PagingLibraryParamsKeys.LoadSeveralPages to LoadSeveralPagesData<Int, String>(
-                    getPagingParams = {
-                        pages++
-                        if (pages > 4) null
-                        else PagingParams(PagingLibraryParamsKeys.ReturnAwaitJob to true)
-                    },
+        pagingFlow.loadSeveralPages(
+            getPagingParams = {
+                PagingParams(
+                    PagingLibraryParamsKeys.LoadSeveralPages to LoadSeveralPagesData<Int, String>(
+                        getPagingParams = {
+                            pages++
+                            if (pages > 4) null
+                            else PagingParams(PagingLibraryParamsKeys.ReturnAwaitJob to true)
+                        },
+                    )
                 )
-            )
-        ).returnData[ReturnPagingLibraryKeys.PagingParamsList].mapNotNull {
-            it?.getOrNull(ReturnPagingLibraryKeys.DataSetJob)
-        }.joinAll()
-        Dispatchers.Default.invoke { delay(50) }
+            },
+            awaitDataSet = true
+        )
+        delay(50)
         assertEquals(source.getItems(pageSize * 5).takeLast(maxItems), presenter.data)
     }
 }
