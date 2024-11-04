@@ -23,7 +23,8 @@ class MainActivity : AppCompatActivity() {
         TestAdapter(
             PagingTrigger(
                 pagingFlow = { viewModel.pagingFlow },
-                prefetchDownDistance = PREFETCH_DISTANCE
+                prefetchDownDistance = PREFETCH_DISTANCE,
+                coroutineScope = lifecycleScope
             ),
             pagingDataChangesMedium = viewModel.pagingDataChangesMedium
         )

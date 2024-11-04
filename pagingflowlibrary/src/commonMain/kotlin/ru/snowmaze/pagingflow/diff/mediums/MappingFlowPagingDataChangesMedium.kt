@@ -10,6 +10,7 @@ import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
+import ru.snowmaze.pagingflow.diff.handle
 
 class MappingFlowPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
@@ -38,16 +39,18 @@ class MappingFlowPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
                                 if (isFirstValue) {
                                     PageAddedEvent(
                                         key = event.key,
-                                        pageIndex = event.pageIndex,
                                         sourceIndex = event.sourceIndex,
+                                        pageIndex = event.pageIndex,
+                                        pageIndexInSource = event.pageIndexInSource,
                                         items = it as List<NewData>,
-                                        params = event.params
+                                        params = event.params,
                                     )
                                 } else {
                                     PageChangedEvent(
                                         key = event.key,
-                                        pageIndex = event.pageIndex,
                                         sourceIndex = event.sourceIndex,
+                                        pageIndex = event.pageIndex,
+                                        pageIndexInSource = event.pageIndexInSource,
                                         items = it as List<NewData>,
                                         params = event.params
                                     )
@@ -65,8 +68,9 @@ class MappingFlowPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
                             notifyOnEvent(
                                 PageChangedEvent(
                                     key = event.key,
-                                    pageIndex = event.pageIndex,
                                     sourceIndex = event.sourceIndex,
+                                    pageIndex = event.pageIndex,
+                                    pageIndexInSource = event.pageIndexInSource,
                                     items = it as List<NewData>,
                                     params = event.params
                                 )

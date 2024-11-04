@@ -22,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.collectAsLazyPagingItems
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
+import ru.snowmaze.pagingflow.presenters.data
+import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.utils.PagingTrigger
 import ru.snowmaze.pagingflow.samples.TestViewModel.Companion.PREFETCH_DISTANCE
@@ -52,11 +54,12 @@ fun List(innerPadding: PaddingValues, pagingDataPresenter: PagingDataPresenter<I
         PagingTrigger(
             pagingFlow = { model.pagingFlow },
             prefetchDownDistance = PREFETCH_DISTANCE,
-            itemCount = { pagingDataPresenter.dataFlow.value.size }
+            itemCount = { pagingDataPresenter.data.size },
+            coroutineScope = scope
         )
     }
     val lazyListState = rememberLazyListState()
-    val items by pagingDataPresenter.dataFlow.collectAsState()
+    val items by pagingDataPresenter.dataFlow.collectAsState(emptyList())
     LazyColumn(
         modifier = Modifier.fillMaxWidth(), state = lazyListState, contentPadding = innerPadding
     ) {

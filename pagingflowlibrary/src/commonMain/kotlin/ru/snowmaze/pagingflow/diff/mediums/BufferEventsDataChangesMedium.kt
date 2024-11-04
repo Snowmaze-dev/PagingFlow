@@ -6,9 +6,9 @@ import kotlinx.coroutines.sync.withLock
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 
-// TODO покрыть тестом
 /**
  * Buffers events if medium have no subscribers and then replies them when previous subscribers resubscribe
+ * TODO cover with tests
  */
 class BufferEventsDataChangesMedium<Key : Any, Data : Any>(
     dataChangesMedium: PagingDataChangesMedium<Key, Data>,

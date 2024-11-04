@@ -6,6 +6,7 @@ import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
+import ru.snowmaze.pagingflow.diff.handle
 
 class MappingPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
@@ -23,8 +24,9 @@ class MappingPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
                 onPageAdded = {
                     PageAddedEvent(
                         key = it.key,
-                        pageIndex = it.pageIndex,
                         sourceIndex = it.sourceIndex,
+                        pageIndex = it.pageIndex,
+                        pageIndexInSource = it.pageIndexInSource,
                         items = transform(it) as List<NewData>,
                         params = it.params
                     )
@@ -32,8 +34,9 @@ class MappingPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
                 onPageChanged = {
                     PageChangedEvent(
                         key = it.key,
-                        pageIndex = it.pageIndex,
                         sourceIndex = it.sourceIndex,
+                        pageIndex = it.pageIndex,
+                        pageIndexInSource = it.pageIndexInSource,
                         items = transform(it),
                         params = it.params
                     )
@@ -45,7 +48,9 @@ class MappingPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
         }
 
         override suspend fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
-            notifyOnEvents(events.mapNotNull { handleEvent(it) })
+            notifyOnEvents(
+                events.mapNotNullTo(ArrayList(events.size)) { handleEvent(it) }
+            )
         }
 
         override suspend fun onEvent(event: DataChangedEvent<Key, Data>) {

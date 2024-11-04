@@ -8,14 +8,15 @@ import ru.snowmaze.pagingflow.result.result
 
 class TestDataSource(
     override val totalCount: Int,
-    private val delay: Long = 0L
+    private val delayProvider: () -> Long = { 0L },
+    startFrom: Int = 0
 ) : SegmentedDataSource<String>() {
 
     var currentException: Exception? = null
 
     private val items = buildList {
-        repeat(totalCount) {
-            add("Item $it")
+        for (item in startFrom until totalCount) {
+            add("Item $item")
         }
     }
 
@@ -29,7 +30,7 @@ class TestDataSource(
         val exception = currentException
         if (exception != null) throw exception
         return result(dataFlow = flow {
-            delay(delay)
+            delay(delayProvider())
             emit(items.subList(startIndex, endIndex))
         })
     }

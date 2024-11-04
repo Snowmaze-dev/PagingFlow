@@ -5,22 +5,24 @@ package ru.snowmaze.pagingflow.params
  * @see PagingLibraryParamsKeys
  * @see DataKey
  */
-class PagingParams(map: Map<String, Any?> = emptyMap()) {
+class PagingParams internal constructor(private val internalMap: MutableMap<String, Any?>) {
 
     companion object {
 
         val EMPTY = PagingParams()
 
         fun Map<DataKey<*>, Any>.pagingParams() = PagingParams(mapKeys { it.key.key })
+
+        operator fun invoke(map: Map<String, Any?>) = PagingParams(LinkedHashMap(map))
     }
 
-    constructor(pagingParams: PagingParams) : this(pagingParams.internalMap)
+    constructor(capacity: Int) : this(LinkedHashMap(capacity))
 
-    constructor(builder: PagingParams.() -> Unit) : this(
-        PagingParams(emptyMap<String, Any>()).apply(builder)
+    constructor(pagingParams: PagingParams) : this(LinkedHashMap(pagingParams.internalMap))
+
+    constructor(capacity: Int = 5, builder: PagingParams.() -> Unit) : this(
+        PagingParams(capacity).apply(builder)
     )
-
-    private val internalMap = LinkedHashMap(map)
 
     val entries get() = internalMap.entries
     val keys get() = internalMap.keys
