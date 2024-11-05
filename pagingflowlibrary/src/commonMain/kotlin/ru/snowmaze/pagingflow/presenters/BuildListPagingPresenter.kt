@@ -33,7 +33,7 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
     override var latestData = LatestData<Data>(emptyList())
     protected val processingDispatcher = processingDispatcher.limitedParallelismCompat(1)
 
-    private var lastInvalidateBehavior: InvalidateBehavior? = null
+    protected var lastInvalidateBehavior: InvalidateBehavior? = null
 
     @Volatile
     protected var _startIndex = 0

@@ -8,8 +8,8 @@ import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
-import ru.snowmaze.pagingflow.sources.MaxItemsConfiguration
-import ru.snowmaze.pagingflow.sources.TestDataSource
+import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
+import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -30,7 +30,7 @@ class LoadSeveralPagesTest {
     @Test
     fun testLoadSeveralPages() = runTestOnDispatchersDefault {
         val totalCount = 100
-        val source = TestDataSource(totalCount)
+        val source = TestPagingSource(totalCount)
         val maxItems = pageSize * 4
         val pagingFlow = buildPagingFlow(
             basePagingFlowConfiguration.copy(
@@ -41,10 +41,10 @@ class LoadSeveralPagesTest {
                 )
             )
         ) {
-            addDataSource(source)
+            addPagingSource(source)
         }
         val presenter = pagingFlow.pagingDataPresenter(
-            debounceBufferDurationMsProvider = { 10 },
+            eventsBatchingDurationMsProvider = { 10 },
         )
         var pages = 0
         val result = pagingFlow.loadSeveralPages(

@@ -11,14 +11,14 @@ import kotlinx.coroutines.withTimeout
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
-import ru.snowmaze.pagingflow.sources.TestDataSource
+import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.math.ceil
 import kotlin.test.assertEquals
 
 val testDispatcher = UnconfinedTestDispatcher()
 
 suspend fun PagingFlow<Int, String>.testLoadEverything(
-    dataSources: List<TestDataSource>,
+    dataSources: List<TestPagingSource>,
     shouldTestItems: Boolean = true,
     pagingPresenter: PagingDataPresenter<Int, String>
 ) {

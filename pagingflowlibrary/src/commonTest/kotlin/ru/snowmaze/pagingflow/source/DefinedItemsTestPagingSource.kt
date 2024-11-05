@@ -1,12 +1,12 @@
-package ru.snowmaze.pagingflow.sources
+package ru.snowmaze.pagingflow.source
 
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.result.simpleResult
 
-class DefinedItemsTestDataSource<T : Any>(
+class DefinedItemsTestPagingSource<T : Any>(
     val key: String, val items: List<T>
-) : SegmentedDataSource<T>() {
+) : SegmentedPagingSource<T>() {
 
     override val totalCount = items.size
 
@@ -20,7 +20,7 @@ class DefinedItemsTestDataSource<T : Any>(
 
     override fun hashCode() = key.hashCode()
 
-    override fun equals(other: Any?) = if (other is DefinedItemsTestDataSource<*>) key == other.key
+    override fun equals(other: Any?) = if (other is DefinedItemsTestPagingSource<*>) key == other.key
     else false
 
     override fun toString(): String {

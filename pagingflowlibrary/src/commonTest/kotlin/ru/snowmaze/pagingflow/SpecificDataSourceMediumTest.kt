@@ -4,8 +4,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import ru.snowmaze.pagingflow.diff.mediums.DataSourceDataChangesMedium
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
-import ru.snowmaze.pagingflow.sources.MaxItemsConfiguration
-import ru.snowmaze.pagingflow.sources.TestDataSource
+import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
+import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
@@ -25,10 +25,10 @@ class SpecificDataSourceMediumTest {
 
     @Test
     fun baseTest() = runTestOnDispatchersDefault {
-        val testDataSource = TestDataSource(totalCount)
+        val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
-            addDataSource(TestDataSource(40))
-            addDataSource(testDataSource)
+            addPagingSource(TestPagingSource(40))
+            addPagingSource(testDataSource)
         }
         val presenterForFirst = DataSourceDataChangesMedium<Int, String, String>(
             pagingFlow,

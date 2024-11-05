@@ -2,7 +2,7 @@ package ru.snowmaze.pagingflow.utils
 
 import dev.andrewbailey.diff.differenceOf
 import ru.snowmaze.pagingflow.PagingFlow
-import ru.snowmaze.pagingflow.sources.DataSource
+import ru.snowmaze.pagingflow.source.PagingSource
 
 sealed class DiffOperation<T> {
 
@@ -23,8 +23,8 @@ sealed class DiffOperation<T> {
     ) : DiffOperation<T>()
 }
 
-suspend fun PagingFlow<*, *>.setDataSourcesWithDiff(sources: List<DataSource<*, *>>) =
-    setDataSources(sources as List<Nothing>) { oldList, newList ->
+suspend fun PagingFlow<*, *>.setPagingSourcesWithDiff(sources: List<PagingSource<*, *>>) =
+    setPagingSources(sources as List<Nothing>) { oldList, newList ->
         val difference = differenceOf(oldList, newList)
         buildList {
             val added = mutableMapOf<Int, Int>()
@@ -32,7 +32,7 @@ suspend fun PagingFlow<*, *>.setDataSourcesWithDiff(sources: List<DataSource<*, 
                 add(DiffOperation.Remove(index, count))
             }
 
-            fun addOperation(index: Int, items: List<DataSource<*, *>>) {
+            fun addOperation(index: Int, items: List<PagingSource<*, *>>) {
                 added[index] = (added[index] ?: 0) + 1
                 add(DiffOperation.Add(index, items.size, items))
             }

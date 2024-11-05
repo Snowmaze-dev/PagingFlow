@@ -105,7 +105,7 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
     private fun calculatePageStartItemIndex(pageIndex: Int): Int {
         var iterateIndex = 0
         var currentItemIndex = 0
-        if (pageIndexes.isEmpty()) return 0
+        if (indexedPages.isEmpty()) return 0
         while (true) {
             if (pageIndex == iterateIndex) return currentItemIndex
             currentItemIndex += pagesIndexes[iterateIndex]?.size ?: 0

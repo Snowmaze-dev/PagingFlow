@@ -15,9 +15,9 @@ import ru.snowmaze.pagingflow.presenters.mapDataPresenter
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import ru.snowmaze.pagingflow.result.LoadResult
-import ru.snowmaze.pagingflow.sources.ConcatDataSource
-import ru.snowmaze.pagingflow.sources.PageLoaderConfig
-import ru.snowmaze.pagingflow.sources.DataSource
+import ru.snowmaze.pagingflow.source.ConcatPagingSource
+import ru.snowmaze.pagingflow.source.PageLoaderConfig
+import ru.snowmaze.pagingflow.source.PagingSource
 import ru.snowmaze.pagingflow.utils.DiffOperation
 
 /**
@@ -28,7 +28,7 @@ import ru.snowmaze.pagingflow.utils.DiffOperation
  * You can also create mapping presenter with [mapDataPresenter]
  */
 class PagingFlow<Key : Any, Data : Any>(
-    private val concatDataSource: ConcatDataSource<Key, Data>,
+    private val concatDataSource: ConcatPagingSource<Key, Data>,
     val pagingFlowConfiguration: PagingFlowConfiguration<Key>
 ) : PagingDataChangesMedium<Key, Data> {
 
@@ -47,44 +47,44 @@ class PagingFlow<Key : Any, Data : Any>(
     val pagesCount: Int get() = concatDataSource.pagesCount
 
     /**
-     * @see [ConcatDataSource.addDataSource]
+     * @see [ConcatPagingSource.addPagingSource]
      */
-    fun addDataSource(dataSource: DataSource<Key, Data>) {
-        concatDataSource.addDataSource(dataSource)
+    fun addPagingSource(pagingSource: PagingSource<Key, Data>) {
+        concatDataSource.addPagingSource(pagingSource)
     }
 
     /**
-     * @see [ConcatDataSource.removeDataSource]
+     * @see [ConcatPagingSource.removePagingSource]
      */
-    fun removeDataSource(dataSource: DataSource<Key, Data>) {
-        concatDataSource.removeDataSource(dataSource)
+    fun removePagingSource(pagingSource: PagingSource<Key, Data>) {
+        concatDataSource.removePagingSource(pagingSource)
     }
 
-    fun removeDataSource(dataSourceIndex: Int) {
-        concatDataSource.removeDataSource(dataSourceIndex)
+    fun removePagingSource(dataSourceIndex: Int) {
+        concatDataSource.removePagingSource(dataSourceIndex)
     }
 
-    suspend fun invalidateAndSetDataSources(dataSourceList: List<DataSource<Key, Data>>) {
-        concatDataSource.invalidateAndSetDataSources(dataSourceList)
+    suspend fun invalidateAndPagingSources(pagingSourceList: List<PagingSource<Key, Data>>) {
+        concatDataSource.invalidateAndSetPagingSources(pagingSourceList)
     }
 
-    suspend fun setDataSources(
-        dataSourceList: List<DataSource<Key, Data>>, diff: (
-            oldList: List<DataSource<Key, Data>>, newList: List<DataSource<Key, Data>>
-        ) -> List<DiffOperation<DataSource<Key, Data>>>
-    ) = concatDataSource.setDataSources(
-        newDataSourceList = dataSourceList, diff = diff
+    suspend fun setPagingSources(
+        pagingSourceList: List<PagingSource<Key, Data>>, diff: (
+            oldList: List<PagingSource<Key, Data>>, newList: List<PagingSource<Key, Data>>
+        ) -> List<DiffOperation<PagingSource<Key, Data>>>
+    ) = concatDataSource.setPagingSources(
+        newPagingSourceList = pagingSourceList, diff = diff
     )
 
     /**
-     * @see [ConcatDataSource.addDataChangedCallback]
+     * @see [ConcatPagingSource.addDataChangedCallback]
      */
     override fun addDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
         concatDataSource.addDataChangedCallback(callback)
     }
 
     /**
-     * @see [ConcatDataSource.removeDataChangedCallback]
+     * @see [ConcatPagingSource.removeDataChangedCallback]
      */
     override fun removeDataChangedCallback(callback: DataChangedCallback<Key, Data>): Boolean {
         return concatDataSource.removeDataChangedCallback(callback)
@@ -113,9 +113,9 @@ class PagingFlow<Key : Any, Data : Any>(
     }
 
     /**
-     * Loads next page from [ConcatDataSource]
+     * Loads next page from [ConcatPagingSource]
      * @param paginationDirection direction of loading
-     * @param pagingParams params which will be supplied to data source, you can use them to specify custom values
+     * @param pagingParams params which will be supplied to paging source, you can use them to specify custom values
      * @return [LoadNextPageResult] of loading next page of data in given direction
      */
     private suspend fun loadNextPageInternal(
@@ -127,7 +127,9 @@ class PagingFlow<Key : Any, Data : Any>(
         val loadData = concatDataSource.load(
             defaultParams.copy(
                 paginationDirection = paginationDirection,
-                pagingParams = defaultPagingParams?.apply {
+                pagingParams = defaultPagingParams?.let {
+                    PagingParams(it)
+                } ?.apply {
                     pagingParams?.let { put(it) }
                 } ?: pagingParams
             )
@@ -154,7 +156,7 @@ class PagingFlow<Key : Any, Data : Any>(
     }
 
     /**
-     * @see [ConcatDataSource.invalidate]
+     * @see [ConcatPagingSource.invalidate]
      */
     suspend fun invalidate(
         invalidateBehavior: InvalidateBehavior? = null, removeCachedData: Boolean = true
@@ -185,7 +187,7 @@ fun <Key : Any, Data : Any> buildPagingFlow(
     loadFirstPage: Boolean = false,
     builder: PagingFlow<Key, Data>.() -> Unit = {}
 ) = PagingFlow<Key, Data>(
-    ConcatDataSource(
+    ConcatPagingSource(
         PageLoaderConfig(
             defaultParamsProvider = configuration.defaultParamsProvider,
             maxItemsConfiguration = configuration.maxItemsConfiguration,
@@ -215,24 +217,24 @@ fun <Key : Any, Data : Any> buildPagingFlow(
  *
  * @param configuration configuration of PagingFlow
  * @param loadFirstPage should load first page just after creating PagingFlow
- * @param dataSources data sources list to be added to PagingFlow
+ * @param pagingSources paging sources list to be added to PagingFlow
  */
 fun <Key : Any, Data : Any> buildPagingFlow(
     configuration: PagingFlowConfiguration<Key>,
-    loadFirstPage: Boolean = false,
-    vararg dataSources: DataSource<Key, Data>
+    loadFirstPage: Boolean,
+    vararg pagingSources: PagingSource<Key, Data>
 ) = buildPagingFlow(configuration = configuration, loadFirstPage = loadFirstPage) {
-    for (dataSource in dataSources) {
-        addDataSource(dataSource)
+    for (pagingSource in pagingSources) {
+        addPagingSource(pagingSource)
     }
 }
 
 fun <Key : Any, Data : Any> buildPagingFlow(
     configuration: PagingFlowConfiguration<Key>,
-    vararg dataSources: DataSource<Key, Data>
+    vararg pagingSources: PagingSource<Key, Data>
 ) = buildPagingFlow(configuration = configuration) {
-    for (dataSource in dataSources) {
-        addDataSource(dataSource)
+    for (pagingSource in pagingSources) {
+        addPagingSource(pagingSource)
     }
 }
 

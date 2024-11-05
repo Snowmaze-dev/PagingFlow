@@ -6,8 +6,8 @@ import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
-import ru.snowmaze.pagingflow.sources.MaxItemsConfiguration
-import ru.snowmaze.pagingflow.sources.TestDataSource
+import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
+import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -26,9 +26,9 @@ class BasicPagingFlowTest {
     @Test
     fun basePaginationUseCaseTest() = runTest {
         val totalCount = Random.nextInt(80, 1000)
-        val testDataSource = TestDataSource(totalCount)
+        val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
-            addDataSource(testDataSource)
+            addPagingSource(testDataSource)
         }
         val presenter = pagingFlow.pagingDataPresenter()
 
@@ -38,7 +38,7 @@ class BasicPagingFlowTest {
 
     @Test
     fun testThreePaginationForwardAndThenBackwards() = runTest {
-        val testDataSource = TestDataSource(pageSize * 3)
+        val testDataSource = TestPagingSource(pageSize * 3)
         val pagingFlow = buildPagingFlow(
             basePagingFlowConfiguration.copy(
                 maxItemsConfiguration = MaxItemsConfiguration(
@@ -47,7 +47,7 @@ class BasicPagingFlowTest {
                 ),
             )
         ) {
-            addDataSource(testDataSource)
+            addPagingSource(testDataSource)
         }
         val presenter = pagingFlow.pagingDataPresenter()
         pagingFlow.loadNextPageWithResult()
@@ -67,9 +67,9 @@ class BasicPagingFlowTest {
     @Test
     fun paginationErrorTest() = runTest {
         val totalCount = Random.nextInt(80, 1000)
-        val testDataSource = TestDataSource(totalCount)
+        val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
-            addDataSource(testDataSource)
+            addPagingSource(testDataSource)
         }
         testDataSource.currentException = IllegalArgumentException()
         val result = pagingFlow.loadNextPageWithResult()
@@ -79,13 +79,13 @@ class BasicPagingFlowTest {
 
     @Test
     fun baseThreeSourcesPaginationUseCaseTest() = runTest {
-        val firstTestDataSource = TestDataSource(Random.nextInt(80, 500))
-        val secondTestDataSource = TestDataSource(Random.nextInt(80, 500))
-        val thirdTestDataSource = TestDataSource(Random.nextInt(80, 500))
+        val firstTestDataSource = TestPagingSource(Random.nextInt(80, 500))
+        val secondTestDataSource = TestPagingSource(Random.nextInt(80, 500))
+        val thirdTestDataSource = TestPagingSource(Random.nextInt(80, 500))
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
-            addDataSource(firstTestDataSource)
-            addDataSource(secondTestDataSource)
-            addDataSource(thirdTestDataSource)
+            addPagingSource(firstTestDataSource)
+            addPagingSource(secondTestDataSource)
+            addPagingSource(thirdTestDataSource)
         }
         val presenter = pagingFlow.pagingDataPresenter(
             invalidateBehavior = InvalidateBehavior.INVALIDATE_IMMEDIATELY
@@ -110,7 +110,7 @@ class BasicPagingFlowTest {
 
     private suspend fun invalidateAndCheckLoadingRight(
         pagingFlow: PagingFlow<Int, String>,
-        firstSource: TestDataSource,
+        firstSource: TestPagingSource,
         pagingDataPresenter: PagingDataPresenter<Int, String>,
     ) {
         pagingFlow.invalidate()

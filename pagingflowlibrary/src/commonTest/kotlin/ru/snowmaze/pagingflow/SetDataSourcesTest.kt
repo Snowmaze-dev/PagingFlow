@@ -6,8 +6,8 @@ import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
-import ru.snowmaze.pagingflow.sources.DefinedItemsTestDataSource
-import ru.snowmaze.pagingflow.utils.setDataSourcesWithDiff
+import ru.snowmaze.pagingflow.source.DefinedItemsTestPagingSource
+import ru.snowmaze.pagingflow.utils.setPagingSourcesWithDiff
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
@@ -17,18 +17,18 @@ class SetDataSourcesTest {
     @Test
     fun setDataSourcesTest() = runTest {
         val testDispatcher = UnconfinedTestDispatcher()
-        val firstDataSource = DefinedItemsTestDataSource("1", listOf(1))
-        val secondDataSource = DefinedItemsTestDataSource("2", listOf(2))
-        val thirdDataSource = DefinedItemsTestDataSource("3", listOf(3))
-        val fourthDataSource = DefinedItemsTestDataSource("4", listOf(4))
-        val fifthDataSource = DefinedItemsTestDataSource("5", listOf(5))
+        val firstDataSource = DefinedItemsTestPagingSource("1", listOf(1))
+        val secondDataSource = DefinedItemsTestPagingSource("2", listOf(2))
+        val thirdDataSource = DefinedItemsTestPagingSource("3", listOf(3))
+        val fourthDataSource = DefinedItemsTestPagingSource("4", listOf(4))
+        val fifthDataSource = DefinedItemsTestPagingSource("5", listOf(5))
         val pagingFlow = buildPagingFlow<Int, Int>(
             PagingFlowConfiguration(LoadParams(3), processingDispatcher = testDispatcher),
         ) {
-            addDataSource(firstDataSource)
-            addDataSource(secondDataSource)
-            addDataSource(thirdDataSource)
-            addDataSource(fourthDataSource)
+            addPagingSource(firstDataSource)
+            addPagingSource(secondDataSource)
+            addPagingSource(thirdDataSource)
+            addPagingSource(fourthDataSource)
         }
 
         val presenter = pagingFlow.pagingDataPresenter()
@@ -94,9 +94,9 @@ class SetDataSourcesTest {
 
     private suspend fun PagingFlow<Int, Int>.testSetSources(
         presenter: PagingDataPresenter<Int, Int>,
-        sources: List<DefinedItemsTestDataSource<Int>>
+        sources: List<DefinedItemsTestPagingSource<Int>>
     ) {
-        setDataSourcesWithDiff(sources)
+        setPagingSourcesWithDiff(sources)
         do {
             val result = loadNextPageWithResult()
         } while (result is LoadNextPageResult.Success && result.hasNext)

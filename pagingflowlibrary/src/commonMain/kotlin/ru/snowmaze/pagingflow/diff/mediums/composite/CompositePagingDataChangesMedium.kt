@@ -1,6 +1,5 @@
 package ru.snowmaze.pagingflow.diff.mediums.composite
 
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -39,7 +38,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
             } else if (
                 section is CompositePresenterSection.FlowSection<Key, Data, NewData>
             ) config.coroutineScope.launch {
-                section.itemsFlow.collectLatest {
+                section.itemsFlow.collect {
                     mutex.withLock {
                         onCompositeSectionChanged(
                             section = section,

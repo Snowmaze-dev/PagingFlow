@@ -1,4 +1,4 @@
-package ru.snowmaze.pagingflow.sources
+package ru.snowmaze.pagingflow.source
 
 import ru.snowmaze.pagingflow.params.PagingParams
 

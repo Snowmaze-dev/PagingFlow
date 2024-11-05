@@ -19,7 +19,7 @@ sealed class PagingStatus {
         override val hasNextPage = true
     }
 
-    class Loading : PagingStatus() {
+    data object Loading : PagingStatus() {
 
         override val hasNextPage = true
     }

@@ -1,4 +1,4 @@
-package ru.snowmaze.pagingflow.sources
+package ru.snowmaze.pagingflow.source
 
 import kotlinx.coroutines.flow.map
 import ru.snowmaze.pagingflow.LoadParams
@@ -7,7 +7,7 @@ import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.UpdatableData
 import ru.snowmaze.pagingflow.result.mapSuccess
 
-abstract class SegmentedDataSource<Data : Any> : DataSource<Int, Data> {
+abstract class SegmentedPagingSource<Data : Any> : PagingSource<Int, Data> {
 
     abstract val totalCount: Int
 

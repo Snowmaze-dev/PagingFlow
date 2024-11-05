@@ -1,4 +1,4 @@
-package ru.snowmaze.pagingflow.sources
+package ru.snowmaze.pagingflow.source
 
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
@@ -10,7 +10,10 @@ class PageLoaderConfig<Key : Any>(
     val defaultParamsProvider: () -> LoadParams<Key>,
     val processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
     val coroutineScope: CoroutineScope = CoroutineScope(processingDispatcher + SupervisorJob()),
-    val maxItemsConfiguration: MaxItemsConfiguration? = null
+    val maxItemsConfiguration: MaxItemsConfiguration? = null,
+
+    // defines should use stateIn to collect pages and await data set or not when collecting pages
+    val shouldCollectOnlyNew: Boolean = false
 )
 
 data class MaxItemsConfiguration(

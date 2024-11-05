@@ -1,4 +1,4 @@
-package ru.snowmaze.pagingflow.sources
+package ru.snowmaze.pagingflow.source
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -15,8 +15,8 @@ import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.errorshandler.DefaultPagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.internal.DataPagesManager
-import ru.snowmaze.pagingflow.internal.DataSourceHelper
-import ru.snowmaze.pagingflow.internal.DataSourcesManager
+import ru.snowmaze.pagingflow.internal.PagingSourcesHelper
+import ru.snowmaze.pagingflow.internal.PagingSourcesManager
 import ru.snowmaze.pagingflow.internal.PageLoader
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
@@ -28,18 +28,18 @@ import ru.snowmaze.pagingflow.utils.DiffOperation
 import ru.snowmaze.pagingflow.utils.mapHasNext
 import ru.snowmaze.pagingflow.utils.toInfo
 
-class ConcatDataSource<Key : Any, Data : Any>(
+class ConcatPagingSource<Key : Any, Data : Any>(
     private val concatDataSourceConfig: PageLoaderConfig<Key>,
-) : DataSource<Key, Data>, PagingDataChangesMedium<Key, Data> {
+) : PagingSource<Key, Data>, PagingDataChangesMedium<Key, Data> {
 
     private val loadDataMutex = Mutex()
 
-    private val dataSourcesManager = DataSourcesManager<Key, Data>()
+    private val pagingSourcesManager = PagingSourcesManager<Key, Data>()
 
     private val dataPagesManager = DataPagesManager(
         pageLoaderConfig = concatDataSourceConfig,
         setDataMutex = loadDataMutex,
-        dataSourcesManager = dataSourcesManager
+        pagingSourcesManager = pagingSourcesManager
     )
 
     val firstPageInfo
@@ -57,7 +57,7 @@ class ConcatDataSource<Key : Any, Data : Any>(
     override val pagingUnhandledErrorsHandler = DefaultPagingUnhandledErrorsHandler()
 
     private val pageLoader = PageLoader(
-        dataSourcesManager = dataSourcesManager,
+        pagingSourcesManager = pagingSourcesManager,
         dataPagesManager = dataPagesManager,
         pageLoaderConfig = concatDataSourceConfig,
         pagingUnhandledErrorsHandler = pagingUnhandledErrorsHandler,
@@ -70,8 +70,8 @@ class ConcatDataSource<Key : Any, Data : Any>(
 
     override val config = dataPagesManager.config
 
-    private val dataSourcesHelper = DataSourceHelper(
-        dataSourcesManager = dataSourcesManager,
+    private val dataSourcesHelper = PagingSourcesHelper(
+        pagingSourcesManager = pagingSourcesManager,
         dataPagesManager = dataPagesManager,
         pageLoader = pageLoader,
         loadDataMutex = loadDataMutex
@@ -101,18 +101,18 @@ class ConcatDataSource<Key : Any, Data : Any>(
         return dataPagesManager.removeDataChangedCallback(callback)
     }
 
-    fun addDataSource(dataSource: DataSource<Key, Data>) {
-        dataSourcesManager.addDataSource(dataSource)
+    fun addPagingSource(pagingSource: PagingSource<Key, Data>) {
+        pagingSourcesManager.addPagingSource(pagingSource)
         pageLoader.downPagingStatus.value = downPagingStatus.value.mapHasNext(true)
     }
 
-    fun removeDataSource(dataSource: DataSource<Key, Data>) {
-        val dataSourceIndex = dataSourcesManager.getSourceIndex(dataSource)
+    fun removePagingSource(pagingSource: PagingSource<Key, Data>) {
+        val dataSourceIndex = pagingSourcesManager.getSourceIndex(pagingSource)
         if (dataSourceIndex == -1) return
-        removeDataSource(dataSourceIndex)
+        removePagingSource(dataSourceIndex)
     }
 
-    fun removeDataSource(dataSourceIndex: Int) {
+    fun removePagingSource(dataSourceIndex: Int) {
         concatDataSourceConfig.coroutineScope.launch {
             loadDataMutex.withLock {
                 dataSourcesHelper.remove(dataSourceIndex)
@@ -120,19 +120,19 @@ class ConcatDataSource<Key : Any, Data : Any>(
         }
     }
 
-    suspend fun setDataSources(
-        newDataSourceList: List<DataSource<Key, Data>>,
+    suspend fun setPagingSources(
+        newPagingSourceList: List<PagingSource<Key, Data>>,
         diff: (
-            oldList: List<DataSource<Key, Data>>,
-            newList: List<DataSource<Key, Data>>
-        ) -> List<DiffOperation<DataSource<Key, Data>>>
-    ) = dataSourcesHelper.setDataSources(newDataSourceList, diff)
+            oldList: List<PagingSource<Key, Data>>,
+            newList: List<PagingSource<Key, Data>>
+        ) -> List<DiffOperation<PagingSource<Key, Data>>>
+    ) = dataSourcesHelper.setPagingSources(newPagingSourceList, diff)
 
-    suspend fun invalidateAndSetDataSources(dataSourceList: List<DataSource<Key, Data>>) {
+    suspend fun invalidateAndSetPagingSources(pagingSourceList: List<PagingSource<Key, Data>>) {
         loadDataMutex.withLock {
             withContext(concatDataSourceConfig.processingDispatcher) {
                 dataPagesManager.invalidate(removeCachedData = true)
-                dataSourcesManager.replaceDataSources(dataSourceList)
+                pagingSourcesManager.replacePagingSources(pagingSourceList)
             }
         }
     }
@@ -166,7 +166,8 @@ class ConcatDataSource<Key : Any, Data : Any>(
                 lastResult = pageLoader.loadData(
                     loadParams = loadParams.copy(pagingParams = currentLoadParams),
                     lastPageIndex = lastPageIndex(),
-                    shouldReplaceOnConflict = true
+                    shouldReplaceOnConflict = true,
+                    shouldSetNewStatus = false
                 )
                 resultPagingParams += lastResult.returnData
                 if (lastResult is LoadResult.NothingToLoad) break
@@ -176,6 +177,10 @@ class ConcatDataSource<Key : Any, Data : Any>(
                 )
             }
             lastResult ?: throw IllegalArgumentException("Should load at least one pagination.")
+            lastResult.returnData?.get(pageLoader.statusKey)?.let {
+                (if (isPaginationDown) pageLoader.downPagingStatus
+                else pageLoader.upPagingStatus).value = it
+            }
             lastResult = lastResult.mapParams(
                 lastResult.returnData?.let { PagingParams(it) } ?: PagingParams()
             )
@@ -195,7 +200,8 @@ class ConcatDataSource<Key : Any, Data : Any>(
         } else pageLoader.loadData(
             loadParams = loadParams,
             lastPageIndex = lastPageIndex(),
-            shouldReplaceOnConflict = true
+            shouldReplaceOnConflict = true,
+            shouldSetNewStatus = true
         )
     }
 

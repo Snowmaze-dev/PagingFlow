@@ -31,8 +31,7 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
     presenterFlow = presenterFlow,
 ) {
 
-    protected val pageIndexes = mutableMapOf<Int, PageChangedEvent<Key, Data>>()
-    protected var pageIndexesKeys = emptyList<Int>()
+    protected val indexedPages = mutableMapOf<Int, PageChangedEvent<Key, Data>>()
 
     init {
         coroutineScope.launch(processingDispatcher) {
@@ -41,7 +40,7 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
 
             var firstCall = true
             var isSubscribedAlready = true
-            _dataFlow.subscriptionCount.collectLatest { subscriptionCount ->
+            _dataFlow.subscriptionCount.collect { subscriptionCount ->
                 if (subscriptionCount == 0 && !firstCall) {
                     delay(unsubscribeDelayWhenNoSubscribers)
                     isSubscribedAlready = false
@@ -83,34 +82,32 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
     }
 
     override fun onInvalidateAdditionalAction() {
-        pageIndexes.clear()
-        pageIndexesKeys = emptyList()
+        indexedPages.clear()
     }
 
     protected open suspend fun updateData(
         update: suspend MutableMap<Int, PageChangedEvent<Key, Data>>.() -> List<DataChangedEvent<Key, Data>>
-    ) {
-        withContext(processingDispatcher) {
-            val result = pageIndexes.update()
-            try {
-                val lastEvent = result.lastOrNull()
-                if (lastEvent != null && lastEvent !is InvalidateEvent) {
-                    pageIndexesKeys = pageIndexes.keys.sorted()
-                    buildList(result)
-                }
-            } finally {
-                for (event in result) {
-                    if (event is AwaitDataSetEvent) event.callback()
-                }
+    ): Unit = withContext(processingDispatcher) {
+        val result = indexedPages.update()
+        try {
+            val lastEvent = result.lastOrNull()
+            if (lastEvent != null && lastEvent !is InvalidateEvent) buildList(result)
+        } finally {
+            for (event in result) {
+                if (event is AwaitDataSetEvent) event.callback()
             }
         }
     }
 
+    /**
+     * Flattens [indexedPages] Map to list
+     */
     override suspend fun buildListInternal(): List<Data?> {
-        return buildList(pageIndexesKeys.sumOf { pageIndexes.getValue(it).items.size }) {
+        val pageIndexesKeys = indexedPages.keys.sorted()
+        return buildList(pageIndexesKeys.sumOf { indexedPages.getValue(it).items.size }) {
             var newStartIndex = 0
             for (pageIndex in pageIndexesKeys) {
-                val page = pageIndexes.getValue(pageIndex)
+                val page = indexedPages.getValue(pageIndex)
                 if (page.changeType == PageChangedEvent.ChangeType.CHANGE_TO_NULLS) {
                     newStartIndex += page.items.size
                 }

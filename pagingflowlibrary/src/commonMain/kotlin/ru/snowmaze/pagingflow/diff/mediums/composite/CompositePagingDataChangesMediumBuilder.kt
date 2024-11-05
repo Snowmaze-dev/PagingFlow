@@ -27,7 +27,7 @@ class CompositePagingDataChangesMediumBuilder<Key : Any, Data : Any, NewData : A
 
     /**
      * Adds simple section
-     * @param updateWhenDataUpdated if something updated (for example received events from data source
+     * @param updateWhenDataUpdated if something updated (for example received events from paging source
      * this section update will be requested
      */
     fun section(
