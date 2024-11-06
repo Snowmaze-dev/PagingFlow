@@ -19,6 +19,7 @@ import ru.snowmaze.pagingflow.source.ConcatPagingSource
 import ru.snowmaze.pagingflow.source.PageLoaderConfig
 import ru.snowmaze.pagingflow.source.PagingSource
 import ru.snowmaze.pagingflow.utils.DiffOperation
+import ru.snowmaze.pagingflow.utils.fastForEach
 
 /**
  * Main class of library which holds state of pagination
@@ -129,7 +130,7 @@ class PagingFlow<Key : Any, Data : Any>(
                 paginationDirection = paginationDirection,
                 pagingParams = defaultPagingParams?.let {
                     PagingParams(it)
-                } ?.apply {
+                }?.apply {
                     pagingParams?.let { put(it) }
                 } ?: pagingParams
             )
@@ -279,9 +280,9 @@ suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadSeveralPages(
     )
     if (awaitDataSet) {
         val awaitData = suspend {
-            result.returnData.getOrNull(ReturnPagingLibraryKeys.PagingParamsList)
-                ?.mapNotNull { it?.getOrNull(ReturnPagingLibraryKeys.DataSetJob) }
-                ?.joinAll()
+            result.returnData.getOrNull(ReturnPagingLibraryKeys.PagingParamsList)?.fastForEach {
+                it?.getOrNull(ReturnPagingLibraryKeys.DataSetJob)?.join()
+            }
         }
         if (awaitTimeout == null) awaitData()
         else withTimeoutOrNull(awaitTimeout) { awaitData() }
