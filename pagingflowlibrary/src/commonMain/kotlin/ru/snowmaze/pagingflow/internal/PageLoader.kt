@@ -71,9 +71,8 @@ internal class PageLoader<Key : Any, Data : Any>(
         ) ?: return LoadResult.NothingToLoad()
 
         // setting status that we loading
-        val currentStatus = if (isPaginationDown) downPagingStatus
-        else upPagingStatus
-        currentStatus.value = PagingStatus.Loading
+        val currentStatusFlow = if (isPaginationDown) downPagingStatus else upPagingStatus
+        currentStatusFlow.value = PagingStatus.Loading
 
         // picking currentKey and getting cache in case it was saved earlier
         val pagingSource = dataSourceWithIndex.first
@@ -131,7 +130,7 @@ internal class PageLoader<Key : Any, Data : Any>(
                 hasNextPage = false
             )
         }
-        if (shouldSetNewStatus) currentStatus.value = status
+        if (shouldSetNewStatus) currentStatusFlow.value = status
 
         if (result !is LoadResult.Success) {
 
