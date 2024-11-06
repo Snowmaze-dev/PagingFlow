@@ -2,7 +2,6 @@ package ru.snowmaze.pagingflow.presenters
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import ru.snowmaze.pagingflow.diff.AwaitDataSetEvent
@@ -13,6 +12,7 @@ import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.handle
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import ru.snowmaze.pagingflow.utils.fastForEach
 
 /**
  * Basic implementation of list building presenter.
@@ -56,28 +56,22 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
 
     protected open fun getDataChangedCallback() = object : DataChangedCallback<Key, Data> {
 
-        private suspend inline fun MutableMap<Int, PageChangedEvent<Key, Data>>.applyEvent(
-            event: DataChangedEvent<Key, Data>
-        ) {
-            event.handle(
-                onPageAdded = { this[it.pageIndex] = it },
-                onPageChanged = { this[it.pageIndex] = it },
-                onPageRemovedEvent = { remove(it.pageIndex) },
-                onInvalidate = {
-                    onInvalidateInternal(
-                        specifiedInvalidateBehavior = it.invalidateBehavior,
-                    )
-                }
-            )
-        }
-
-        override suspend fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
-            updateData {
-                for (event in events) {
-                    applyEvent(event)
-                }
-                events
+        override suspend fun onEvents(
+            events: List<DataChangedEvent<Key, Data>>
+        ) = updateData {
+            events.fastForEach { event ->
+                event.handle(
+                    onPageAdded = { this[it.pageIndex] = it },
+                    onPageChanged = { this[it.pageIndex] = it },
+                    onPageRemovedEvent = { remove(it.pageIndex) },
+                    onInvalidate = {
+                        onInvalidateInternal(
+                            specifiedInvalidateBehavior = it.invalidateBehavior,
+                        )
+                    }
+                )
             }
+            events
         }
     }
 
@@ -106,7 +100,7 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
         val pageIndexesKeys = indexedPages.keys.sorted()
         return buildList(pageIndexesKeys.sumOf { indexedPages.getValue(it).items.size }) {
             var newStartIndex = 0
-            for (pageIndex in pageIndexesKeys) {
+            pageIndexesKeys.fastForEach { pageIndex ->
                 val page = indexedPages.getValue(pageIndex)
                 if (page.changeType == PageChangedEvent.ChangeType.CHANGE_TO_NULLS) {
                     newStartIndex += page.items.size

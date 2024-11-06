@@ -9,7 +9,7 @@ import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 
-class BatchingPagingDataChangesMedium<Key : Any, Data : Any>( // TODO ломает testAsync тест
+class BatchingPagingDataChangesMedium<Key : Any, Data : Any>(
     private val pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
     private val eventsBatchingDurationMsProvider: () -> Long,
     private val shouldBatchAddPagesEvents: Boolean = false,

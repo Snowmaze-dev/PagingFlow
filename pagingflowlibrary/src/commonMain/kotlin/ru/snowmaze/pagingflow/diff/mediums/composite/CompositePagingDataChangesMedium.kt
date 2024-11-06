@@ -15,6 +15,7 @@ import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.SubscribeForChangesDataChangesMedium
 import ru.snowmaze.pagingflow.params.PagingParams
+import ru.snowmaze.pagingflow.utils.fastSumOf
 import ru.snowmaze.pagingflow.utils.flattenWithSize
 
 open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any> internal constructor(
@@ -226,7 +227,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
         )
         if (pickedAddIndex >= section.pages.size) section.pages.add(event)
         else section.pages.add(pickedAddIndex, event)
-        val pagesSize = sections.sumOf { it.pages.size }
+        val pagesSize = sections.fastSumOf { it.pages.size }
         var index = section.firstPageIndex + pickedAddIndex
         while (pagesSize > index) {
             val currentSection = sections.getOrNull(currentSectionIndex) ?: break
@@ -291,7 +292,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
         } else 0
         val pickedIndexInSource = indexInSource - indexShift
         var currentSectionIndex = section.sourceIndex
-        val pagesSize = sections.sumOf { it.pages.size }
+        val pagesSize = sections.fastSumOf { it.pages.size }
         val removedEvent = section.pages.removeAt(pickedIndexInSource)
         var index = section.firstPageIndex + pickedIndexInSource
         var previousEvent = removedEvent

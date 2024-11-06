@@ -25,6 +25,7 @@ import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.result.mapParams
 import ru.snowmaze.pagingflow.utils.DiffOperation
+import ru.snowmaze.pagingflow.utils.fastIndexOfFirst
 import ru.snowmaze.pagingflow.utils.mapHasNext
 import ru.snowmaze.pagingflow.utils.toInfo
 
@@ -148,7 +149,7 @@ class ConcatPagingSource<Key : Any, Data : Any>(
 
             // getting last page and nextPageKey
             if (isPaginationDown) dataPages.lastIndex
-            else dataPages.indexOfFirst { !it.isNullified }
+            else dataPages.fastIndexOfFirst { !it.isNullified }
         }
 
         val loadSeveralPages = loadParams.pagingParams
@@ -158,6 +159,7 @@ class ConcatPagingSource<Key : Any, Data : Any>(
             val sourceResultKey = pageLoader.sourceResultKey
             var lastResult: LoadResult<Key, Data>? = null
             val resultPagingParams = mutableListOf<PagingParams?>()
+            val key = pageLoader.pageLoaderResultKey
             while (true) {
                 val currentResult = lastResult?.returnData?.get(sourceResultKey) ?: lastResult
                 val currentLoadParams = loadSeveralPages.getPagingParams(
@@ -169,7 +171,8 @@ class ConcatPagingSource<Key : Any, Data : Any>(
                     shouldReplaceOnConflict = true,
                     shouldSetNewStatus = false
                 )
-                resultPagingParams += lastResult.returnData
+                resultPagingParams += lastResult.returnData?.getOrNull(key)?.returnData
+                    ?: lastResult.returnData
                 if (lastResult is LoadResult.NothingToLoad) break
                 else if (lastResult is LoadResult.Failure) continue
                 loadSeveralPages.onSuccess?.invoke(
@@ -184,7 +187,6 @@ class ConcatPagingSource<Key : Any, Data : Any>(
             lastResult = lastResult.mapParams(
                 lastResult.returnData?.let { PagingParams(it) } ?: PagingParams()
             )
-            val key = pageLoader.pageLoaderResultKey
             val returnData = lastResult.returnData
             returnData?.getOrNull(key)
                 ?.returnData?.let { PagingParams(it) }?.let {
@@ -192,9 +194,7 @@ class ConcatPagingSource<Key : Any, Data : Any>(
                 }
             (returnData?.getOrNull(key)?.returnData ?: returnData)?.put(
                 ReturnPagingLibraryKeys.PagingParamsList,
-                resultPagingParams.map {
-                    it?.getOrNull(key)?.returnData ?: it
-                }
+                resultPagingParams
             )
             return@withLock lastResult
         } else pageLoader.loadData(

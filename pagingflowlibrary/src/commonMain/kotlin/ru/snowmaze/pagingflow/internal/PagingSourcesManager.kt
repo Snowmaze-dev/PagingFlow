@@ -2,6 +2,7 @@ package ru.snowmaze.pagingflow.internal
 
 import ru.snowmaze.pagingflow.source.PagingSource
 import ru.snowmaze.pagingflow.PaginationDirection
+import ru.snowmaze.pagingflow.utils.fastIndexOfFirst
 
 internal class PagingSourcesManager<Key : Any, Data : Any> {
 
@@ -36,7 +37,7 @@ internal class PagingSourcesManager<Key : Any, Data : Any> {
 
     fun getSourceIndex(
         pagingSource: PagingSource<Key, Data>
-    ) = pagingSources.indexOfFirst { it == pagingSource }
+    ) = pagingSources.fastIndexOfFirst { it == pagingSource }
 
     fun findNextPagingSource(
         currentPagingSource: Pair<PagingSource<Key, Data>, Int>?,

@@ -8,6 +8,7 @@ import kotlinx.coroutines.invoke
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
@@ -84,6 +85,17 @@ inline fun runTestOnDispatchersDefault(
     Dispatchers.Default.invoke(block)
 }
 
-suspend fun <T> Flow<T>.firstWithTimeout(timeout: Long = 5000, predicate: suspend (T) -> Boolean) {
-    withTimeout(timeout) { first(predicate) }
+suspend fun <T> Flow<T>.firstWithTimeout(
+    timeout: Long = 5000,
+    message: String? = null,
+    predicate: suspend (T) -> Boolean
+): T {
+    return if (message == null) withTimeout(timeout) { first(predicate) }
+    else {
+        val result = withTimeoutOrNull(timeout) {
+            first(predicate)
+        }
+        if (result == null) throw AssertionError(message)
+        result
+    }
 }

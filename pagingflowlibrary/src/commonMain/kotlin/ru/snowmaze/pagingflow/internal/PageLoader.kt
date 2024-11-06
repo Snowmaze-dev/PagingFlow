@@ -145,6 +145,7 @@ internal class PageLoader<Key : Any, Data : Any>(
         val page = DataPage(
             data = null,
             isNullified = false,
+            isCancelled = false,
             nextPageKey = if (isPaginationDown) result.nextPageKey
             else lastPage?.currentPageKey,
             pagingSourceWithIndex = dataSourceWithIndex,

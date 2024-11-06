@@ -7,6 +7,7 @@ import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
 import ru.snowmaze.pagingflow.presenters.data
+import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
@@ -49,6 +50,7 @@ class LoadSeveralPagesTest {
         var pages = 0
         val result = pagingFlow.loadSeveralPages(
             awaitDataSet = true,
+            awaitTimeout = 5000,
             getPagingParams = {
                 pages++
                 PagingParams.EMPTY.takeUnless { pages > 2 }
@@ -60,7 +62,7 @@ class LoadSeveralPagesTest {
                 it?.getOrNull(ReturnPagingLibraryKeys.DataSetJob)
             }.size
         )
-        assertEquals(source.getItems(pageSize * 2), presenter.data)
+        presenter.dataFlow.firstWithTimeout { it.size == pageSize * 2 }
 
         pages = 0
         pagingFlow.loadSeveralPages(
@@ -75,9 +77,11 @@ class LoadSeveralPagesTest {
                     )
                 )
             },
+            awaitTimeout = 5000,
             awaitDataSet = true
         )
-        delay(50)
-        assertEquals(source.getItems(pageSize * 5).takeLast(maxItems), presenter.data)
+        presenter.dataFlow.firstWithTimeout {
+            source.getItems(pageSize * 5).takeLast(maxItems) == it
+        }
     }
 }

@@ -9,6 +9,7 @@ internal data class DataPage<Key : Any, Data : Any>(
     var data: UpdatableData<Key, Data>?,
 
     var isNullified: Boolean,
+    var isCancelled: Boolean,
     var previousPageKey: Key?,
     val currentPageKey: Key?,
     var nextPageKey: Key?,

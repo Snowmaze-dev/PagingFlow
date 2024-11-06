@@ -1,12 +1,12 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
 import ru.snowmaze.pagingflow.presenters.data
+import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
@@ -72,13 +72,11 @@ class PagingBothDirectionsTest {
             if (!hasNext) result.returnData[ReturnPagingLibraryKeys.DataSetJob].join()
             assertEquals(hasNext, pagingFlow.downPagingStatus.value.hasNextPage)
         }
-        delay(200) // delay because library needs some time to trim pages
         val maxItemsCount =
             pagingFlow.pagingFlowConfiguration.maxItemsConfiguration?.maxItemsCount!!
-        assertTrue(
-            maxItemsCount >= presenter.data.size,
-            "expected $maxItemsCount but was ${presenter.data.size}"
-        )
+        presenter.dataFlow.firstWithTimeout(
+            message = "expected $maxItemsCount but was ${presenter.data.size}"
+        ) { maxItemsCount >= it.size }
         assertContentEquals(
             testDataSource.getItems(totalCount).takeLast(presenter.data.size),
             presenter.data
@@ -88,11 +86,9 @@ class PagingBothDirectionsTest {
             hasNext =
                 pagingFlow.loadNextPageWithResult(PaginationDirection.UP).asSuccess().hasNext
         }
-        delay(200)
-        assertTrue(
-            maxItemsCount >= presenter.data.size,
-            "expected $maxItemsCount but was ${presenter.data.size}"
-        )
+        presenter.dataFlow.firstWithTimeout(
+            message = "expected $maxItemsCount but was ${presenter.data.size}"
+        ) { maxItemsCount >= it.size }
     }
 
     @Test
