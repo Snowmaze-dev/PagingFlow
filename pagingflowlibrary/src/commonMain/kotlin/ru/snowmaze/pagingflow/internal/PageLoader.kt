@@ -130,13 +130,15 @@ internal class PageLoader<Key : Any, Data : Any>(
                 hasNextPage = false
             )
         }
-        if (shouldSetNewStatus) currentStatusFlow.value = status
 
         if (result !is LoadResult.Success) {
+            currentStatusFlow.value = status
 
             return result as LoadResult<Key, Data>
         }
         result as LoadResult.Success<Key, Data>
+
+        if (shouldSetNewStatus) currentStatusFlow.value = status
 
         // saving page to pages manager
         val previousPageKey = if (isPaginationDown) lastPage?.currentPageKey

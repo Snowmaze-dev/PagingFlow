@@ -158,6 +158,7 @@ class ConcatPagingSource<Key : Any, Data : Any>(
         if (loadSeveralPages != null) {
             val sourceResultKey = pageLoader.sourceResultKey
             var lastResult: LoadResult<Key, Data>? = null
+            var lastResultWithLoad: LoadResult<Key, Data>? = null
             val resultPagingParams = mutableListOf<PagingParams?>()
             val key = pageLoader.pageLoaderResultKey
             while (true) {
@@ -171,16 +172,17 @@ class ConcatPagingSource<Key : Any, Data : Any>(
                     shouldReplaceOnConflict = true,
                     shouldSetNewStatus = false
                 )
+                if (lastResult is LoadResult.NothingToLoad) break
+                lastResultWithLoad = lastResult
                 resultPagingParams += lastResult.returnData?.getOrNull(key)?.returnData
                     ?: lastResult.returnData
-                if (lastResult is LoadResult.NothingToLoad) break
-                else if (lastResult is LoadResult.Failure) continue
+                if (lastResult is LoadResult.Failure) continue
                 loadSeveralPages.onSuccess?.invoke(
                     lastResult.returnData?.get(sourceResultKey) as LoadResult.Success<Any, Any>
                 )
             }
             lastResult ?: throw IllegalArgumentException("Should load at least one pagination.")
-            lastResult.returnData?.get(pageLoader.statusKey)?.let {
+            lastResultWithLoad?.returnData?.get(pageLoader.statusKey)?.let {
                 (if (isPaginationDown) pageLoader.downPagingStatus
                 else pageLoader.upPagingStatus).value = it
             }
