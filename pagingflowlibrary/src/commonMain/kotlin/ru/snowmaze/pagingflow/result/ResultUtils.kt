@@ -35,7 +35,7 @@ fun LoadParams<Int>.positiveOffset(
     else (currentOffset - pageSize).takeIf { it >= 0 }).takeIf { hasNextPage }
 }
 
-fun <Key : Any, Data : Any> LoadResult<Key, Data>.mapSuccess(
+inline fun <Key : Any, Data : Any> LoadResult<Key, Data>.mapSuccess(
     transform: (LoadResult.Success<Key, Data>) -> LoadResult<Key, Data>
 ): LoadResult<Key, Data> {
     contract {
@@ -44,7 +44,7 @@ fun <Key : Any, Data : Any> LoadResult<Key, Data>.mapSuccess(
     return if (this is LoadResult.Success<Key, Data>) transform(this) else this
 }
 
-fun <T : Any, Key : Any, Data : Any> Result<T>.toLoadResult(
+inline fun <T : Any, Key : Any, Data : Any> Result<T>.toLoadResult(
     onFailure: (Throwable) -> LoadResult<Key, Data> = {
         LoadResult.Failure(throwable = it)
     },
