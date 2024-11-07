@@ -1,7 +1,6 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.invoke
-import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
@@ -65,7 +64,7 @@ class PagingFlow<Key : Any, Data : Any>(
         concatDataSource.removePagingSource(dataSourceIndex)
     }
 
-    suspend fun invalidateAndPagingSources(pagingSourceList: List<PagingSource<Key, Data>>) {
+    suspend fun invalidateAndSetPagingSources(pagingSourceList: List<PagingSource<Key, Data>>) {
         concatDataSource.invalidateAndSetPagingSources(pagingSourceList)
     }
 
