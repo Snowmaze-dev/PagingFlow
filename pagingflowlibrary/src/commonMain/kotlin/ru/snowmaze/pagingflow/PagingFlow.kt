@@ -1,6 +1,5 @@
 package ru.snowmaze.pagingflow
 
-import kotlinx.coroutines.invoke
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
