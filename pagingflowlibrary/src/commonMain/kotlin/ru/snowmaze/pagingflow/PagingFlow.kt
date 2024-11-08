@@ -91,42 +91,22 @@ class PagingFlow<Key : Any, Data : Any>(
     }
 
     /**
-     * Loads next page async
-     * @see loadNextPageInternal
-     */
-    fun loadNextPage(
-        paginationDirection: PaginationDirection = pagingFlowConfiguration.defaultParamsProvider().paginationDirection,
-        pagingParams: PagingParams? = null
-    ) = pagingFlowConfiguration.coroutineScope.launch {
-        loadNextPageWithResult(paginationDirection, pagingParams)
-    }
-
-    /**
-     * Loads next page sync
-     * @see loadNextPageInternal
-     */
-    suspend fun loadNextPageWithResult(
-        paginationDirection: PaginationDirection = pagingFlowConfiguration.defaultParamsProvider().paginationDirection,
-        pagingParams: PagingParams? = null
-    ) = pagingFlowConfiguration.processingDispatcher {
-        loadNextPageInternal(paginationDirection, pagingParams)
-    }
-
-    /**
-     * Loads next page from [ConcatPagingSource]
+     * Loads pages using [ConcatPagingSource]
      * @param paginationDirection direction of loading
      * @param pagingParams params which will be supplied to paging source, you can use them to specify custom values
-     * @return [LoadNextPageResult] of loading next page of data in given direction
+     * @return [LoadNextPageResult] of loading next pages of data in given direction
      */
-    private suspend fun loadNextPageInternal(
-        paginationDirection: PaginationDirection, pagingParams: PagingParams? = null
+    internal suspend fun load(
+        paginationDirection: PaginationDirection?, pagingParams: PagingParams? = null
     ): LoadNextPageResult<Key, Data> {
         val defaultParams = pagingFlowConfiguration.defaultParamsProvider()
         val defaultPagingParams = defaultParams.pagingParams
+        val pickedPaginationDirection = paginationDirection
+            ?: pagingFlowConfiguration.defaultParamsProvider().paginationDirection
 
         val loadData = concatDataSource.load(
             defaultParams.copy(
-                paginationDirection = paginationDirection,
+                paginationDirection = pickedPaginationDirection,
                 pagingParams = defaultPagingParams?.let {
                     PagingParams(it)
                 }?.apply {
@@ -201,6 +181,26 @@ fun <Key : Any, Data : Any> buildPagingFlow(
 }
 
 /**
+ * Loads next page
+ * @return result of loading
+ */
+suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPageWithResult(
+    paginationDirection: PaginationDirection? = null,
+    pagingParams: PagingParams? = null
+) = load(paginationDirection, pagingParams)
+
+/**
+ * Loads next page async
+ * @return loading job
+ */
+fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPage(
+    paginationDirection: PaginationDirection? = null,
+    pagingParams: PagingParams? = null
+) = pagingFlowConfiguration.coroutineScope.launch {
+    load(paginationDirection, pagingParams)
+}
+
+/**
  * Creates paging flow
  *
  * Usage:
@@ -260,7 +260,7 @@ suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadSeveralPages(
     onSuccess: ((LoadResult.Success<Key, Data>) -> Unit)? = null,
     getPagingParams: (LoadResult<Key, Data>?) -> PagingParams?,
 ): LoadNextPageResult<Key, Data> {
-    val result = loadNextPageWithResult(
+    val result = load(
         paginationDirection = paginationDirection,
         pagingParams = (pagingParams ?: PagingParams(1)).apply {
             put(
