@@ -35,8 +35,7 @@ class CommonPresentersTest {
             invalidateBehavior = InvalidateBehavior.INVALIDATE_IMMEDIATELY
         )
 
-        pagingFlow.loadNextPageWithResult()
-        delay(30L)
+        pagingFlow.loadNextPageAndAwaitDataSet()
         assertEquals(
             pageSize,
             presenter.data.size

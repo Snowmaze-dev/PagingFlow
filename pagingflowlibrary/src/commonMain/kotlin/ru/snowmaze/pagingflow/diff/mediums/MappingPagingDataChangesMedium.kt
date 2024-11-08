@@ -15,7 +15,7 @@ class MappingPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
         (DataChangedEvent<Key, Data>) -> DataChangedEvent<Key, NewData>?
     )? = null,
     private val transform: (PageChangedEvent<Key, Data>) -> List<NewData?>,
-) : SubscribeForChangesDataChangesMedium<Key, NewData, Data>(pagingDataChangesMedium),
+) : SubscribeForChangesDataChangesMedium<Key, Data, NewData>(pagingDataChangesMedium),
     DataChangedCallback<Key, Data> {
 
     override suspend fun onEvents(events: List<DataChangedEvent<Key, Data>>) {

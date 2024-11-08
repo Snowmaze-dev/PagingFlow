@@ -1,18 +1,18 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import ru.snowmaze.pagingflow.params.LoadSeveralPagesData
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
-import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 
 class LoadSeveralPagesTest {
 
@@ -56,6 +56,8 @@ class LoadSeveralPagesTest {
                 PagingParams.EMPTY.takeUnless { pages > 2 }
             },
         )
+        assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
+        assertFalse(pagingFlow.upPagingStatus.value.hasNextPage)
         assertEquals(
             2,
             result.returnData[ReturnPagingLibraryKeys.PagingParamsList].mapNotNull {

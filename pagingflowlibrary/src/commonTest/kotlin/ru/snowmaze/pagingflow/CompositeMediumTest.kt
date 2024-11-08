@@ -31,7 +31,7 @@ class CompositeMediumTest {
     )
 
     @Test
-    fun baseMediumExtensionTest() = runTestOnDispatchersDefault { // TODO часто падает
+    fun baseMediumExtensionTest() = runTestOnDispatchersDefault {
         val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
             addPagingSource(testDataSource)

@@ -75,7 +75,9 @@ class PagingBothDirectionsTest {
         val maxItemsCount =
             pagingFlow.pagingFlowConfiguration.maxItemsConfiguration?.maxItemsCount!!
         presenter.dataFlow.firstWithTimeout(
-            message = "expected $maxItemsCount but was ${presenter.data.size}"
+            message = {
+                "expected less count than $maxItemsCount but was ${it?.size}"
+            }
         ) { maxItemsCount >= it.size }
         assertContentEquals(
             testDataSource.getItems(totalCount).takeLast(presenter.data.size),
@@ -87,7 +89,9 @@ class PagingBothDirectionsTest {
                 pagingFlow.loadNextPageWithResult(PaginationDirection.UP).asSuccess().hasNext
         }
         presenter.dataFlow.firstWithTimeout(
-            message = "expected $maxItemsCount but was ${presenter.data.size}"
+            message = {
+                "expected less count than $maxItemsCount but was ${it?.size}"
+            }
         ) { maxItemsCount >= it.size }
     }
 

@@ -98,10 +98,10 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
      */
     override suspend fun buildListInternal(): List<Data?> {
         val pageIndexesKeys = indexedPages.keys.sorted()
-        return buildList(pageIndexesKeys.sumOf { indexedPages.getValue(it).items.size }) {
+        return buildList(pageIndexesKeys.sumOf { indexedPages[it]!!.items.size }) {
             var newStartIndex = 0
             pageIndexesKeys.fastForEach { pageIndex ->
-                val page = indexedPages.getValue(pageIndex)
+                val page = indexedPages[pageIndex]!!
                 if (page.changeType == PageChangedEvent.ChangeType.CHANGE_TO_NULLS) {
                     newStartIndex += page.items.size
                 }

@@ -1,8 +1,8 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import ru.snowmaze.pagingflow.diff.mediums.DataSourceDataChangesMedium
+import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
@@ -39,15 +39,14 @@ class SpecificDataSourceMediumTest {
             1
         ).pagingDataPresenter()
         pagingFlow.loadNextPageAndAwaitDataSet()
-        assertEquals(presenterForFirst.latestData.data, testDataSource.getItems(20))
+        presenterForFirst.dataFlow.firstEqualsWithTimeout(testDataSource.getItems(20))
         assertEquals(emptyList(), presenterForSecond.latestData.data)
         pagingFlow.loadNextPageAndAwaitDataSet()
-        assertEquals(presenterForFirst.latestData.data, testDataSource.getItems(40))
+        presenterForFirst.dataFlow.firstEqualsWithTimeout(testDataSource.getItems(40))
         assertEquals(emptyList(), presenterForSecond.latestData.data)
         pagingFlow.loadNextPageAndAwaitDataSet()
-        delay(10)
 
-        assertEquals(testDataSource.getItems(40).takeLast(20), presenterForFirst.latestData.data)
-        assertEquals(testDataSource.getItems(20), presenterForSecond.latestData.data)
+        presenterForFirst.dataFlow.firstEqualsWithTimeout(testDataSource.getItems(40).takeLast(20))
+        presenterForSecond.dataFlow.firstEqualsWithTimeout(testDataSource.getItems(20))
     }
 }

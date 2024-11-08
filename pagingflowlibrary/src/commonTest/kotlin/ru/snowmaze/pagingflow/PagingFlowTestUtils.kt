@@ -38,6 +38,8 @@ suspend fun PagingFlow<Int, String>.testLoadEverything(
         currentSourceLoadedCount += currentLoadSize
         overallLoadedCount += currentLoadSize
         assertEquals(overallLoadedCount != overallTotalCountOfItems, result.asSuccess().hasNext)
+        assertEquals(result.asSuccess().hasNext, downPagingStatus.value.hasNextPage)
+
         currentLoadSize = (currentTotalCount - currentSourceLoadedCount).coerceAtMost(pageSize)
         if (shouldTestItems) {
             var testItems: List<String?> = loadingSources.mapIndexed { index, testDataSource ->
@@ -50,8 +52,10 @@ suspend fun PagingFlow<Int, String>.testLoadEverything(
             val maxItemsConfiguration = pagingFlowConfiguration.maxItemsConfiguration
             val maxItemsOffset = maxItemsConfiguration?.maxItemsCount
             if (maxItemsOffset != null) {
-                val removeItemsCount = (ceil((overallLoadedCount - maxItemsOffset)
-                    .coerceAtLeast(0) / pageSize.toDouble()) * pageSize).toInt()
+                val removeItemsCount = (ceil(
+                    (overallLoadedCount - maxItemsOffset)
+                        .coerceAtLeast(0) / pageSize.toDouble()
+                ) * pageSize).toInt()
                 testItems = if (maxItemsConfiguration.enableDroppedPagesNullPlaceholders) {
                     testItems.mapIndexed { index, item ->
                         if (removeItemsCount > index) null
@@ -85,17 +89,30 @@ inline fun runTestOnDispatchersDefault(
     Dispatchers.Default.invoke(block)
 }
 
+suspend inline fun <T> Flow<T>.firstEqualsWithTimeout(
+    value: T,
+    timeout: Long = 300
+) = firstWithTimeout(timeout, {
+    "expected $value but was $it"
+}) {
+    value == it
+}
+
 suspend fun <T> Flow<T>.firstWithTimeout(
-    timeout: Long = 5000,
-    message: String? = null,
+    timeout: Long = 300,
+    message: ((T?) -> String)? = null,
     predicate: suspend (T) -> Boolean
 ): T {
     return if (message == null) withTimeout(timeout) { first(predicate) }
     else {
+        var lastValue: T? = null
         val result = withTimeoutOrNull(timeout) {
-            first(predicate)
+            first {
+                lastValue = it
+                predicate(it)
+            }
         }
-        if (result == null) throw AssertionError(message)
+        if (result == null) throw AssertionError(message(lastValue))
         result
     }
 }

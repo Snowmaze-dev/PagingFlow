@@ -3,11 +3,11 @@ package ru.snowmaze.pagingflow.diff.mediums
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import kotlin.concurrent.Volatile
 
-abstract class SubscribeForChangesDataChangesMedium<Key : Any, Data : Any, Data1: Any>(
-    private val pagingDataChangesMedium: PagingDataChangesMedium<Key, Data1>,
-) : DefaultPagingDataChangesMedium<Key, Data>() {
+abstract class SubscribeForChangesDataChangesMedium<Key : Any, Data : Any, Output: Any>(
+    private val pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
+) : DefaultPagingDataChangesMedium<Key, Output>() {
 
-    private var lastCallback: DataChangedCallback<Key, Data1>? = null
+    private var lastCallback: DataChangedCallback<Key, Data>? = null
 
     @Volatile
     private var _callbackCount = 0
@@ -25,13 +25,13 @@ abstract class SubscribeForChangesDataChangesMedium<Key : Any, Data : Any, Data1
         lastCallback = null
     }
 
-    override fun addDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
+    override fun addDataChangedCallback(callback: DataChangedCallback<Key, Output>) {
         super.addDataChangedCallback(callback)
         _callbackCount++
         if (_callbackCount == 1) subscribeForEvents()
     }
 
-    override fun removeDataChangedCallback(callback: DataChangedCallback<Key, Data>): Boolean {
+    override fun removeDataChangedCallback(callback: DataChangedCallback<Key, Output>): Boolean {
         val removed = super.removeDataChangedCallback(callback)
         if (removed) {
             _callbackCount--
@@ -40,5 +40,5 @@ abstract class SubscribeForChangesDataChangesMedium<Key : Any, Data : Any, Data1
         return removed
     }
 
-    abstract fun getChangesCallback(): DataChangedCallback<Key, Data1>
+    abstract fun getChangesCallback(): DataChangedCallback<Key, Data>
 }

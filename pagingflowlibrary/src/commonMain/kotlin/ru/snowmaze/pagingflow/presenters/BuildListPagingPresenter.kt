@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
+import ru.snowmaze.pagingflow.utils.fastSumOf
 import ru.snowmaze.pagingflow.utils.limitedParallelismCompat
 import kotlin.concurrent.Volatile
 
@@ -27,10 +28,12 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
 ) : PagingDataPresenter<Key, Data> {
 
     protected val _dataFlow = presenterFlow()
-    override val latestDataFlow = _dataFlow.asSharedFlow()
 
     @Volatile
-    override var latestData = LatestData<Data>(emptyList())
+    private var _latestData = LatestData<Data>(emptyList())
+    override val latestDataFlow = _dataFlow.asSharedFlow()
+
+    override val latestData get() = _latestData
     protected val processingDispatcher = processingDispatcher.limitedParallelismCompat(1)
 
     protected var lastInvalidateBehavior: InvalidateBehavior? = null
@@ -73,7 +76,9 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
             _dataFlow.emit(LatestData(emptyList()))
         }
         this.lastInvalidateBehavior = null
-        latestData = LatestData(result, events.mapNotNull {
+        _latestData = LatestData(result, events.mapNotNullTo(
+            ArrayList(events.fastSumOf { if (it is PageChangedEvent) 1 else 0 })
+        ) {
             if (it is PageChangedEvent) it.params else null
         })
         _dataFlow.emit(latestData)

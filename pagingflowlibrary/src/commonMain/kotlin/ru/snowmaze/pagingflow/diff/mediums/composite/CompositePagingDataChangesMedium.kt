@@ -22,7 +22,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
     private val sections: List<CompositePresenterSection<Key, Data, NewData>>,
     final override val config: DataChangesMediumConfig = pagingDataChangesMedium.config
-) : SubscribeForChangesDataChangesMedium<Key, NewData, Data>(pagingDataChangesMedium) {
+) : SubscribeForChangesDataChangesMedium<Key, Data, NewData>(pagingDataChangesMedium) {
 
     private val dataSourcesSections =
         mutableMapOf<Int, CompositePresenterSection.DataSourceSection<Key, Data, NewData>>()
