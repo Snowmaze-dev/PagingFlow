@@ -59,5 +59,5 @@ object PagingLibraryParamsKeys {
  */
 class LoadSeveralPagesData<Key : Any, Data : Any>(
     val onSuccess: ((LoadResult.Success<Key, Data>) -> Unit)? = null,
-    val getPagingParams: (LoadResult<Key, Data>?) -> PagingParams?,
+    val getPagingParams: suspend (LoadResult<Key, Data>?) -> PagingParams?,
 )

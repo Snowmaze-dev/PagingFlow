@@ -9,6 +9,7 @@ import ru.snowmaze.pagingflow.result.result
 class TestPagingSource(
     override val totalCount: Int,
     private val delayProvider: () -> Long = { 0L },
+    private val isReversed: Boolean = false,
     startFrom: Int = 0
 ) : SegmentedPagingSource<String>() {
 
@@ -16,7 +17,7 @@ class TestPagingSource(
 
     private val items = buildList {
         for (item in startFrom until totalCount) {
-            add("Item $item")
+            add("Item ${if (isReversed) totalCount - item else item}")
         }
     }
 

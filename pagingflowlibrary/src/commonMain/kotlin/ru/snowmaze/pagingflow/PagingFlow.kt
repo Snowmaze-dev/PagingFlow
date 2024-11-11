@@ -52,6 +52,10 @@ class PagingFlow<Key : Any, Data : Any>(
         concatDataSource.addPagingSource(pagingSource)
     }
 
+    fun addUpPagingSource(pagingSource: PagingSource<Key, Data>) {
+        concatDataSource.addUpPagingSource(pagingSource)
+    }
+
     /**
      * @see [ConcatPagingSource.removePagingSource]
      */
@@ -257,7 +261,7 @@ suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadSeveralPages(
     awaitTimeout: Long? = null,
     pagingParams: PagingParams? = null,
     onSuccess: ((LoadResult.Success<Key, Data>) -> Unit)? = null,
-    getPagingParams: (LoadResult<Key, Data>?) -> PagingParams?,
+    getPagingParams: suspend (LoadResult<Key, Data>?) -> PagingParams?,
 ): LoadNextPageResult<Key, Data> {
     val result = load(
         paginationDirection = paginationDirection,

@@ -107,6 +107,11 @@ class ConcatPagingSource<Key : Any, Data : Any>(
         pageLoader.downPagingStatus.value = downPagingStatus.value.mapHasNext(true)
     }
 
+    fun addUpPagingSource(pagingSource: PagingSource<Key, Data>) {
+        pagingSourcesManager.addUpPagingSource(pagingSource)
+        pageLoader.upPagingStatus.value = upPagingStatus.value.mapHasNext(true)
+    }
+
     fun removePagingSource(pagingSource: PagingSource<Key, Data>) {
         val dataSourceIndex = pagingSourcesManager.getSourceIndex(pagingSource)
         if (dataSourceIndex == -1) return

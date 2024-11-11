@@ -63,7 +63,9 @@ internal class PageLoader<Key : Any, Data : Any>(
             if (isPaginationDown) lastPage?.nextPageKey else lastPage?.previousPageKey
 
         // finding next paging source
-        val newAbsoluteIndex = (lastPage?.pageIndex ?: -1) + if (isPaginationDown) 1 else -1
+        val newAbsoluteIndex = (lastPage?.pageIndex
+            ?: if (isPaginationDown) -1 else 0) + if (isPaginationDown) 1 else -1
+        println("newAbsoluteIndex $newAbsoluteIndex")
         val dataSourceWithIndex = pagingSourcesManager.findNextPagingSource(
             currentPagingSource = lastPage?.pagingSourceWithIndex,
             isThereKey = nextPageKey != null || newAbsoluteIndex == 0,

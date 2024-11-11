@@ -8,6 +8,8 @@ internal class PagingSourcesManager<Key : Any, Data : Any> {
 
     private val _pagingSources = mutableListOf<PagingSource<Key, Data>>()
     val pagingSources: List<PagingSource<Key, Data>> get() = _pagingSources
+    private val _upPagingSources = mutableListOf<PagingSource<Key, Data>>()
+    val upPagingSources = _upPagingSources
 
     fun replacePagingSources(pagingSourceList: List<PagingSource<Key, Data>>) {
         _pagingSources.clear()
@@ -20,6 +22,10 @@ internal class PagingSourcesManager<Key : Any, Data : Any> {
     fun addPagingSource(pagingSource: PagingSource<Key, Data>, index: Int? = null) {
         if (index == null) _pagingSources.add(pagingSource)
         else _pagingSources.add(index, pagingSource)
+    }
+
+    fun addUpPagingSource(pagingSource: PagingSource<Key, Data>) {
+        _upPagingSources.add(pagingSource)
     }
 
     /**
@@ -37,7 +43,8 @@ internal class PagingSourcesManager<Key : Any, Data : Any> {
 
     fun getSourceIndex(
         pagingSource: PagingSource<Key, Data>
-    ) = pagingSources.fastIndexOfFirst { it == pagingSource }
+    ) = _upPagingSources.fastIndexOfFirst { it == pagingSource }.takeUnless { it == -1 }
+        ?: pagingSources.fastIndexOfFirst { it == pagingSource }
 
     fun findNextPagingSource(
         currentPagingSource: Pair<PagingSource<Key, Data>, Int>?,
@@ -45,17 +52,15 @@ internal class PagingSourcesManager<Key : Any, Data : Any> {
         isThereKey: Boolean
     ): Pair<PagingSource<Key, Data>, Int>? {
         if (isThereKey && currentPagingSource?.first != null) return currentPagingSource
-        val sourceIndex = if (currentPagingSource?.first == null) -1
-        else {
-            val foundSourceIndex = getSourceIndex(currentPagingSource.first)
-            if (foundSourceIndex == -1) throw IllegalStateException(
-                "Cant find current data sources. Looks like bug in library. Report to developer."
-            )
-            foundSourceIndex
-        }
+        val sourceIndex = if (currentPagingSource?.first == null) {
+            if (paginationDirection == PaginationDirection.DOWN) -1 else 0
+        } else getSourceIndex(currentPagingSource.first)
+        println("sourceIndex $sourceIndex")
         val checkingIndex =
             sourceIndex + if (paginationDirection == PaginationDirection.DOWN) 1 else -1
-        return pagingSources.getOrNull(checkingIndex)?.let { it to checkingIndex }
+        println("checking index $checkingIndex")
+        return (if (checkingIndex >= 0) pagingSources.getOrNull(checkingIndex)
+        else _upPagingSources.getOrNull(checkingIndex + 1))?.let { it to checkingIndex }
     }
 
     fun movePagingSource(oldIndex: Int, newIndex: Int) {
