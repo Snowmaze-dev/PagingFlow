@@ -168,11 +168,15 @@ class ConcatPagingSource<Key : Any, Data : Any>(
             val key = pageLoader.pageLoaderResultKey
             while (true) {
                 val currentResult = lastResult?.returnData?.get(sourceResultKey) ?: lastResult
-                val currentLoadParams = loadSeveralPages.getPagingParams(
+                val currentPagingParams = loadSeveralPages.getPagingParams(
                     currentResult as? LoadResult<Any, Any>
                 ) ?: break
+                val defaultPagingParams = concatDataSourceConfig.defaultParamsProvider().pagingParams
+                defaultPagingParams?.put(currentPagingParams)
                 lastResult = pageLoader.loadData(
-                    loadParams = loadParams.copy(pagingParams = currentLoadParams),
+                    loadParams = loadParams.copy(
+                        pagingParams = defaultPagingParams ?: currentPagingParams
+                    ),
                     lastPageIndex = lastPageIndex(),
                     shouldReplaceOnConflict = true,
                     shouldSetNewStatus = false

@@ -3,6 +3,7 @@
 package ru.snowmaze.pagingflow.result
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import ru.snowmaze.pagingflow.LoadParams
@@ -60,7 +61,7 @@ fun <Key : Any, Data : Any> PagingSource<Key, Data>.simpleResult(
     returnData: PagingParams? = null,
     cachedResult: PagingParams? = null,
 ) = LoadResult.Success(
-    dataFlow = flow { emit(UpdatableData(data, nextPageKey, returnData)) },
+    dataFlow = MutableStateFlow(UpdatableData(data, nextPageKey, returnData)),
     nextPageKey = nextPageKey,
     returnData = returnData,
     cachedResult = cachedResult

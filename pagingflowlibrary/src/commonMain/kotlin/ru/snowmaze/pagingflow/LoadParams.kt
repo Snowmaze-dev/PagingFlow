@@ -1,5 +1,6 @@
 package ru.snowmaze.pagingflow
 
+import ru.snowmaze.pagingflow.params.DataKey
 import ru.snowmaze.pagingflow.params.PagingParams
 
 data class LoadParams<T>(
@@ -14,3 +15,9 @@ data class LoadParams<T>(
 
     fun requirePagingParams() = requireNotNull(pagingParams)
 }
+
+inline operator fun <Key, T> LoadParams<Key>.get(key: DataKey<T>) = requirePagingParams()[key]
+
+inline fun <Key, T> LoadParams<Key>.getOrNull(
+    key: DataKey<T>
+) = pagingParams?.getOrNull(key)
