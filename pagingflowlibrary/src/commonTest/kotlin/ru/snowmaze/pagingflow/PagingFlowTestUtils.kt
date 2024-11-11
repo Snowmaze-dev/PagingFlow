@@ -99,7 +99,7 @@ suspend inline fun <T> Flow<T>.firstEqualsWithTimeout(
 }
 
 suspend fun <T> Flow<T>.firstWithTimeout(
-    timeout: Long = 300,
+    timeout: Long = 500,
     message: ((T?) -> String)? = null,
     predicate: suspend (T) -> Boolean
 ): T {

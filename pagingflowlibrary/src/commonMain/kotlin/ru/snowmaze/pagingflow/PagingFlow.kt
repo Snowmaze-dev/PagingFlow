@@ -1,5 +1,6 @@
 package ru.snowmaze.pagingflow
 
+import kotlinx.coroutines.invoke
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
@@ -97,7 +98,7 @@ class PagingFlow<Key : Any, Data : Any>(
      */
     internal suspend fun load(
         paginationDirection: PaginationDirection?, pagingParams: PagingParams? = null
-    ): LoadNextPageResult<Key, Data> {
+    ): LoadNextPageResult<Key, Data> = pagingFlowConfiguration.processingDispatcher {
         val defaultParams = pagingFlowConfiguration.defaultParamsProvider()
         val defaultPagingParams = defaultParams.pagingParams
         val pickedPaginationDirection = paginationDirection
@@ -115,7 +116,7 @@ class PagingFlow<Key : Any, Data : Any>(
         )
         val result = loadData.returnData?.getOrNull(concatDataSource.concatSourceResultKey)
         val returnData = result?.returnData ?: loadData.returnData ?: PagingParams.EMPTY
-        return when (loadData) {
+        when (loadData) {
             is LoadResult.Success<Key, Data> -> LoadNextPageResult.Success(
                 currentKey = result?.currentKey,
                 dataFlow = loadData.dataFlow,
@@ -305,7 +306,7 @@ suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPageAndAwaitDa
     timeout: Long? = null,
     pagingParams: PagingParams? = null
 ): LoadNextPageResult<Key, Data> {
-    val result = loadNextPageWithResult(
+    val result = load(
         paginationDirection = paginationDirection,
         pagingParams = (pagingParams ?: PagingParams(1)).apply {
             put(PagingLibraryParamsKeys.ReturnAwaitJob, true)
