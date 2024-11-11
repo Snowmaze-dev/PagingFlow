@@ -1,25 +1,26 @@
 package ru.snowmaze.pagingflow
 
-sealed class PagingStatus {
+sealed class PagingStatus<Key: Any> {
 
     abstract val hasNextPage: Boolean
 
-    class Initial internal constructor(
+    class Initial<Key: Any> internal constructor(
         override val hasNextPage: Boolean
-    ) : PagingStatus()
+    ) : PagingStatus<Key>()
 
-    data class Success(
-        override val hasNextPage: Boolean = true
-    ) : PagingStatus()
+    data class Success<Key: Any>(
+        override val hasNextPage: Boolean = true,
+        val currentKey: Key?
+    ) : PagingStatus<Key>()
 
-    data class Failure(
+    data class Failure<Key: Any>(
         val throwable: Throwable
-    ) : PagingStatus() {
+    ) : PagingStatus<Key>() {
 
         override val hasNextPage = true
     }
 
-    data object Loading : PagingStatus() {
+    data object Loading : PagingStatus<Any>() {
 
         override val hasNextPage = true
     }
