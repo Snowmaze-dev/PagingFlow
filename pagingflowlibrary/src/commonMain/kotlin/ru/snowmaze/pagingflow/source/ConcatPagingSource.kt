@@ -164,7 +164,7 @@ class ConcatPagingSource<Key : Any, Data : Any>(
             val pagingStatus = if (isPaginationDown) pageLoader.downPagingStatus
             else pageLoader.upPagingStatus
             while (true) {
-                val currentResult = lastResult?.returnData?.get(sourceResultKey) ?: lastResult
+                val currentResult = lastResult?.returnData?.getOrNull(sourceResultKey) ?: lastResult
                 val currentPagingParams = loadSeveralPages.getPagingParams(
                     currentResult as? LoadResult<Any, Any>
                 ) ?: break
