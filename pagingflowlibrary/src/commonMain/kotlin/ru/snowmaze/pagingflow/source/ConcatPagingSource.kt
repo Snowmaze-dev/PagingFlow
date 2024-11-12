@@ -167,12 +167,15 @@ class ConcatPagingSource<Key : Any, Data : Any>(
             var lastResultWithLoad: LoadResult<Key, Data>? = null
             val resultPagingParams = mutableListOf<PagingParams?>()
             val key = pageLoader.pageLoaderResultKey
+            val pagingStatus = if (isPaginationDown) pageLoader.downPagingStatus
+            else pageLoader.upPagingStatus
             while (true) {
-                val currentResult = lastResult?.returnData?.get(sourceResultKey) ?: lastResult
+                val currentResult = lastResult?.returnData?.getOrNull(sourceResultKey) ?: lastResult
                 val currentPagingParams = loadSeveralPages.getPagingParams(
                     currentResult as? LoadResult<Any, Any>
                 ) ?: break
-                val defaultPagingParams = concatDataSourceConfig.defaultParamsProvider().pagingParams
+                val defaultPagingParams =
+                    concatDataSourceConfig.defaultParamsProvider().pagingParams
                 defaultPagingParams?.put(currentPagingParams)
                 lastResult = pageLoader.loadData(
                     loadParams = loadParams.copy(
@@ -182,10 +185,12 @@ class ConcatPagingSource<Key : Any, Data : Any>(
                     shouldReplaceOnConflict = true,
                     shouldSetNewStatus = false
                 )
-                if (lastResult is LoadResult.NothingToLoad) break
-                lastResultWithLoad = lastResult
                 resultPagingParams += lastResult.returnData?.getOrNull(key)?.returnData
                     ?: lastResult.returnData
+                if (lastResult is LoadResult.NothingToLoad &&
+                    pagingStatus.value is PagingStatus.Loading || !pagingStatus.value.hasNextPage
+                ) break
+                lastResultWithLoad = lastResult
                 if (lastResult is LoadResult.Failure) continue
                 loadSeveralPages.onSuccess?.invoke(
                     lastResult.returnData?.get(sourceResultKey) as LoadResult.Success<Any, Any>
