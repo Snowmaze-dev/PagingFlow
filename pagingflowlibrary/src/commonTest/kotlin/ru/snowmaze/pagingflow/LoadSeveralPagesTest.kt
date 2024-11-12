@@ -1,7 +1,6 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
-import ru.snowmaze.pagingflow.params.LoadSeveralPagesData
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
@@ -30,7 +29,7 @@ class LoadSeveralPagesTest {
 
     @Test
     fun testLoadSeveralPages() = runTestOnDispatchersDefault {
-        val totalCount = 100
+        val totalCount = 1000
         val source = TestPagingSource(totalCount)
         val maxItems = pageSize * 4
         val pagingFlow = buildPagingFlow(
@@ -49,11 +48,9 @@ class LoadSeveralPagesTest {
         )
         var pages = 0
         val result = pagingFlow.loadSeveralPages(
-            awaitDataSet = true,
-            awaitTimeout = 5000,
             getPagingParams = {
                 pages++
-                PagingParams.EMPTY.takeUnless { pages > 2 }
+                PagingParams(PagingLibraryParamsKeys.ReturnAwaitJob to true).takeUnless { pages > 2 }
             },
         )
         assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
@@ -69,21 +66,13 @@ class LoadSeveralPagesTest {
         pages = 0
         pagingFlow.loadSeveralPages(
             getPagingParams = {
-                PagingParams(
-                    PagingLibraryParamsKeys.LoadSeveralPages to LoadSeveralPagesData<Int, String>(
-                        getPagingParams = {
-                            pages++
-                            if (pages > 4) null
-                            else PagingParams(PagingLibraryParamsKeys.ReturnAwaitJob to true)
-                        },
-                    )
-                )
+                pages++
+                if (pages > 4) null
+                else PagingParams(PagingLibraryParamsKeys.ReturnAwaitJob to true)
             },
-            awaitTimeout = 5000,
-            awaitDataSet = true
         )
         presenter.dataFlow.firstWithTimeout {
-            source.getItems(pageSize * 5).takeLast(maxItems) == it
+            source.getItems(pageSize * 6).takeLast(maxItems) == it
         }
     }
 }

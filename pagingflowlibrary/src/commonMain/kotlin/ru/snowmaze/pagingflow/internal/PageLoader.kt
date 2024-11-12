@@ -128,7 +128,11 @@ internal class PageLoader<Key : Any, Data : Any>(
             )
 
             is LoadResult.NothingToLoad -> PagingStatus.Success(
-                hasNextPage = false,
+                hasNextPage = pagingSourcesManager.findNextPagingSource(
+                    currentPagingSource = dataSourceWithIndex,
+                    isThereKey = false,
+                    paginationDirection = paginationDirection
+                ) != null,
                 currentKey = currentKey
             )
         }
@@ -205,7 +209,7 @@ internal class PageLoader<Key : Any, Data : Any>(
             nextPageKey = result.nextPageKey,
             returnData = PagingParams(2 + if (shouldSetNewStatus) 0 else 1) {
                 put(
-                    pageLoaderResult(),
+                    pageLoaderResultKey,
                     ConcatSourceData(
                         currentKey = currentKey,
                         returnData = resultData,
