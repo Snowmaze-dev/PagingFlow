@@ -258,6 +258,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
             awaitChannel?.trySend(Unit)
         } else null
         val notified = if (trimEvents.isNullOrEmpty()) {
+            println("notify on event $event")
             if (awaitEvent != null) notifyOnEvents(listOf(awaitEvent, event))
             else notifyOnEvent(event)
         } else {
@@ -278,13 +279,15 @@ internal class DataPagesManager<Key : Any, Data : Any>(
             notifyOnEvents(events)
         }
         val isLastPageChanged: Boolean
+        println("set data $value")
         if (isPaginationDown) {
             isLastPageChanged = page == dataPages.lastOrNull()
             page.nextPageKey = value.nextPageKey
         } else {
-            isLastPageChanged = page == dataPages.firstOrNull { it.data != null }
+            isLastPageChanged = page == dataPages.firstOrNull { !it.isNullified }
             page.previousPageKey = value.nextPageKey
         }
+        println("set previous ${page.previousPageKey}")
         if (isLastPageChanged) onNextKeyChanged(value.nextPageKey, isPaginationDown)
         if (!notified) {
             delay(1000)

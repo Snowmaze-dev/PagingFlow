@@ -13,12 +13,13 @@ class PagingBothDirectionsTest {
 
     @Test
     fun testPagingBothDirections() = runTestOnDispatchersDefault {
+        val downPagingSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(
             PagingFlowConfiguration(
                 defaultParams = LoadParams(pageSize),
                 processingDispatcher = Dispatchers.Default
             ),
-            TestPagingSource(totalCount)
+            downPagingSource
         )
         val upPagingSource = TestPagingSource(totalCount, isReversed = true)
         pagingFlow.addUpPagingSource(upPagingSource)
@@ -27,5 +28,7 @@ class PagingBothDirectionsTest {
         presenter.dataFlow.firstEqualsWithTimeout(upPagingSource.getItems(pageSize))
         pagingFlow.loadNextPageAndAwaitDataSet(PaginationDirection.UP)
         presenter.dataFlow.firstEqualsWithTimeout(upPagingSource.getItems(pageSize * 2))
+        pagingFlow.loadNextPageAndAwaitDataSet(PaginationDirection.DOWN)
+        presenter.dataFlow.firstEqualsWithTimeout(upPagingSource.getItems(pageSize * 2) + downPagingSource.getItems(pageSize))
     }
 }

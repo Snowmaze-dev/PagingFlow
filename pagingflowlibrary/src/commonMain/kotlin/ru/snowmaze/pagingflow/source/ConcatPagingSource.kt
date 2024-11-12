@@ -147,6 +147,7 @@ class ConcatPagingSource<Key : Any, Data : Any>(
     override suspend fun load(
         loadParams: LoadParams<Key>,
     ) = loadDataMutex.withLock {
+        println("LOAD ${loadParams.paginationDirection}")
         val dataPages = dataPagesManager.dataPages
         val isPaginationDown = loadParams.paginationDirection == PaginationDirection.DOWN
 

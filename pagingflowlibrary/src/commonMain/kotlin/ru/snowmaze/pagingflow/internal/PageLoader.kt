@@ -63,12 +63,11 @@ internal class PageLoader<Key : Any, Data : Any>(
             if (isPaginationDown) lastPage?.nextPageKey else lastPage?.previousPageKey
 
         // finding next paging source
-        val newAbsoluteIndex = (lastPage?.pageIndex
-            ?: if (isPaginationDown) -1 else 0) + if (isPaginationDown) 1 else -1
-        println("newAbsoluteIndex $newAbsoluteIndex")
+        val newAbsoluteIndex = (lastPage?.pageIndex ?: 0) + if (isPaginationDown) 1 else -1
+        println("newAbsoluteIndex $newAbsoluteIndex lastPage $lastPage lastPage?.pageIndex ${lastPage?.pageIndex} currentKey $nextPageKey")
         val dataSourceWithIndex = pagingSourcesManager.findNextPagingSource(
             currentPagingSource = lastPage?.pagingSourceWithIndex,
-            isThereKey = nextPageKey != null || newAbsoluteIndex == 0,
+            isThereKey = nextPageKey != null || (newAbsoluteIndex == 0 && lastPage?.pagingSourceWithIndex == null),
             paginationDirection = paginationDirection
         ) ?: return LoadResult.NothingToLoad()
 
@@ -82,7 +81,7 @@ internal class PageLoader<Key : Any, Data : Any>(
             pagingSource.defaultLoadParams?.key ?: loadParams.key
             ?: pageLoaderConfig.defaultParamsProvider().key
         } else null
-        val pageAbsoluteIndex = if (lastPage == null) 0
+        val pageAbsoluteIndex = if (lastPage == null) if (isPaginationDown) 0 else -1
         else if (isPaginationDown) lastPage.pageIndex + 1 else lastPage.pageIndex - 1
 
         val pageIndexInDataSource = if (lastPage?.dataSourceIndex == dataSourceWithIndex.second) {
@@ -100,7 +99,8 @@ internal class PageLoader<Key : Any, Data : Any>(
         // loading next page of data
         val nextLoadParams = LoadParams(
             pageSize = pagingSource.defaultLoadParams?.pageSize ?: loadParams.pageSize,
-            paginationDirection = paginationDirection,
+            paginationDirection = if (pageAbsoluteIndex >= 0) paginationDirection else
+                if (isPaginationDown) PaginationDirection.UP else PaginationDirection.DOWN,
             key = currentKey,
             cachedResult = cachedResultPair?.second ?: loadParams.cachedResult
             ?: defaultLoadParams?.cachedResult,
@@ -145,8 +145,8 @@ internal class PageLoader<Key : Any, Data : Any>(
         if (shouldSetNewStatus) currentStatusFlow.value = status
 
         // saving page to pages manager
-        val previousPageKey = if (isPaginationDown) lastPage?.currentPageKey
-        else result.nextPageKey
+        val previousPageKey = if (isPaginationDown) lastPage?.currentPageKey else result.nextPageKey
+        println("previousPage key $previousPageKey result.nextPageKey ${result.nextPageKey}")
         val page = DataPage(
             data = null,
             isNullified = false,
@@ -161,6 +161,7 @@ internal class PageLoader<Key : Any, Data : Any>(
             dataSourceIndex = dataSourceWithIndex.second,
             pageIndexInDataSource = pageIndexInDataSource
         )
+        println("got page $page")
 
         val newIndex = lastPageIndex + if (isPaginationDown) 1 else -1
         val shouldReturnAwaitJob =

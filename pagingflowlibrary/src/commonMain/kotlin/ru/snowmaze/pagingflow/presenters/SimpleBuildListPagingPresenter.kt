@@ -97,7 +97,8 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
      * Flattens [indexedPages] Map to list
      */
     override suspend fun buildListInternal(): List<Data?> {
-        val pageIndexesKeys = indexedPages.keys.sorted()
+        val pageIndexesKeys = indexedPages.keys.sortedWith(compareBy({ it >= 0 }, { kotlin.math.abs(it) }))
+        println("pageIndexesKeys $pageIndexesKeys")
         return buildList(pageIndexesKeys.sumOf { indexedPages[it]!!.items.size }) {
             var newStartIndex = 0
             pageIndexesKeys.fastForEach { pageIndex ->
