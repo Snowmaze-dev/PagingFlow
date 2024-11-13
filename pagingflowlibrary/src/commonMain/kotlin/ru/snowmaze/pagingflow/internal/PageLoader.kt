@@ -125,6 +125,8 @@ internal class PageLoader<Key : Any, Data : Any>(
             nextPageKey = null
             pagingSourceWithIndex = dataSource to dataSourceIndex
         }
+        if (isPaginationDown) lastDownDataSourceIndex = pagingSourceWithIndex.second
+        else lastUpDataSourceIndex = pagingSourceWithIndex.second
 
         // setting status that we loading
         val currentStatusFlow = if (isPaginationDown) downPagingStatus else upPagingStatus
