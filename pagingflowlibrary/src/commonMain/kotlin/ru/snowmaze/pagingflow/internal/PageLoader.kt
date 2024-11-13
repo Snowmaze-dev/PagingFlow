@@ -86,7 +86,7 @@ internal class PageLoader<Key : Any, Data : Any>(
         return loadResult
     }
 
-    suspend fun loadDataInternal(
+    private suspend fun loadDataInternal(
         loadParams: LoadParams<Key>,
         lastPageIndex: Int?,
         shouldReplaceOnConflict: Boolean,
