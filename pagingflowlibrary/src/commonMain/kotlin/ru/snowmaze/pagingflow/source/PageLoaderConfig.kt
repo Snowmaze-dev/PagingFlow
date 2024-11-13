@@ -8,12 +8,16 @@ import ru.snowmaze.pagingflow.LoadParams
 
 class PageLoaderConfig<Key : Any>(
     val defaultParamsProvider: () -> LoadParams<Key>,
-    val processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
-    val coroutineScope: CoroutineScope = CoroutineScope(processingDispatcher + SupervisorJob()),
-    val maxItemsConfiguration: MaxItemsConfiguration? = null,
+    val processingDispatcher: CoroutineDispatcher,
+    val coroutineScope: CoroutineScope,
+    val maxItemsConfiguration: MaxItemsConfiguration?,
 
-    // defines should use stateIn to collect pages and await data set or not when collecting pages
-    val shouldCollectOnlyNew: Boolean = false
+    // defines should use zero-sized buffer to collect pages and await data set or not when collecting pages
+    val shouldCollectOnlyLatest: Boolean,
+
+    // defines should store page items inside PagingFlow or not.
+    // if not it wouldn't be possible to subscribe to paging changes after first page loaded or before invalidate
+    val shouldStorePageItems: Boolean
 )
 
 data class MaxItemsConfiguration(

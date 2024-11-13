@@ -19,7 +19,11 @@ data class PagingFlowConfiguration<Key : Any>(
     val maxItemsConfiguration: MaxItemsConfiguration? = null,
 
     // defines should use stateIn to collect pages and await data set or not when collecting pages
-    val shouldCollectOnlyNew: Boolean = false,
+    val shouldCollectOnlyLatest: Boolean = false,
+
+    // Defines should store page items inside PagingFlow or not.
+    // If not it wouldn't be possible to subscribe to paging changes after first page loaded or before invalidate
+    val shouldStorePageItems: Boolean = true,
 
     val processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
     val coroutineScope: CoroutineScope = CoroutineScope(processingDispatcher + SupervisorJob()),

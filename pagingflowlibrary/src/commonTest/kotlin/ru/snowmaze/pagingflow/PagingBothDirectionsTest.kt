@@ -2,9 +2,11 @@ package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
+import ru.snowmaze.pagingflow.presenters.PresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
@@ -50,13 +52,15 @@ class PagingBothDirectionsTest {
                     maxItemsCount = pageSize * 4,
                     enableDroppedPagesNullPlaceholders = false
                 ),
-                shouldCollectOnlyNew = true
+                shouldCollectOnlyLatest = true,
+                shouldStorePageItems = false
             )
         ) {
             addPagingSource(TestPagingSource(totalCount, randomDelay))
             addPagingSource(TestPagingSource(totalCount, randomDelay))
         }
         val presenter = pagingFlow.pagingDataPresenter(
+            presenterConfiguration = PresenterConfiguration(shouldSubscribeForChangesNow = true),
             eventsBatchingDurationMsProvider = { 20 },
         )
 
@@ -69,7 +73,9 @@ class PagingBothDirectionsTest {
                 }
             ).asSuccess()
             hasNext = result.hasNext
-            if (!hasNext) result.returnData[ReturnPagingLibraryKeys.DataSetJob].join()
+            if (!hasNext) withTimeout(5000L) {
+                result.returnData[ReturnPagingLibraryKeys.DataSetJob].join()
+            }
             assertEquals(hasNext, pagingFlow.downPagingStatus.value.hasNextPage)
         }
         val maxItemsCount =
@@ -79,9 +85,8 @@ class PagingBothDirectionsTest {
                 "expected less count than $maxItemsCount but was ${it?.size}"
             }
         ) { maxItemsCount >= it.size }
-        assertContentEquals(
-            testDataSource.getItems(totalCount).takeLast(presenter.data.size),
-            presenter.data
+        presenter.dataFlow.firstEqualsWithTimeout(
+            testDataSource.getItems(totalCount).takeLast(maxItemsCount)
         )
         hasNext = true
         while (hasNext) {

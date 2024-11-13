@@ -13,6 +13,7 @@ import ru.snowmaze.pagingflow.diff.handle
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.utils.fastForEach
+import ru.snowmaze.pagingflow.utils.fastSumOf
 
 /**
  * Basic implementation of list building presenter.
@@ -20,12 +21,11 @@ import ru.snowmaze.pagingflow.utils.fastForEach
  */
 open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
-    invalidateBehavior: InvalidateBehavior,
+    private val presenterConfiguration: PresenterConfiguration<Data>,
     config: DataChangesMediumConfig = pagingDataChangesMedium.config,
-    unsubscribeDelayWhenNoSubscribers: Long = 5000L,
     presenterFlow: () -> MutableSharedFlow<LatestData<Data>> = defaultPresenterFlowCreator()
 ) : BuildListPagingPresenter<Key, Data>(
-    invalidateBehavior = invalidateBehavior,
+    invalidateBehavior = presenterConfiguration.invalidateBehavior,
     coroutineScope = config.coroutineScope,
     processingDispatcher = config.processingDispatcher,
     presenterFlow = presenterFlow,
@@ -34,15 +34,20 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
     protected val indexedPages = mutableMapOf<Int, PageChangedEvent<Key, Data>>()
 
     init {
-        coroutineScope.launch(processingDispatcher) {
-            val callback = getDataChangedCallback()
+        val callback = getDataChangedCallback()
+        pagingDataChangesMedium.addDataChangedCallback(callback)
+        var firstCall = true
+        var isSubscribedAlready = true
+        val shouldSubscribeNow = presenterConfiguration.shouldSubscribeForChangesNow
+        if (shouldSubscribeNow) {
+            firstCall = false
+            isSubscribedAlready = true
             pagingDataChangesMedium.addDataChangedCallback(callback)
-
-            var firstCall = true
-            var isSubscribedAlready = true
+        }
+        if (!shouldSubscribeNow) coroutineScope.launch(processingDispatcher) {
             _dataFlow.subscriptionCount.collect { subscriptionCount ->
                 if (subscriptionCount == 0 && !firstCall) {
-                    delay(unsubscribeDelayWhenNoSubscribers)
+                    delay(presenterConfiguration.unsubscribeDelayWhenNoSubscribers)
                     isSubscribedAlready = false
                     pagingDataChangesMedium.removeDataChangedCallback(callback)
                 } else if (subscriptionCount == 1 && !isSubscribedAlready) {
@@ -79,15 +84,15 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
         indexedPages.clear()
     }
 
-    protected open suspend fun updateData(
-        update: suspend MutableMap<Int, PageChangedEvent<Key, Data>>.() -> List<DataChangedEvent<Key, Data>>
+    private suspend inline fun updateData(
+        crossinline update: suspend MutableMap<Int, PageChangedEvent<Key, Data>>.() -> List<DataChangedEvent<Key, Data>>
     ): Unit = withContext(processingDispatcher) {
         val result = indexedPages.update()
         try {
             val lastEvent = result.lastOrNull()
             if (lastEvent != null && lastEvent !is InvalidateEvent) buildList(result)
         } finally {
-            for (event in result) {
+            result.fastForEach { event ->
                 if (event is AwaitDataSetEvent) event.callback()
             }
         }
@@ -98,7 +103,7 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
      */
     override suspend fun buildListInternal(): List<Data?> {
         val pageIndexesKeys = indexedPages.keys.sorted()
-        return buildList(pageIndexesKeys.sumOf { indexedPages[it]!!.items.size }) {
+        return buildList(pageIndexesKeys.fastSumOf { indexedPages[it]!!.items.size }) {
             var newStartIndex = 0
             pageIndexesKeys.fastForEach { pageIndex ->
                 val page = indexedPages[pageIndex]!!

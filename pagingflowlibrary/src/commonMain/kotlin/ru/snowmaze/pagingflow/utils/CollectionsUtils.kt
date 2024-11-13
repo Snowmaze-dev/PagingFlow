@@ -42,3 +42,8 @@ internal inline fun <T> List<T>.fastIndexOfFirst(predicate: (T) -> Boolean): Int
     }
     return -1
 }
+
+internal inline fun <T> List<T>.fastFirstOrNull(predicate: (T) -> Boolean): T? {
+    fastForEach { element -> if (predicate(element)) return element }
+    return null
+}

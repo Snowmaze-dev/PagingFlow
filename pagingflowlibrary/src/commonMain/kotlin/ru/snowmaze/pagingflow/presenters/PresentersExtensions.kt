@@ -18,28 +18,23 @@ import ru.snowmaze.pagingflow.diff.mediums.composite.CompositePagingDataChangesM
  * @see pagingDataPresenter for arguments docs on arguments
  */
 fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mapDataPresenter(
-    invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
-    presenterFlow: () -> MutableSharedFlow<LatestData<NewData>> = defaultPresenterFlowCreator(),
+    presenterConfiguration: PresenterConfiguration<NewData> = PresenterConfiguration(),
     transform: (PageChangedEvent<Key, Data>) -> List<NewData?>
 ) = MappingPagingDataChangesMedium(
     pagingDataChangesMedium = this,
     transform = transform
-).pagingDataPresenter(invalidateBehavior, presenterFlow)
+).pagingDataPresenter(presenterConfiguration)
 
 /**
  * Maps events to flow of data
  */
 fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mapDataFlowPresenter(
-    invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
-    presenterFlow: () -> MutableSharedFlow<LatestData<NewData>> = defaultPresenterFlowCreator(),
+    presenterConfiguration: PresenterConfiguration<NewData> = PresenterConfiguration(),
     transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>
 ) = MappingFlowPagingDataChangesMedium(
     pagingDataChangesMedium = this,
     transform = transform
-).pagingDataPresenter(
-    invalidateBehavior = invalidateBehavior,
-    presenterFlow = presenterFlow
-)
+).pagingDataPresenter(presenterConfiguration)
 
 /**
  * @param invalidateBehavior see [InvalidateBehavior]
@@ -49,11 +44,10 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
  * @param transform mapping lambda
  */
 fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mapDataPresenter(
-    invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
+    presenterConfiguration: PresenterConfiguration<NewData> = PresenterConfiguration(),
     eventsBatchingDurationMsProvider: () -> Long = { 0 },
     shouldBatchAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
-    presenterFlow: () -> MutableSharedFlow<LatestData<NewData>> = defaultPresenterFlowCreator(),
     transform: (PageChangedEvent<Key, Data>) -> List<NewData?>
 ) = BatchingPagingDataChangesMedium(
     pagingDataChangesMedium = MappingPagingDataChangesMedium(
@@ -65,17 +59,16 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
     },
     eventsBatchingDurationMsProvider = eventsBatchingDurationMsProvider,
     shouldBatchAddPagesEvents = shouldBatchAddPagesEvents
-).pagingDataPresenter(invalidateBehavior, presenterFlow)
+).pagingDataPresenter(presenterConfiguration)
 
 /**
  * Maps events to flow of data
  */
 fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mapDataFlowPresenter(
-    invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
+    presenterConfiguration: PresenterConfiguration<NewData> = PresenterConfiguration(),
     eventsBatchingDurationMsProvider: () -> Long = { 0 },
     shouldBatchAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
-    presenterFlow: () -> MutableSharedFlow<LatestData<NewData>> = defaultPresenterFlowCreator(),
     transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>
 ) = BatchingPagingDataChangesMedium(
     pagingDataChangesMedium = MappingFlowPagingDataChangesMedium(
@@ -87,7 +80,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
     },
     eventsBatchingDurationMsProvider = eventsBatchingDurationMsProvider,
     shouldBatchAddPagesEvents = shouldBatchAddPagesEvents
-).pagingDataPresenter(invalidateBehavior, presenterFlow)
+).pagingDataPresenter(presenterConfiguration)
 
 /**
  * Creates simple presenter, which builds list from pages
@@ -95,12 +88,10 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
  * @see InvalidateBehavior
  */
 fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresenter(
-    invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
-    presenterFlow: () -> MutableSharedFlow<LatestData<Data>> = defaultPresenterFlowCreator()
+    presenterConfiguration: PresenterConfiguration<Data> = PresenterConfiguration()
 ) = SimpleBuildListPagingPresenter(
     pagingDataChangesMedium = this,
-    invalidateBehavior = invalidateBehavior,
-    presenterFlow = presenterFlow
+    presenterConfiguration = presenterConfiguration
 )
 
 /**
@@ -110,33 +101,30 @@ fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresent
  * @param shouldBufferEvents see [BufferEventsDataChangesMedium]
  */
 fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresenter(
-    invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
+    presenterConfiguration: PresenterConfiguration<Data> = PresenterConfiguration(),
     eventsBatchingDurationMsProvider: () -> Long = { 0 },
     shouldBatchAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
-    presenterFlow: () -> MutableSharedFlow<LatestData<Data>> = defaultPresenterFlowCreator()
 ) = BatchingPagingDataChangesMedium(
     if (shouldBufferEvents) BufferEventsDataChangesMedium(this) else this,
     eventsBatchingDurationMsProvider = eventsBatchingDurationMsProvider,
     shouldBatchAddPagesEvents = shouldBatchAddPagesEvents
-).pagingDataPresenter(invalidateBehavior, presenterFlow)
+).pagingDataPresenter(presenterConfiguration)
 
 fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.compositeDataPresenter(
-    invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
+    presenterConfiguration: PresenterConfiguration<NewData> = PresenterConfiguration(),
     shouldBufferEvents: Boolean = false,
-    presenterFlow: () -> MutableSharedFlow<LatestData<NewData>> = defaultPresenterFlowCreator(),
     builder: CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.() -> Unit
 ) = CompositePagingDataChangesMediumBuilder.build(
     if (shouldBufferEvents) BufferEventsDataChangesMedium(this) else this,
     builder = builder
-).pagingDataPresenter(invalidateBehavior, presenterFlow)
+).pagingDataPresenter(presenterConfiguration)
 
 fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.compositeDataPresenter(
-    invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
+    presenterConfiguration: PresenterConfiguration<NewData> = PresenterConfiguration(),
     eventsBatchingDurationMsProvider: () -> Long = { 0 },
     shouldBatchAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
-    presenterFlow: () -> MutableSharedFlow<LatestData<NewData>> = defaultPresenterFlowCreator(),
     builder: CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.() -> Unit
 ) = CompositePagingDataChangesMediumBuilder.build(
     BatchingPagingDataChangesMedium(
@@ -144,4 +132,11 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.co
         eventsBatchingDurationMsProvider = eventsBatchingDurationMsProvider,
         shouldBatchAddPagesEvents = shouldBatchAddPagesEvents
     ), builder = builder
-).pagingDataPresenter(invalidateBehavior, presenterFlow)
+).pagingDataPresenter(presenterConfiguration)
+
+data class PresenterConfiguration<Data: Any>(
+    val invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
+    val shouldSubscribeForChangesNow: Boolean = false,
+    val unsubscribeDelayWhenNoSubscribers: Long = 5000L,
+    val presenterFlow: () -> MutableSharedFlow<LatestData<Data>> = defaultPresenterFlowCreator()
+)

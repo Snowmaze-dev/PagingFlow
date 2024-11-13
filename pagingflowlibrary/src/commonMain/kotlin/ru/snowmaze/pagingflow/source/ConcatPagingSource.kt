@@ -25,6 +25,7 @@ import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.result.mapParams
 import ru.snowmaze.pagingflow.utils.DiffOperation
+import ru.snowmaze.pagingflow.utils.fastFirstOrNull
 import ru.snowmaze.pagingflow.utils.fastIndexOfFirst
 import ru.snowmaze.pagingflow.utils.mapHasNext
 import ru.snowmaze.pagingflow.utils.toInfo
@@ -44,11 +45,11 @@ class ConcatPagingSource<Key : Any, Data : Any>(
     )
 
     val firstPageInfo
-        get() = dataPagesManager.dataPages.firstOrNull { it.data != null }?.toInfo()
+        get() = dataPagesManager.dataPages.fastFirstOrNull { !it.isNullified }?.toInfo()
     val lastPageInfo get() = dataPagesManager.dataPages.lastOrNull()?.toInfo()
     val pagesInfo get() = dataPagesManager.dataPages.map { it.toInfo() }
 
-    val pagesCount get() = dataPagesManager.dataPages.count { it.data != null }
+    val pagesCount get() = dataPagesManager.dataPages.count { !it.isNullified }
 
     val currentPagesCount get() = dataPagesManager.currentPagesCount
     val isLoading
@@ -102,13 +103,15 @@ class ConcatPagingSource<Key : Any, Data : Any>(
         return dataPagesManager.removeDataChangedCallback(callback)
     }
 
-    fun addPagingSource(pagingSource: PagingSource<Key, Data>) {
-        pagingSourcesManager.addPagingSource(pagingSource)
+    fun addPagingSource(pagingSource: PagingSource<Key, out Data>) {
+        pagingSourcesManager.addPagingSource(pagingSource as PagingSource<Key, Data>)
         pageLoader.downPagingStatus.value = downPagingStatus.value.mapHasNext(true)
     }
 
-    fun removePagingSource(pagingSource: PagingSource<Key, Data>) {
-        val dataSourceIndex = pagingSourcesManager.getSourceIndex(pagingSource)
+    fun removePagingSource(pagingSource: PagingSource<Key, out Data>) {
+        val dataSourceIndex = pagingSourcesManager.getSourceIndex(
+            pagingSource as PagingSource<Key, Data>
+        )
         if (dataSourceIndex == -1) return
         removePagingSource(dataSourceIndex)
     }
@@ -122,11 +125,11 @@ class ConcatPagingSource<Key : Any, Data : Any>(
     }
 
     suspend fun setPagingSources(
-        newPagingSourceList: List<PagingSource<Key, Data>>,
+        newPagingSourceList: List<PagingSource<Key, out Data>>,
         diff: (
-            oldList: List<PagingSource<Key, Data>>,
-            newList: List<PagingSource<Key, Data>>
-        ) -> List<DiffOperation<PagingSource<Key, Data>>>
+            oldList: List<PagingSource<Key, out Data>>,
+            newList: List<PagingSource<Key, out Data>>
+        ) -> List<DiffOperation<PagingSource<Key, out Data>>>
     ) = dataSourcesHelper.setPagingSources(newPagingSourceList, diff)
 
     suspend fun invalidateAndSetPagingSources(pagingSourceList: List<PagingSource<Key, Data>>) {
@@ -142,15 +145,7 @@ class ConcatPagingSource<Key : Any, Data : Any>(
     override suspend fun load(
         loadParams: LoadParams<Key>,
     ) = loadDataMutex.withLock {
-        val dataPages = dataPagesManager.dataPages
         val isPaginationDown = loadParams.paginationDirection == PaginationDirection.DOWN
-
-        val lastPageIndex = {
-
-            // getting last page and nextPageKey
-            if (isPaginationDown) dataPages.lastIndex
-            else dataPages.fastIndexOfFirst { !it.isNullified }
-        }
 
         val loadSeveralPages = loadParams.pagingParams
             ?.getOrNull(PagingLibraryParamsKeys.LoadSeveralPages)
@@ -175,7 +170,7 @@ class ConcatPagingSource<Key : Any, Data : Any>(
                     loadParams = loadParams.copy(
                         pagingParams = defaultPagingParams ?: currentPagingParams
                     ),
-                    lastPageIndex = lastPageIndex(),
+                    lastPageIndex = null,
                     shouldReplaceOnConflict = true,
                     shouldSetNewStatus = false
                 )
@@ -210,7 +205,7 @@ class ConcatPagingSource<Key : Any, Data : Any>(
             return@withLock lastResult
         } else pageLoader.loadData(
             loadParams = loadParams,
-            lastPageIndex = lastPageIndex(),
+            lastPageIndex = null,
             shouldReplaceOnConflict = true,
             shouldSetNewStatus = true
         )

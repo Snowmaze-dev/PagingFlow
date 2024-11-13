@@ -13,14 +13,14 @@ internal class PagingSourcesHelper<Key : Any, Data : Any>(
     private val loadDataMutex: Mutex
 ) {
 
-    private val pagesCount get() = dataPagesManager.dataPages.count { it.data != null }
+    private val pagesCount get() = dataPagesManager.dataPages.count { !it.isNullified }
 
     suspend fun setPagingSources(
-        newPagingSourceList: List<PagingSource<Key, Data>>,
+        newPagingSourceList: List<PagingSource<Key, out Data>>,
         diff: (
-            oldList: List<PagingSource<Key, Data>>,
-            newList: List<PagingSource<Key, Data>>
-        ) -> List<DiffOperation<PagingSource<Key, Data>>>
+            oldList: List<PagingSource<Key, out Data>>,
+            newList: List<PagingSource<Key, out Data>>
+        ) -> List<DiffOperation<PagingSource<Key, out Data>>>
     ) = loadDataMutex.withLock {
         val dataSources = pagingSourcesManager.pagingSources
         val operations = diff(dataSources, newPagingSourceList)
@@ -29,9 +29,11 @@ internal class PagingSourcesHelper<Key : Any, Data : Any>(
             when (operation) {
                 is DiffOperation.Remove<*> -> repeat(operation.count) { remove(operation.index) }
 
-                is DiffOperation.Add<PagingSource<Key, Data>> -> {
+                is DiffOperation.Add<PagingSource<Key, out Data>> -> {
                     for (item in (operation.items ?: continue).withIndex()) {
-                        insert(item.value, operation.index + item.index)
+                        insert(
+                            item.value as PagingSource<Key, Data>, operation.index + item.index
+                        )
                     }
                 }
 
@@ -76,6 +78,7 @@ internal class PagingSourcesHelper<Key : Any, Data : Any>(
         try {
             pagingSourcesManager.movePagingSource(oldIndex, newMaxIndex)
             dataPagesManager.movePages(oldIndex, newMaxIndex)
-        } catch (e: Exception) { }
+        } catch (e: Exception) {
+        }
     }
 }
