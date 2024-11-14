@@ -66,9 +66,7 @@ class DiffListBuildStrategy<Key : Any, Data : Any>(
                 removePageItems(current.pageIndex)
                 pageSizes.remove(current.pageIndex)
             },
-            onInvalidate = {
-                onInvalidate(it.invalidateBehavior)
-            }
+            onInvalidate = { onInvalidate(it.invalidateBehavior) }
         )
     }
 
