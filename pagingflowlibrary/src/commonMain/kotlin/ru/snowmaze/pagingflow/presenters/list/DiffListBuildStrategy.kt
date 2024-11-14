@@ -32,7 +32,7 @@ class DiffListBuildStrategy<Key : Any, Data : Any>(
         onInvalidate: (InvalidateBehavior?) -> Unit
     ) {
         val newRecentLoadData = ArrayList<PagingParams>(
-            events.fastSumOf { if (it is PageChangedEvent) if (it.params == null) 0 else 1 else 0 }
+            events.fastSumOf { if (it is PageChangedEvent && it.params != null) 1 else 0 }
         )
         recentLoadData = newRecentLoadData
         if (!reuseList) list = ArrayList(list)

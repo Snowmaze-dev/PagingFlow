@@ -23,7 +23,7 @@ class ListByPagesBuildStrategy<Key : Any, Data : Any> : ListBuildStrategy<Key, D
         onInvalidate: (InvalidateBehavior?) -> Unit
     ) {
         val newRecentLoadData = ArrayList<PagingParams>(
-            events.fastSumOf { if (it is PageChangedEvent) if (it.params == null) 0 else 1 else 0 }
+            events.fastSumOf { if (it is PageChangedEvent && it.params != null) 1 else 0 }
         )
         events.fastForEach { event ->
             if (event is PageChangedEvent && event.params != null) {
