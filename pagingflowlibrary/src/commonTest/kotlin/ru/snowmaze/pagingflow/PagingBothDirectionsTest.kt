@@ -6,7 +6,7 @@ import kotlinx.coroutines.withTimeout
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
-import ru.snowmaze.pagingflow.presenters.PresenterConfiguration
+import ru.snowmaze.pagingflow.presenters.SimplePresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
@@ -15,7 +15,6 @@ import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.random.Random
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -60,7 +59,7 @@ class PagingBothDirectionsTest {
             addPagingSource(TestPagingSource(totalCount, randomDelay))
         }
         val presenter = pagingFlow.pagingDataPresenter(
-            presenterConfiguration = PresenterConfiguration(shouldSubscribeForChangesNow = true),
+            configuration = SimplePresenterConfiguration(shouldSubscribeForChangesNow = true),
             eventsBatchingDurationMsProvider = { 20 },
         )
 
@@ -206,16 +205,16 @@ class PagingBothDirectionsTest {
         }
         val presenter = pagingFlow.pagingDataPresenter()
         pagingFlow.loadNextPageWithResult()
-        assertEquals(2, presenter.data.size)
-        repeat(2) {
-            pagingFlow.loadNextPageWithResult()
-        }
-        assertEquals(4, presenter.data.size)
+        assertEquals(testDataSource.getItems(2), presenter.data)
+        pagingFlow.loadNextPageWithResult()
+        assertEquals(testDataSource.getItems(4), presenter.data)
+        pagingFlow.loadNextPageWithResult()
+        assertEquals(testDataSource.getItems(6).drop(2), presenter.data)
         currentLoadParams = LoadParams(1)
         pagingFlow.loadNextPageWithResult()
-        assertEquals(5, presenter.data.size)
+        assertEquals(testDataSource.getItems(7).drop(2), presenter.data)
         pagingFlow.loadNextPageWithResult()
-        assertEquals(4, presenter.data.size)
+        assertEquals(testDataSource.getItems(8).drop(4), presenter.data)
     }
 
     private fun buildListOfNulls(count: Int) = buildList {
