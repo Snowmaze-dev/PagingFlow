@@ -22,6 +22,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
     override var list = if (reuseList) mutableListOf<Data?>() else emptyList()
     override var startPageIndex: Int = 0
     override var recentLoadData: List<PagingParams> = emptyList()
+    private var minIndex: Int = 0
 
     override suspend fun buildList(
         events: List<DataChangedEvent<Key, Data>>,
@@ -48,6 +49,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
                     pageIndex = current.pageIndex,
                     newItems = current.items
                 )
+                if (minIndex > current.pageIndex) minIndex--
             },
             onPageChanged = { current -> // TODO changed without added event inconsistent behaviour
                 if (current.params != null) (recentLoadData as MutableList).add(current.params)
@@ -63,11 +65,14 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
                 )
             },
             onPageRemovedEvent = { current ->
-                val startIndex = pageSizes.keys.calculateStartIndex(current.pageIndex)
+                val startIndex = calculateStartIndex(current.pageIndex)
                 repeat(pageSizes[current.pageIndex] ?: 0) { list.removeAt(startIndex) }
                 pageSizes.remove(current.pageIndex)
+                if (minIndex == current.pageIndex) minIndex++
             },
-            onInvalidate = { onInvalidate(it.invalidateBehavior) }
+            onInvalidate = {
+                onInvalidate(it.invalidateBehavior)
+            }
         )
     }
 
@@ -76,7 +81,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
         pageIndex: Int,
         newItems: List<Data?>
     ) {
-        var startIndex = pageSizes.keys.calculateStartIndex(pageIndex)
+        var startIndex = calculateStartIndex(pageIndex)
         val itemCount = pageSizes[pageIndex] ?: 0
         val removeIndex = startIndex + newItems.size
         for (i in 0 until itemCount.coerceAtLeast(newItems.size)) {
@@ -88,8 +93,12 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
         pageSizes[pageIndex] = newItems.size
     }
 
-    private inline fun Collection<Int>.calculateStartIndex(pageIndex: Int) = sumOf {
-        if (it >= pageIndex) 0 else (pageSizes[it] ?: 0)
+    private inline fun calculateStartIndex(pageIndex: Int): Int {
+        var sum = 0
+        for (i in minIndex until pageIndex) {
+            sum += pageSizes[i] ?: 0
+        }
+        return sum
     }
 
     override fun invalidate() {
@@ -98,6 +107,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
             if (reuseList && list is ArrayList) list.trimToSize()
         }
         startPageIndex = 0
+        minIndex = 0
         pageSizes.clear()
     }
 }
