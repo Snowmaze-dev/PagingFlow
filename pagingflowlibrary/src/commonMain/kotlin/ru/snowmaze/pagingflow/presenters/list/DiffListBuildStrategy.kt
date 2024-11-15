@@ -8,6 +8,7 @@ import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.utils.fastForEach
 import ru.snowmaze.pagingflow.utils.fastSumOf
+import kotlin.math.max
 
 /**
  * Builds list using diff events to change items in copy or instance of already built list
@@ -84,7 +85,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
         var startIndex = calculateStartIndex(pageIndex)
         val itemCount = pageSizes[pageIndex] ?: 0
         val removeIndex = startIndex + newItems.size
-        for (i in 0 until itemCount.coerceAtLeast(newItems.size)) {
+        for (i in 0 until max(itemCount, newItems.size)) {
             if (i >= newItems.size) list.removeAt(removeIndex)
             else if (list.size > startIndex && itemCount > i) list[startIndex] = newItems[i]
             else list.add(startIndex, newItems[i])
