@@ -10,7 +10,7 @@ import ru.snowmaze.pagingflow.utils.fastForEach
 import ru.snowmaze.pagingflow.utils.fastSumOf
 
 /**
- * Builds list using diff events to change items in already built list
+ * Builds list using diff events to change items in copy or instance of already built list
  */
 open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
     private val reuseList: Boolean
