@@ -9,6 +9,7 @@ import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
 import ru.snowmaze.pagingflow.presenters.SimplePresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.dataFlow
+import ru.snowmaze.pagingflow.presenters.list.DiffListBuildStrategy
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
@@ -59,7 +60,7 @@ class PagingBothDirectionsTest {
             addPagingSource(TestPagingSource(totalCount, randomDelay))
         }
         val presenter = pagingFlow.pagingDataPresenter(
-            configuration = SimplePresenterConfiguration(shouldSubscribeForChangesNow = true),
+            configuration = SimplePresenterConfiguration(listBuildStrategy = DiffListBuildStrategy()),
             eventsBatchingDurationMsProvider = { 20 },
         )
 

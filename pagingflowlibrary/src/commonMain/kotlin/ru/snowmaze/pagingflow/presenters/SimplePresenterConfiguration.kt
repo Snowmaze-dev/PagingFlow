@@ -10,7 +10,7 @@ import ru.snowmaze.pagingflow.presenters.list.ListByPagesBuildStrategy
 class SimplePresenterConfiguration<Key : Any, Data : Any>(
     val listBuildStrategy: ListBuildStrategy<Key, Data> = ListByPagesBuildStrategy(),
     val invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
-    val shouldSubscribeForChangesNow: Boolean = false,
+    val shouldBeAlwaysSubscribed: Boolean = false,
     val unsubscribeDelayWhenNoSubscribers: Long = 5000L,
     val presenterFlow: () -> MutableSharedFlow<LatestData<Data>> = defaultPresenterFlowCreator()
 )
