@@ -12,6 +12,7 @@ import ru.snowmaze.pagingflow.utils.fastForEach
 import ru.snowmaze.pagingflow.utils.fastSumOf
 
 /**
+ * Builds list using diff events to change items in already built list
  * Should be used with care when [reuseList] is true
  * in case when [reuseList] is true it's preferable to use event batching [BatchingPagingDataChangesMedium]
  * so using list from presenter wouldn't throw [ConcurrentModificationException] for short amount of time
@@ -48,36 +49,40 @@ class DiffListBuildStrategy<Key : Any, Data : Any>(
         }
         event.handle(
             onPageAdded = { current -> // TODO double added event inconsistent behaviour
-                val startIndex = removePageItems(current.pageIndex)
-                list.addAll(startIndex, current.items)
-                pageSizes[current.pageIndex] = current.items.size
+                removePageItemsAndAdd(current.pageIndex, current.items)
             },
             onPageChanged = { current -> // TODO changed without added event inconsistent behaviour
-                val startIndex = removePageItems(current.pageIndex)
                 if (current.changeType == ChangeType.CHANGE_TO_NULLS) {
                     startPageIndex += current.items.size
                 } else if (current.changeType == ChangeType.CHANGE_FROM_NULLS_TO_ITEMS) {
                     startPageIndex -= pageSizes[current.pageIndex] ?: 0
                 }
-                list.addAll(startIndex, current.items)
-                pageSizes[current.pageIndex] = current.items.size
+                removePageItemsAndAdd(current.pageIndex, current.items)
             },
             onPageRemovedEvent = { current ->
-                removePageItems(current.pageIndex)
+                val startIndex = pageSizes.keys.calculateStartIndex(current.pageIndex)
+                repeat(pageSizes[current.pageIndex] ?: 0) { list.removeAt(startIndex) }
                 pageSizes.remove(current.pageIndex)
             },
             onInvalidate = { onInvalidate(it.invalidateBehavior) }
         )
     }
 
-    private inline fun removePageItems(pageIndex: Int): Int {
-        val startIndex = pageSizes.keys.sorted().calculateStartIndex(pageIndex)
-        repeat(pageSizes[pageIndex] ?: 0) { list.removeAt(startIndex) }
-        return startIndex
+    private inline fun removePageItemsAndAdd(pageIndex: Int, newItems: List<Data?>) {
+        var startIndex = pageSizes.keys.calculateStartIndex(pageIndex)
+        val itemCount = pageSizes[pageIndex] ?: 0
+        val removeIndex = startIndex + newItems.size
+        for (i in 0 until itemCount.coerceAtLeast(newItems.size)) {
+            if (i >= newItems.size) list.removeAt(removeIndex)
+            else if (list.size > startIndex && itemCount > i) list[startIndex] = newItems[i]
+            else list.add(startIndex, newItems[i])
+            startIndex++
+        }
+        pageSizes[pageIndex] = newItems.size
     }
 
-    private inline fun List<Int>.calculateStartIndex(pageIndex: Int) = fastSumOf {
-        if (it >= pageIndex) null else pageSizes[it]
+    private inline fun Collection<Int>.calculateStartIndex(pageIndex: Int) = sumOf {
+        if (it >= pageIndex) 0 else (pageSizes[it] ?: 0)
     }
 
     override fun invalidate() {

@@ -16,14 +16,13 @@ import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
     private val presenterConfiguration: SimplePresenterConfiguration<Key, Data>,
-    config: DataChangesMediumConfig = pagingDataChangesMedium.config,
-    presenterFlow: () -> MutableSharedFlow<LatestData<Data>> = defaultPresenterFlowCreator()
+    config: DataChangesMediumConfig = pagingDataChangesMedium.config
 ) : BuildListPagingPresenter<Key, Data>(
     listBuildStrategy = presenterConfiguration.listBuildStrategy,
     invalidateBehavior = presenterConfiguration.invalidateBehavior,
     coroutineScope = config.coroutineScope,
     processingDispatcher = config.processingDispatcher,
-    presenterFlow = presenterFlow,
+    presenterFlow = presenterConfiguration.presenterFlow,
 ) {
 
     init {

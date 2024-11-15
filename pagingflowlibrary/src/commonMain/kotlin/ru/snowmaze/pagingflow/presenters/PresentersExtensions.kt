@@ -135,11 +135,3 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.co
         shouldBatchAddPagesEvents = shouldBatchAddPagesEvents
     ), builder = builder
 ).pagingDataPresenter(configuration)
-
-data class SimplePresenterConfiguration<Key: Any, Data: Any>(
-    val listBuildStrategy: ListBuildStrategy<Key, Data> = ListByPagesBuildStrategy(),
-    val invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
-    val shouldSubscribeForChangesNow: Boolean = false,
-    val unsubscribeDelayWhenNoSubscribers: Long = 5000L,
-    val presenterFlow: () -> MutableSharedFlow<LatestData<Data>> = defaultPresenterFlowCreator()
-)
