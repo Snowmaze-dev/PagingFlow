@@ -26,12 +26,15 @@ class ListByPagesBuildStrategy<Key : Any, Data : Any> : ListBuildStrategy<Key, D
             events.fastSumOf { if (it is PageChangedEvent && it.params != null) 1 else 0 }
         )
         events.fastForEach { event ->
-            if (event is PageChangedEvent && event.params != null) {
-                newRecentLoadData.add(event.params)
-            }
             event.handle(
-                onPageAdded = { indexedPages[it.pageIndex] = it },
-                onPageChanged = { indexedPages[it.pageIndex] = it },
+                onPageAdded = {
+                    if (it.params != null) newRecentLoadData.add(it.params)
+                    indexedPages[it.pageIndex] = it
+                },
+                onPageChanged = {
+                    if (it.params != null) newRecentLoadData.add(it.params)
+                    indexedPages[it.pageIndex] = it
+                },
                 onPageRemovedEvent = { indexedPages.remove(it.pageIndex) },
                 onInvalidate = { onInvalidate(it.invalidateBehavior) },
             )

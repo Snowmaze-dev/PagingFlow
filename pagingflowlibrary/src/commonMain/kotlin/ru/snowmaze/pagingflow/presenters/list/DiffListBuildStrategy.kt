@@ -40,11 +40,9 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
         events: List<DataChangedEvent<Key, Data>>,
         crossinline onInvalidate: suspend (InvalidateBehavior?) -> Unit
     ) = events.fastForEach { event ->
-        if (event is PageChangedEvent && event.params != null) {
-            (recentLoadData as MutableList).add(event.params)
-        }
         event.handle(
             onPageAdded = { current -> // TODO double added event inconsistent behaviour
+                if (current.params != null) (recentLoadData as MutableList).add(current.params)
                 removePageItemsAndAdd(
                     list = list,
                     pageIndex = current.pageIndex,
@@ -52,6 +50,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
                 )
             },
             onPageChanged = { current -> // TODO changed without added event inconsistent behaviour
+                if (current.params != null) (recentLoadData as MutableList).add(current.params)
                 if (current.changeType == ChangeType.CHANGE_TO_NULLS) {
                     startPageIndex += current.items.size
                 } else if (current.changeType == ChangeType.CHANGE_FROM_NULLS_TO_ITEMS) {
