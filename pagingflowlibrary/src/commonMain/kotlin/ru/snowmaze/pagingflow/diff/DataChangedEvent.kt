@@ -38,7 +38,7 @@ open class PageChangedEvent<Key : Any, Data : Any>(
     val params: PagingParams? = null,
 ) : DataChangedEvent<Key, Data>(), EventFromDataSource<Key, Data> {
 
-    inline val notNullList get() = items as List<Data>
+    inline val notNullItems get() = items as List<Data>
 
     fun requireParams() =
         params ?: throw IllegalStateException("Params of page event required to be not null.")

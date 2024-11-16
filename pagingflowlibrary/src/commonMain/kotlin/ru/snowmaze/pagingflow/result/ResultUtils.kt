@@ -3,7 +3,6 @@
 package ru.snowmaze.pagingflow.result
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import ru.snowmaze.pagingflow.LoadParams
@@ -36,6 +35,7 @@ fun LoadParams<Int>.positiveOffset(
     else (currentOffset - pageSize).takeIf { it >= 0 }).takeIf { hasNextPage }
 }
 
+@OptIn(ExperimentalContracts::class)
 inline fun <Key : Any, Data : Any> LoadResult<Key, Data>.mapSuccess(
     transform: (LoadResult.Success<Key, Data>) -> LoadResult<Key, Data>
 ): LoadResult<Key, Data> {
@@ -60,12 +60,18 @@ fun <Key : Any, Data : Any> PagingSource<Key, Data>.simpleResult(
     nextPageKey: Key? = null,
     returnData: PagingParams? = null,
     cachedResult: PagingParams? = null,
-) = LoadResult.Success(
-    dataFlow = MutableStateFlow(UpdatableData(data, nextPageKey, returnData)),
-    nextPageKey = nextPageKey,
-    returnData = returnData,
-    cachedResult = cachedResult
-)
+): LoadResult.Success<Key, Data> {
+    var localData: List<Data>? = data
+    return LoadResult.Success(
+        dataFlow = flow {
+            emit(UpdatableData(localData ?: return@flow, nextPageKey, returnData))
+            localData = null
+        },
+        nextPageKey = nextPageKey,
+        returnData = returnData,
+        cachedResult = cachedResult
+    )
+}
 
 fun <Key : Any, Data : Any> PagingSource<Key, Data>.result(
     dataFlow: Flow<List<Data>>,

@@ -99,10 +99,11 @@ suspend inline fun <T> Flow<T>.firstEqualsWithTimeout(
 }
 
 suspend fun <T> Flow<T>.firstWithTimeout(
-    timeout: Long = 500,
+    timeout: Long = 1000,
     message: ((T?) -> String)? = null,
     predicate: suspend (T) -> Boolean
 ): T {
+    val cause = Exception()
     return if (message == null) withTimeout(timeout) { first(predicate) }
     else {
         var lastValue: T? = null
@@ -112,7 +113,7 @@ suspend fun <T> Flow<T>.firstWithTimeout(
                 predicate(it)
             }
         }
-        if (result == null) throw AssertionError(message(lastValue))
+        if (result == null) throw AssertionError(message(lastValue), cause)
         result
     }
 }

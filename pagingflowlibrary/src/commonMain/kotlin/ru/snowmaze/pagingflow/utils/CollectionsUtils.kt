@@ -22,11 +22,11 @@ inline fun <T> List<T>.fastForEach(action: (T) -> Unit) {
 }
 
 @OptIn(ExperimentalContracts::class)
-internal inline fun <T> List<T>.fastSumOf(selector: (T) -> Int): Int {
+internal inline fun <T> List<T>.fastSumOf(selector: (T) -> Int?): Int {
     contract { callsInPlace(selector) }
     var sum = 0
     fastForEach { element ->
-        sum += selector(element)
+        sum += selector(element) ?: return sum
     }
     return sum
 }
@@ -41,4 +41,9 @@ internal inline fun <T> List<T>.fastIndexOfFirst(predicate: (T) -> Boolean): Int
         index++
     }
     return -1
+}
+
+internal inline fun <T> List<T>.fastFirstOrNull(predicate: (T) -> Boolean): T? {
+    fastForEach { element -> if (predicate(element)) return element }
+    return null
 }

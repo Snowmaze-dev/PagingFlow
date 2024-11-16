@@ -8,7 +8,8 @@ internal data class DataPage<Key : Any, Data : Any>(
 
     var data: UpdatableData<Key, Data>?,
 
-    var isNullified: Boolean,
+    var itemCount: Int?,
+
     var isCancelled: Boolean,
     var previousPageKey: Key?,
     val currentPageKey: Key?,
@@ -17,5 +18,8 @@ internal data class DataPage<Key : Any, Data : Any>(
     val listenJob: Job,
     var pageIndex: Int,
     var dataSourceIndex: Int,
-    var pageIndexInDataSource: Int
-)
+    var pageIndexInPagingSource: Int
+) {
+
+    inline val isNullified get() = itemCount == null
+}

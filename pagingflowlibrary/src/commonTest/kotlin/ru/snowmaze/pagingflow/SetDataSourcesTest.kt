@@ -100,6 +100,10 @@ class SetDataSourcesTest {
         do {
             val result = loadNextPageWithResult()
         } while (result is LoadNextPageResult.Success && result.hasNext)
-        assertContentEquals(sources.map { it.items }.flatten(), presenter.data)
+        assertContentEquals(
+            expected = sources.map { it.items }.flatten(),
+            actual = presenter.data,
+            message = "expected ${sources.map { it.items }.flatten()} but got ${presenter.data}"
+        )
     }
 }

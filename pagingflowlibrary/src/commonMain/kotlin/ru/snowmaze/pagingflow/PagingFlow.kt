@@ -49,7 +49,7 @@ class PagingFlow<Key : Any, Data : Any>(
     /**
      * @see [ConcatPagingSource.addPagingSource]
      */
-    fun addPagingSource(pagingSource: PagingSource<Key, Data>) {
+    fun addPagingSource(pagingSource: PagingSource<Key, out Data>) {
         concatDataSource.addPagingSource(pagingSource)
     }
 
@@ -60,7 +60,7 @@ class PagingFlow<Key : Any, Data : Any>(
     /**
      * @see [ConcatPagingSource.removePagingSource]
      */
-    fun removePagingSource(pagingSource: PagingSource<Key, Data>) {
+    fun removePagingSource(pagingSource: PagingSource<Key, out Data>) {
         concatDataSource.removePagingSource(pagingSource)
     }
 
@@ -73,9 +73,9 @@ class PagingFlow<Key : Any, Data : Any>(
     }
 
     suspend fun setPagingSources(
-        pagingSourceList: List<PagingSource<Key, Data>>, diff: (
-            oldList: List<PagingSource<Key, Data>>, newList: List<PagingSource<Key, Data>>
-        ) -> List<DiffOperation<PagingSource<Key, Data>>>
+        pagingSourceList: List<PagingSource<Key, out Data>>, diff: (
+            oldList: List<PagingSource<Key, out Data>>, newList: List<PagingSource<Key, out Data>>
+        ) -> List<DiffOperation<PagingSource<Key, out Data>>>
     ) = concatDataSource.setPagingSources(
         newPagingSourceList = pagingSourceList, diff = diff
     )
@@ -177,31 +177,13 @@ fun <Key : Any, Data : Any> buildPagingFlow(
             maxItemsConfiguration = configuration.maxItemsConfiguration,
             processingDispatcher = configuration.processingDispatcher,
             coroutineScope = configuration.coroutineScope,
+            shouldStorePageItems = configuration.shouldStorePageItems,
+            shouldCollectOnlyLatest = configuration.shouldCollectOnlyLatest
         )
     ), configuration
 ).apply {
     apply(builder)
     if (loadFirstPage) loadNextPage()
-}
-
-/**
- * Loads next page
- * @return result of loading
- */
-suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPageWithResult(
-    paginationDirection: PaginationDirection? = null,
-    pagingParams: PagingParams? = null
-) = load(paginationDirection, pagingParams)
-
-/**
- * Loads next page async
- * @return loading job
- */
-fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPage(
-    paginationDirection: PaginationDirection? = null,
-    pagingParams: PagingParams? = null
-) = pagingFlowConfiguration.coroutineScope.launch {
-    load(paginationDirection, pagingParams)
 }
 
 /**
@@ -226,7 +208,7 @@ fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPage(
 fun <Key : Any, Data : Any> buildPagingFlow(
     configuration: PagingFlowConfiguration<Key>,
     loadFirstPage: Boolean,
-    vararg pagingSources: PagingSource<Key, Data>
+    vararg pagingSources: PagingSource<Key, out Data>
 ) = buildPagingFlow(configuration = configuration, loadFirstPage = loadFirstPage) {
     for (pagingSource in pagingSources) {
         addPagingSource(pagingSource)
@@ -235,11 +217,31 @@ fun <Key : Any, Data : Any> buildPagingFlow(
 
 fun <Key : Any, Data : Any> buildPagingFlow(
     configuration: PagingFlowConfiguration<Key>,
-    vararg pagingSources: PagingSource<Key, Data>
+    vararg pagingSources: PagingSource<Key, out Data>
 ) = buildPagingFlow(configuration = configuration) {
     for (pagingSource in pagingSources) {
         addPagingSource(pagingSource)
     }
+}
+
+/**
+ * Loads next page
+ * @return result of loading
+ */
+suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPageWithResult(
+    paginationDirection: PaginationDirection? = null,
+    pagingParams: PagingParams? = null
+) = load(paginationDirection, pagingParams)
+
+/**
+ * Loads next page async
+ * @return loading job
+ */
+fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPage(
+    paginationDirection: PaginationDirection? = null,
+    pagingParams: PagingParams? = null
+) = pagingFlowConfiguration.coroutineScope.launch {
+    load(paginationDirection, pagingParams)
 }
 
 /**
