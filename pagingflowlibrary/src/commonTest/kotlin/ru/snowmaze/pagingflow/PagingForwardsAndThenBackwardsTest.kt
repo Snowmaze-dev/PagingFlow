@@ -2,18 +2,20 @@ package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
+import ru.snowmaze.pagingflow.presenters.SimplePresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.dataFlow
+import ru.snowmaze.pagingflow.presenters.list.DiffListBuildStrategy
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.random.Random
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -50,13 +52,15 @@ class PagingForwardsAndThenBackwardsTest {
                     maxItemsCount = pageSize * 4,
                     enableDroppedPagesNullPlaceholders = false
                 ),
-                shouldCollectOnlyNew = true
+                shouldCollectOnlyLatest = true,
+                shouldStorePageItems = false
             )
         ) {
             addPagingSource(TestPagingSource(totalCount, randomDelay))
             addPagingSource(TestPagingSource(totalCount, randomDelay))
         }
         val presenter = pagingFlow.pagingDataPresenter(
+            configuration = SimplePresenterConfiguration(listBuildStrategy = DiffListBuildStrategy()),
             eventsBatchingDurationMsProvider = { 20 },
         )
 
@@ -69,7 +73,9 @@ class PagingForwardsAndThenBackwardsTest {
                 }
             ).asSuccess()
             hasNext = result.hasNext
-            if (!hasNext) result.returnData[ReturnPagingLibraryKeys.DataSetJob].join()
+            if (!hasNext) withTimeout(5000L) {
+                result.returnData[ReturnPagingLibraryKeys.DataSetJob].join()
+            }
             assertEquals(hasNext, pagingFlow.downPagingStatus.value.hasNextPage)
         }
         val maxItemsCount =
@@ -79,9 +85,8 @@ class PagingForwardsAndThenBackwardsTest {
                 "expected less count than $maxItemsCount but was ${it?.size}"
             }
         ) { maxItemsCount >= it.size }
-        assertContentEquals(
-            testDataSource.getItems(totalCount).takeLast(presenter.data.size),
-            presenter.data
+        presenter.dataFlow.firstEqualsWithTimeout(
+            testDataSource.getItems(totalCount).takeLast(maxItemsCount)
         )
         hasNext = true
         while (hasNext) {
@@ -201,16 +206,16 @@ class PagingForwardsAndThenBackwardsTest {
         }
         val presenter = pagingFlow.pagingDataPresenter()
         pagingFlow.loadNextPageWithResult()
-        assertEquals(2, presenter.data.size)
-        repeat(2) {
-            pagingFlow.loadNextPageWithResult()
-        }
-        assertEquals(4, presenter.data.size)
+        assertEquals(testDataSource.getItems(2), presenter.data)
+        pagingFlow.loadNextPageWithResult()
+        assertEquals(testDataSource.getItems(4), presenter.data)
+        pagingFlow.loadNextPageWithResult()
+        assertEquals(testDataSource.getItems(6).drop(2), presenter.data)
         currentLoadParams = LoadParams(1)
         pagingFlow.loadNextPageWithResult()
-        assertEquals(5, presenter.data.size)
+        assertEquals(testDataSource.getItems(7).drop(2), presenter.data)
         pagingFlow.loadNextPageWithResult()
-        assertEquals(4, presenter.data.size)
+        assertEquals(testDataSource.getItems(8).drop(4), presenter.data)
     }
 
     private fun buildListOfNulls(count: Int) = buildList {
