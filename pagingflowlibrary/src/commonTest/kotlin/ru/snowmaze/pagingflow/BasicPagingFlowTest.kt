@@ -17,8 +17,7 @@ import kotlin.test.assertTrue
 
 class BasicPagingFlowTest {
 
-    val pageSize = 30
-//    val pageSize = Random.nextInt(5, 30)
+    val pageSize = Random.nextInt(5, 30)
 
     private val basePagingFlowConfiguration = PagingFlowConfiguration(
         defaultParams = LoadParams<Int>(pageSize),

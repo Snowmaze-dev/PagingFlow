@@ -146,14 +146,16 @@ class CompositeMediumTest {
         pagingFlow.loadNextPageAndAwaitDataSet()
         assertEquals(
             mapToInts(testDataSource.getItems(pageSize * 3).drop(pageSize))
-                 + third + fifth + startList,
+                    + third + fifth + startList,
             presenter.latestData.data
         )
 
         pagingFlow.loadNextPageAndAwaitDataSet()
         assertEquals(
-            mapToInts(testDataSource1.getItems(pageSize) + testDataSource.getItems(pageSize * 3).drop(pageSize * 2))
-               + third + fifth + startList,
+            mapToInts(
+                testDataSource1.getItems(pageSize) + testDataSource.getItems(pageSize * 3)
+                    .drop(pageSize * 2)
+            ) + third + fifth + startList,
             presenter.latestData.data
         )
     }

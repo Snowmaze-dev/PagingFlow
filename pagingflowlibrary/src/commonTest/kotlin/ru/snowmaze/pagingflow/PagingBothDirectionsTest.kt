@@ -5,9 +5,13 @@ import ru.snowmaze.pagingflow.presenters.SimplePresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.list.DiffListBuildStrategy
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
+import ru.snowmaze.pagingflow.result.LoadNextPageResult
+import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
 
 class PagingBothDirectionsTest {
 
@@ -17,12 +21,13 @@ class PagingBothDirectionsTest {
     @Test
     fun testPagingBothDirections() = runTestOnDispatchersDefault {
         val downPagingSource = TestPagingSource(totalCount)
+        val maxItems = pageSize * 4
         val pagingFlow = buildPagingFlow(
             PagingFlowConfiguration(
                 defaultParams = LoadParams(pageSize),
                 processingDispatcher = Dispatchers.Default,
                 maxItemsConfiguration = MaxItemsConfiguration(
-                    maxItemsCount = 80,
+                    maxItemsCount = maxItems,
                     enableDroppedPagesNullPlaceholders = true
                 )
             ),
@@ -50,37 +55,43 @@ class PagingBothDirectionsTest {
                 startFrom = pageSize * 2
             ) + upItems + downPagingSource.getItems(pageSize)
         )
-        pagingFlow.loadNextPageAndAwaitDataSet(PaginationDirection.UP)
 
-        presenter.dataFlow.firstEqualsWithTimeout(
-            upPagingSource.getItems(
-                count = pageSize,
-                startFrom = pageSize * 3
-            ) + upPagingSource.getItems(
-                count = pageSize,
-                startFrom = pageSize * 2
-            ) + upItems
-        )
-        pagingFlow.loadNextPageAndAwaitDataSet(PaginationDirection.UP)
+        var pagesCount = 3
 
-        presenter.dataFlow.firstEqualsWithTimeout(
-            upPagingSource.getItems(
-                count = pageSize,
-                startFrom = pageSize * 4
-            ) + upPagingSource.getItems(
-                count = pageSize,
-                startFrom = pageSize * 3
-            ) + upPagingSource.getItems(
-                count = pageSize,
-                startFrom = pageSize * 2
-            ) + upPagingSource.getItems(
-                count = pageSize,
-                startFrom = pageSize
-            ) + buildList<String?>(pageSize) {
-                repeat(pageSize) {
-                    add(null)
-                }
+        while (true) {
+            val result = pagingFlow.loadNextPageAndAwaitDataSet(PaginationDirection.UP)
+            if (result is LoadNextPageResult.NothingToLoad) {
+                assertEquals(totalCount / pageSize, pagesCount)
+                break
             }
-        )
+            pagesCount++
+            presenter.dataFlow.firstEqualsWithTimeout(
+                buildUpPages(upPagingSource, pagesCount, pageSize, maxItems)
+            )
+        }
+    }
+
+    private fun buildUpPages(
+        testPagingSource: TestPagingSource,
+        pagesCount: Int,
+        pageSize: Int,
+        maxItemsCount: Int
+    ): List<String?> = buildList(pagesCount * pageSize) {
+        var itemsCount = 0
+        for (index in 0 until pagesCount) {
+            val pageIndex = pagesCount - index
+            itemsCount += pageSize
+            if (itemsCount > maxItemsCount) {
+                addAll(buildList(pageSize) {
+                    repeat(pageSize) {
+                        add(null)
+                    }
+                })
+                continue
+            }
+            addAll(
+                testPagingSource.getItems(pageSize, startFrom = (pageIndex - 1) * pageSize)
+            )
+        }
     }
 }

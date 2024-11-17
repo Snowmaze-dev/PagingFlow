@@ -26,9 +26,9 @@ import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.source.PageLoaderConfig
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
-import ru.snowmaze.pagingflow.utils.fastFirstOrNull
 import ru.snowmaze.pagingflow.utils.fastForEach
 import ru.snowmaze.pagingflow.utils.fastIndexOfFirst
+import ru.snowmaze.pagingflow.utils.fastIndexOfLast
 import ru.snowmaze.pagingflow.utils.fastSumOf
 import kotlin.concurrent.Volatile
 
@@ -40,6 +40,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
 
     private val _dataPages = mutableListOf<DataPage<Key, Data>>()
     val dataPages get() = _dataPages
+    val isNotNullified = { item: DataPage<Key, Data> -> !item.isNullified }
 
     private var cachedData = mutableMapOf<Int, Pair<Key?, PagingParams>>()
     val currentPagesCount get() = dataPages.size
@@ -319,8 +320,8 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         if (itemsCount > maxItemsCount) {
 
             // заменить на удаляемую страницу
-            val pageIndex = (if (isPaginationDown) dataPages.fastIndexOfFirst { !it.isNullified }
-            else dataPages.lastIndex)
+            val pageIndex = if (isPaginationDown) dataPages.fastIndexOfFirst(isNotNullified)
+            else dataPages.fastIndexOfLast(isNotNullified)
             val page = dataPages.getOrNull(pageIndex) ?: return null
 
             // TODO поменять расчёт индекса для удаления кэша

@@ -22,6 +22,7 @@ import ru.snowmaze.pagingflow.source.ConcatSourceData
 import ru.snowmaze.pagingflow.source.PagingSource
 import ru.snowmaze.pagingflow.utils.fastFirstOrNull
 import ru.snowmaze.pagingflow.utils.fastIndexOfFirst
+import ru.snowmaze.pagingflow.utils.fastIndexOfLast
 import ru.snowmaze.pagingflow.utils.mapHasNext
 
 internal class PageLoader<Key : Any, Data : Any>(
@@ -99,8 +100,9 @@ internal class PageLoader<Key : Any, Data : Any>(
         val currentStatusFlow = if (isPaginationDown) downPagingStatus else upPagingStatus
 
         val dataPages = dataPagesManager.dataPages
-        val currentLastPageIndex = lastPageIndex ?: if (isPaginationDown) dataPages.lastIndex
-        else dataPages.fastIndexOfFirst { !it.isNullified }
+        val currentLastPageIndex = lastPageIndex ?: if (isPaginationDown) {
+            dataPages.fastIndexOfLast(dataPagesManager.isNotNullified)
+        } else dataPages.fastIndexOfFirst(dataPagesManager.isNotNullified)
         val pagingSourceWithIndex: Pair<PagingSource<Key, Data>, Int>
         val lastPage = dataPages.getOrNull(currentLastPageIndex)
         val nextPageKey: Key?
