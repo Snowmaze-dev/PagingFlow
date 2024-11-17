@@ -1,6 +1,5 @@
 package ru.snowmaze.pagingflow.presenters.list
 
-import androidx.collection.MutableIntIntMap
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent.ChangeType
@@ -9,6 +8,7 @@ import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.utils.fastForEach
 import ru.snowmaze.pagingflow.utils.fastSumOf
+import ru.snowmaze.pagingflow.utils.platformMapOf
 import kotlin.math.max
 
 /**
@@ -20,7 +20,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
 
     constructor() : this(false)
 
-    private val pageSizes = MutableIntIntMap()
+    private val pageSizes = platformMapOf<Int, Int>()
     override var list = if (reuseList) mutableListOf<Data?>() else emptyList()
     override var startPageIndex: Int = 0
     override var recentLoadData: List<PagingParams> = emptyList()
@@ -68,7 +68,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
             },
             onPageRemovedEvent = { current ->
                 val startIndex = calculateStartIndex(current.pageIndex)
-                repeat(pageSizes.getOrDefault(current.pageIndex, 0)) { list.removeAt(startIndex) }
+                repeat(pageSizes[current.pageIndex] ?: 0) { list.removeAt(startIndex) }
                 pageSizes.remove(current.pageIndex)
                 if (minIndex == current.pageIndex) minIndex++
             },
@@ -84,7 +84,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
         newItems: List<Data?>
     ) {
         var startIndex = calculateStartIndex(pageIndex)
-        val itemCount = pageSizes.getOrDefault(pageIndex, 0)
+        val itemCount = pageSizes[pageIndex] ?: 0
         val removeIndex = startIndex + newItems.size
         for (i in 0 until max(itemCount, newItems.size)) {
             if (i >= newItems.size) list.removeAt(removeIndex)
@@ -98,7 +98,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
     private inline fun calculateStartIndex(pageIndex: Int): Int {
         var sum = 0
         for (i in minIndex until pageIndex) {
-            sum += pageSizes.getOrDefault(i, 0)
+            sum += pageSizes[i] ?: 0
         }
         return sum
     }

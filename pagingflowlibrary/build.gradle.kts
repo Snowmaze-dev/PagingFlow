@@ -49,7 +49,6 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
             implementation(libs.difference)
-            implementation(libs.androidx.collection.ktx)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -64,6 +63,7 @@ kotlin {
             kotlin.srcDir("src/commonJvmMain/kotlin")
         }
         commonJvmMain.dependencies {
+            implementation(libs.androidx.collection.ktx)
         }
         val nonJvmMain = getByName("nonJvmMain") {
             kotlin.srcDir("src/nonJvmMain/kotlin")
