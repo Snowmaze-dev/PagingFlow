@@ -38,13 +38,12 @@ class CommonPresentersTest {
             )
         )
 
-        pagingFlow.loadNextPageAndAwaitDataSet()
+        pagingFlow.loadNextPageWithResult()
         assertEquals(
             pageSize,
             presenter.data.size
         )
         pagingFlow.invalidate()
-        delay(30L)
         assertEquals(
             0,
             presenter.data.size

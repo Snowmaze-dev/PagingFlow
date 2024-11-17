@@ -180,7 +180,7 @@ internal class PageLoader<Key : Any, Data : Any>(
 
         // setting new status after loading completed
         val status = when (result) {
-            is LoadResult.Success<*, *> -> PagingStatus.Success(
+            is LoadResult.Success -> PagingStatus.Success(
                 hasNextPage = (isLoadingPageInOrder && result.nextPageKey != null)
                         || pagingSourcesManager.findNextPagingSource(
                     currentPagingSource = if (isLoadingPageInOrder) pagingSourceWithIndex else {
@@ -271,23 +271,37 @@ internal class PageLoader<Key : Any, Data : Any>(
         val resultData = result.returnData ?: if (job != null) PagingParams() else null
         job?.let { resultData?.put(ReturnPagingLibraryKeys.DataSetJob, job) }
 
-        // preparing result
-        return result.copy(
-            dataFlow = result.dataFlow,
-            nextPageKey = result.nextPageKey,
-            returnData = PagingParams(2 + if (shouldSetNewStatus) 0 else 1) {
-                put(
-                    pageLoaderResultKey,
-                    ConcatSourceData(
-                        currentKey = currentKey,
-                        returnData = resultData,
-                        hasNext = status.hasNextPage
-                    )
+        val returnData = PagingParams(2 + if (shouldSetNewStatus) 0 else 1) {
+            put(
+                pageLoaderResultKey,
+                ConcatSourceData(
+                    currentKey = currentKey,
+                    returnData = resultData,
+                    hasNext = status.hasNextPage
                 )
-                put(sourceResultKey, result)
-                if (!shouldSetNewStatus) put(statusKey, status)
+            )
+            put(sourceResultKey, result)
+            if (!shouldSetNewStatus) put(statusKey, status)
+        }
+
+        // preparing result
+        return when (result) {
+            is LoadResult.Success.SimpleSuccess -> {
+                (result as LoadResult.Success.SimpleSuccess<Key, Data>).copy(
+                    data = result.data,
+                    nextPageKey = result.nextPageKey,
+                    returnData = returnData
+                )
             }
-        )
+
+            is LoadResult.Success.FlowSuccess -> {
+                (result as LoadResult.Success.FlowSuccess<Key, Data>).copy(
+                    dataFlow = result.dataFlow,
+                    nextPageKey = result.nextPageKey,
+                    returnData = returnData
+                )
+            }
+        }
     }
 
     private inline fun getLastSourceWithIndex(

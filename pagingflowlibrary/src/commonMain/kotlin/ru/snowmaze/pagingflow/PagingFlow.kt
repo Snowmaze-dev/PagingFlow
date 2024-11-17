@@ -102,7 +102,7 @@ class PagingFlow<Key : Any, Data : Any>(
      */
     internal suspend fun load(
         paginationDirection: PaginationDirection?, pagingParams: PagingParams? = null
-    ): LoadNextPageResult<Key, Data> = pagingFlowConfiguration.processingDispatcher {
+    ): LoadNextPageResult<Key> = pagingFlowConfiguration.processingDispatcher {
         val defaultParams = pagingFlowConfiguration.defaultParamsProvider()
         val defaultPagingParams = defaultParams.pagingParams
         val pickedPaginationDirection = paginationDirection
@@ -123,7 +123,6 @@ class PagingFlow<Key : Any, Data : Any>(
         when (loadData) {
             is LoadResult.Success<Key, Data> -> LoadNextPageResult.Success(
                 currentKey = result?.currentKey,
-                dataFlow = loadData.dataFlow,
                 hasNext = result?.hasNext ?: false,
                 returnData = returnData,
                 nextPageKey = loadData.nextPageKey
@@ -265,7 +264,7 @@ suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadSeveralPages(
     pagingParams: PagingParams? = null,
     onSuccess: ((LoadResult.Success<Key, Data>) -> Unit)? = null,
     getPagingParams: suspend (LoadResult<Key, Data>?) -> PagingParams?,
-): LoadNextPageResult<Key, Data> {
+): LoadNextPageResult<Key> {
     val result = load(
         paginationDirection = paginationDirection,
         pagingParams = (pagingParams ?: PagingParams(1)).apply {
@@ -311,7 +310,7 @@ suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPageAndAwaitDa
         .paginationDirection,
     timeout: Long? = null,
     pagingParams: PagingParams? = null
-): LoadNextPageResult<Key, Data> {
+): LoadNextPageResult<Key> {
     val result = load(
         paginationDirection = paginationDirection,
         pagingParams = (pagingParams ?: PagingParams(1)).apply {

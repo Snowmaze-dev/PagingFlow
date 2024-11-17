@@ -74,7 +74,7 @@ class BasicPagingFlowTest {
         }
         testDataSource.currentException = IllegalArgumentException()
         val result = pagingFlow.loadNextPageWithResult()
-        assertTrue(result is LoadNextPageResult.Failure<Int, String>)
+        assertTrue(result is LoadNextPageResult.Failure<Int>)
         assertTrue(pagingFlow.downPagingStatus.value is PagingStatus.Failure)
     }
 

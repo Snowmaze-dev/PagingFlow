@@ -20,9 +20,13 @@ abstract class SegmentedPagingSource<Data : Any> : PagingSource<Int, Data> {
         val nextPageKey = if (howManyLeft == 0) null
         else if (isDown) endIndex else startIndex - pageSize
         return loadData(loadParams, startIndex, endIndex).mapSuccess { result ->
-            if (result.nextPageKey == null) result.copy(dataFlow = result.dataFlow?.map {
-                UpdatableData(it.data, it.nextPageKey ?: nextPageKey)
-            }, nextPageKey = nextPageKey)
+            if (result.nextPageKey == null) when (result) {
+                is LoadResult.Success.SimpleSuccess -> result.copy(nextPageKey = nextPageKey)
+
+                is LoadResult.Success.FlowSuccess -> result.copy(dataFlow = result.dataFlow?.map {
+                        UpdatableData(it.data, it.nextPageKey ?: nextPageKey)
+                    }, nextPageKey = nextPageKey)
+            }
             else result
         }
     }

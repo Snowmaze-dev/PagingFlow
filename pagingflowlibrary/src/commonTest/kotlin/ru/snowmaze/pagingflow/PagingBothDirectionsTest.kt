@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import ru.snowmaze.pagingflow.presenters.SimplePresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.list.DiffListBuildStrategy
+import ru.snowmaze.pagingflow.presenters.list.ListByPagesBuildStrategy
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
@@ -35,7 +36,7 @@ class PagingBothDirectionsTest {
         pagingFlow.addUpPagingSource(upPagingSource)
         val presenter = pagingFlow.pagingDataPresenter(
             configuration = SimplePresenterConfiguration(
-                listBuildStrategy = DiffListBuildStrategy()
+                listBuildStrategy = ListByPagesBuildStrategy()
             )
         )
         pagingFlow.loadNextPageAndAwaitDataSet(PaginationDirection.UP)

@@ -160,7 +160,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
     /**
      * Adding page to pages list and starting listening to page changes
      */
-    fun setupPage(
+    suspend fun setupPage(
         newIndex: Int,
         result: LoadResult.Success<Key, Data>,
         page: DataPage<Key, Data>,
@@ -185,34 +185,52 @@ internal class DataPagesManager<Key : Any, Data : Any>(
 
         page.itemCount = 0
 
-        val setData: suspend (data: UpdatableData<Key, Data>?) -> Unit = { value ->
-            setDataMutex.withLock {
-                try {
-                    setNewPageData(
-                        page = page,
-                        value = value,
-                        invalidateData = invalidateData,
-                        isExistingPage = isExistingPage,
-                        awaitDataSetChannel = awaitDataSetChannel,
-                        onPageRemoved = onPageRemoved,
-                        onNextKeyChanged = onLastPageNextKeyChanged,
-                        isFirst = isFirst,
-                        isPaginationDown = isPaginationDown
-                    )
-                } catch (e: Exception) {
-                    if (isFirst) awaitDataSetChannel?.send(Unit)
+        if (result is LoadResult.Success.FlowSuccess) {
+            val setData: suspend (data: UpdatableData<Key, Data>?) -> Unit = { value ->
+                setDataMutex.withLock {
+                    try {
+                        setNewPageData(
+                            page = page,
+                            value = value,
+                            invalidateData = invalidateData,
+                            isExistingPage = isExistingPage,
+                            awaitDataSetChannel = awaitDataSetChannel,
+                            onPageRemoved = onPageRemoved,
+                            onNextKeyChanged = onLastPageNextKeyChanged,
+                            isFirst = isFirst,
+                            isPaginationDown = isPaginationDown
+                        )
+                    } catch (e: Exception) {
+                        if (isFirst) awaitDataSetChannel?.send(Unit)
+                    }
+                    isFirst = false
                 }
-                isFirst = false
             }
-        }
 
-        pageLoaderConfig.coroutineScope.launch(
-            pageLoaderConfig.processingDispatcher + page.listenJob
-        ) {
-            if (pageLoaderConfig.shouldCollectOnlyLatest) result.dataFlow
-                ?.buffer(0, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-                ?.collect(setData)
-            else result.dataFlow?.collect(setData)
+            pageLoaderConfig.coroutineScope.launch(
+                pageLoaderConfig.processingDispatcher + page.listenJob
+            ) {
+                if (pageLoaderConfig.shouldCollectOnlyLatest) result.dataFlow
+                    ?.buffer(0, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+                    ?.collect(setData)
+                else result.dataFlow?.collect(setData)
+            }
+        } else if (result is LoadResult.Success.SimpleSuccess) {
+            setNewPageData(
+                page = page,
+                value = UpdatableData(
+                    data = result.data ?: return,
+                    nextPageKey = result.nextPageKey,
+                    params = result.returnData
+                ),
+                invalidateData = invalidateData,
+                isExistingPage = isExistingPage,
+                awaitDataSetChannel = awaitDataSetChannel,
+                onPageRemoved = onPageRemoved,
+                onNextKeyChanged = onLastPageNextKeyChanged,
+                isFirst = isFirst,
+                isPaginationDown = isPaginationDown
+            )
         }
     }
 

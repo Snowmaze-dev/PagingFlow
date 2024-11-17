@@ -68,7 +68,7 @@ class PageAddedEvent<Key : Any, Data : Any>(
     sourceIndex: Int,
     pageIndex: Int,
     pageIndexInSource: Int,
-    items: List<Data>,
+    items: List<Data?>,
     params: PagingParams? = null,
 ) : PageChangedEvent<Key, Data>(
     key = key,

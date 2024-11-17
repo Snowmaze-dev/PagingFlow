@@ -15,6 +15,7 @@ class ListByPagesBuildStrategy<Key : Any, Data : Any> : ListBuildStrategy<Key, D
     override var list = emptyList<Data?>()
     override var startPageIndex: Int = 0
     override var recentLoadData: List<PagingParams> = emptyList()
+    private var minIndex = 0
 
     /**
      * Flattens [indexedPages] Map to list
@@ -31,20 +32,28 @@ class ListByPagesBuildStrategy<Key : Any, Data : Any> : ListBuildStrategy<Key, D
                 onPageAdded = {
                     if (it.params != null) newRecentLoadData.add(it.params)
                     indexedPages[it.pageIndex] = it
+                    if (minIndex > it.pageIndex) minIndex--
                 },
                 onPageChanged = {
                     if (it.params != null) newRecentLoadData.add(it.params)
                     indexedPages[it.pageIndex] = it
                 },
-                onPageRemovedEvent = { indexedPages.remove(it.pageIndex) },
+                onPageRemovedEvent = {
+                    indexedPages.remove(it.pageIndex)
+                    if (minIndex == it.pageIndex) minIndex++
+                },
                 onInvalidate = { onInvalidate(it.invalidateBehavior) },
             )
         }
-        val pageIndexesKeys = indexedPages.keys.sorted()
         var newStartIndex = 0
-        list = buildList(pageIndexesKeys.fastSumOf { indexedPages[it]!!.items.size }) {
-            pageIndexesKeys.fastForEach { pageIndex ->
-                val page = indexedPages[pageIndex]!!
+        val indexes = minIndex until minIndex + indexedPages.size
+        var listSize = 0
+        for (pageIndex in indexes) {
+            listSize += indexedPages[pageIndex]?.items?.size ?: 0
+        }
+        list = buildList(listSize) {
+            for (pageIndex in indexes) {
+                val page = indexedPages[pageIndex] ?: continue
                 if (page.changeType == PageChangedEvent.ChangeType.CHANGE_TO_NULLS) {
                     newStartIndex += page.items.size
                 }

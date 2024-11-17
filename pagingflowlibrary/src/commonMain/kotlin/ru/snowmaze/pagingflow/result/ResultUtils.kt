@@ -3,7 +3,6 @@
 package ru.snowmaze.pagingflow.result
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.PaginationDirection
@@ -55,31 +54,39 @@ inline fun <T : Any, Key : Any, Data : Any> Result<T>.toLoadResult(
     onFailure = onFailure
 )
 
-fun <Key : Any, Data : Any> PagingSource<Key, Data>.simpleResult(
-    data: List<Data>,
+inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.result(
+    data: List<Data?>,
     nextPageKey: Key? = null,
     returnData: PagingParams? = null,
     cachedResult: PagingParams? = null,
 ): LoadResult.Success<Key, Data> {
-    var localData: List<Data>? = data
-    return LoadResult.Success(
-        dataFlow = flow {
-            emit(UpdatableData(localData ?: return@flow, nextPageKey, returnData))
-            localData = null
-        },
+    return LoadResult.Success.SimpleSuccess(
+        data = data,
         nextPageKey = nextPageKey,
         returnData = returnData,
         cachedResult = cachedResult
     )
 }
 
-fun <Key : Any, Data : Any> PagingSource<Key, Data>.result(
-    dataFlow: Flow<List<Data>>,
+inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.result(
+    dataFlow: Flow<List<Data?>>,
     nextPageKey: Key? = null,
     returnData: PagingParams? = null,
     cachedResult: PagingParams? = null,
-) = LoadResult.Success(
+) = updatableResult(
     dataFlow = dataFlow.map { UpdatableData(it, nextPageKey, returnData) },
+    nextPageKey = nextPageKey,
+    returnData = returnData,
+    cachedResult = cachedResult
+)
+
+inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.updatableResult(
+    dataFlow: Flow<UpdatableData<Key, Data>>,
+    nextPageKey: Key? = null,
+    returnData: PagingParams? = null,
+    cachedResult: PagingParams? = null,
+) = LoadResult.Success.FlowSuccess(
+    dataFlow = dataFlow,
     nextPageKey = nextPageKey,
     returnData = returnData,
     cachedResult = cachedResult
@@ -88,14 +95,14 @@ fun <Key : Any, Data : Any> PagingSource<Key, Data>.result(
 /**
  * Sends returnData in UpdatableData in flow one time and then further sends null instead of returnData
  */
-fun <Key : Any, Data : Any> PagingSource<Key, Data>.resultWithSingleReturnData(
-    dataFlow: Flow<List<Data>>,
+inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.resultWithSingleReturnData(
+    dataFlow: Flow<List<Data?>>,
     nextPageKey: Key? = null,
     returnData: PagingParams,
     cachedResult: PagingParams? = null,
 ): LoadResult.Success<Key, Data> {
     var currentReturnData: PagingParams? = returnData
-    return LoadResult.Success(
+    return LoadResult.Success.FlowSuccess(
         dataFlow = dataFlow.map {
             val data = UpdatableData(it, nextPageKey, currentReturnData)
             currentReturnData = null
@@ -107,11 +114,11 @@ fun <Key : Any, Data : Any> PagingSource<Key, Data>.resultWithSingleReturnData(
     )
 }
 
-fun <Key : Any, Data : Any> PagingSource<Key, Data>.useLastPageResult(
+inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.useLastPageResult(
     nextPageKey: Key? = null,
     returnData: PagingParams? = null,
     cachedResult: PagingParams? = null,
-) = LoadResult.Success<Key, Data>(
+) = LoadResult.Success.FlowSuccess<Key, Data>(
     dataFlow = null,
     nextPageKey = nextPageKey,
     returnData = returnData,

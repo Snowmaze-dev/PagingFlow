@@ -1,3 +1,3 @@
 package ru.snowmaze.pagingflow.utils
 
-expect fun <K, V> platformMapOf(): MutableMap<K, V>
+internal expect fun <K, V> platformMapOf(): MutableMap<K, V>

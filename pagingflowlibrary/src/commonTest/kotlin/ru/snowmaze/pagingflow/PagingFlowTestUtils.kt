@@ -80,8 +80,7 @@ suspend fun PagingFlow<Int, String>.testLoadEverything(
     }
 }
 
-fun <Key : Any, Data : Any> LoadNextPageResult<Key, Data>.asSuccess() =
-    this as LoadNextPageResult.Success<Key, Data>
+fun <Key : Any> LoadNextPageResult<Key>.asSuccess() = this as LoadNextPageResult.Success<Key>
 
 inline fun runTestOnDispatchersDefault(
     noinline block: suspend CoroutineScope.() -> Unit

@@ -33,10 +33,12 @@ class TestPagingSource(
     ): LoadResult<Int, String> {
         val exception = currentException
         if (exception != null) throw exception
-        return result(dataFlow = flow {
-            delay(delayProvider())
-            val list = items.subList(startIndex, endIndex)
-            emit(if (isReversed) list.asReversed() else list)
+        val delay = delayProvider()
+        val list = items.subList(startIndex, endIndex)
+        val finalList = if (isReversed) list.asReversed() else list
+        return if (delay == 0L) result(finalList) else result(dataFlow = flow {
+            delay(delay)
+            emit(finalList)
         })
     }
 }
