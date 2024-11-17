@@ -5,6 +5,7 @@ import kotlinx.coroutines.sync.withLock
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.source.PagingSource
 import ru.snowmaze.pagingflow.utils.DiffOperation
+import ru.snowmaze.pagingflow.utils.fastIndexOfLast
 
 internal class PagingSourcesHelper<Key : Any, Data : Any>(
     private val pagingSourcesManager: PagingSourcesManager<Key, Data>,
@@ -57,7 +58,7 @@ internal class PagingSourcesHelper<Key : Any, Data : Any>(
         pagingSourcesManager.addPagingSource(item, index)
         if (index > (lastLoadedDataSource ?: 0) || pagesCount == 0) return
         val previousIndex = (index - 1).coerceAtLeast(0)
-        var pageIndex = if (index == 0) -1 else dataPagesManager.dataPages.indexOfLast {
+        var pageIndex = if (index == 0) -1 else dataPagesManager.dataPages.fastIndexOfLast {
             it.dataSourceIndex == previousIndex
         }
         do {

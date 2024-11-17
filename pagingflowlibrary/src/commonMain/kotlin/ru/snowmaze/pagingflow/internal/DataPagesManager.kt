@@ -95,8 +95,8 @@ internal class DataPagesManager<Key : Any, Data : Any>(
 
         val firstFromIndex =
             _dataPages.fastIndexOfFirst { it.dataSourceIndex == fromDataSourceIndex }
-        val firstToIndex =
-            _dataPages.indexOfLast { it.dataSourceIndex == toDataSourceIndex }.coerceAtLeast(0)
+        val firstToIndex = _dataPages.fastIndexOfLast { it.dataSourceIndex == toDataSourceIndex }
+            .coerceAtLeast(0)
         repeat(fromPages.size) { _dataPages.removeAt(firstFromIndex) }
         _dataPages.addAll(firstToIndex, fromPages)
         updateIndexes()

@@ -8,6 +8,7 @@ import kotlinx.coroutines.sync.withLock
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
+import ru.snowmaze.pagingflow.utils.fastIndexOfLast
 
 class BatchingPagingDataChangesMedium<Key : Any, Data : Any>(
     private val pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
@@ -28,7 +29,7 @@ class BatchingPagingDataChangesMedium<Key : Any, Data : Any>(
         mutex.withLock {
             var newEvents = events
             if (!shouldBatchAddPagesEvents && eventsBatchingDurationMsProvider() != 0L) {
-                val lastIndex = events.indexOfLast { it is PageAddedEvent<Key, Data> }
+                val lastIndex = events.fastIndexOfLast { it is PageAddedEvent<Key, Data> }
                 if (lastIndex != -1) {
                     val toIndex = lastIndex + 1
                     val notifyEvents = savedEvents + events.subList(0, toIndex)
