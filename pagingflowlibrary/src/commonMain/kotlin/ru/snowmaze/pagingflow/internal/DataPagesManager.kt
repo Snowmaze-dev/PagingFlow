@@ -160,15 +160,15 @@ internal class DataPagesManager<Key : Any, Data : Any>(
     /**
      * Adding page to pages list and starting listening to page changes
      */
-    suspend fun setupPage(
+    suspend inline fun setupPage(
         newIndex: Int,
         result: LoadResult.Success<Key, Data>,
         page: DataPage<Key, Data>,
         loadParams: LoadParams<Key>,
         shouldReplaceOnConflict: Boolean,
         awaitDataSetChannel: Channel<Unit>?,
-        onPageRemoved: (inBeginning: Boolean, pageIndex: Int) -> Unit,
-        onLastPageNextKeyChanged: suspend (Key?, Boolean) -> Unit,
+        crossinline onPageRemoved: (inBeginning: Boolean, pageIndex: Int) -> Unit,
+        crossinline onLastPageNextKeyChanged: suspend (Key?, Boolean) -> Unit,
     ) {
         isAnyDataChanged = true
         result.cachedResult?.let { cachedData[page.pageIndex] = page.currentPageKey to it }
