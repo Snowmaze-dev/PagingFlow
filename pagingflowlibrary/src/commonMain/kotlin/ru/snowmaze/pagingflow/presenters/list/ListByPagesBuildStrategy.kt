@@ -18,7 +18,7 @@ class ListByPagesBuildStrategy<Key : Any, Data : Any> : ListBuildStrategy<Key, D
     /**
      * Flattens [indexedPages] Map to list
      */
-    override suspend fun buildList(
+    override fun buildList(
         events: List<DataChangedEvent<Key, Data>>,
         onInvalidate: (InvalidateBehavior?) -> Unit
     ) {

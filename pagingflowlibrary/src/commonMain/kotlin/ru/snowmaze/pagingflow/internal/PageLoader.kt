@@ -48,7 +48,7 @@ internal class PageLoader<Key : Any, Data : Any>(
 
     private val onPageRemoved = { inBeginning: Boolean, pageIndex: Int ->
         changeHasNextStatus(
-            inEnd = !inBeginning,
+            isPaginationDown = !inBeginning,
             hasNext = true
         )
     }
@@ -66,7 +66,7 @@ internal class PageLoader<Key : Any, Data : Any>(
             shouldSetNewStatus = shouldSetNewStatus,
             dataSourceIndex = null
         )
-        if (loadResult is LoadResult.NothingToLoad && lastPageIndex == null) {
+        if (loadResult is LoadResult.NothingToLoad && lastPageIndex != null) {
             val isLoadingDown = loadParams.paginationDirection == PaginationDirection.DOWN
             val status = if (isLoadingDown) downPagingStatus else upPagingStatus
             while (loadResult is LoadResult.NothingToLoad &&
@@ -79,7 +79,7 @@ internal class PageLoader<Key : Any, Data : Any>(
                     shouldReplaceOnConflict = shouldReplaceOnConflict,
                     shouldSetNewStatus = shouldSetNewStatus,
                     dataSourceIndex = if (isLoadingDown) ++lastDownDataSourceIndex
-                    else ++lastUpDataSourceIndex
+                    else --lastUpDataSourceIndex
                 )
             }
         }
@@ -93,9 +93,12 @@ internal class PageLoader<Key : Any, Data : Any>(
         shouldSetNewStatus: Boolean,
         dataSourceIndex: Int?
     ): LoadResult<Key, Data> {
-        val dataPages = dataPagesManager.dataPages
+        val isLoadingPageInOrder = lastPageIndex == null
         val paginationDirection = loadParams.paginationDirection
         val isPaginationDown = loadParams.paginationDirection == PaginationDirection.DOWN
+        val currentStatusFlow = if (isPaginationDown) downPagingStatus else upPagingStatus
+
+        val dataPages = dataPagesManager.dataPages
         val currentLastPageIndex = lastPageIndex ?: if (isPaginationDown) dataPages.lastIndex
         else dataPages.fastIndexOfFirst { !it.isNullified }
         val pagingSourceWithIndex: Pair<PagingSource<Key, Data>, Int>
@@ -108,28 +111,30 @@ internal class PageLoader<Key : Any, Data : Any>(
             val newAbsoluteIndex = (lastPage?.pageIndex ?: 0) + if (isPaginationDown) 1 else -1
             pagingSourceWithIndex = pagingSourcesManager.findNextPagingSource(
                 currentPagingSource = lastPage?.pagingSourceWithIndex,
-                isThereKey = nextPageKey != null || (newAbsoluteIndex == 0 && lastPage?.pagingSourceWithIndex == null),
+                isThereKey = nextPageKey != null ||
+                        (newAbsoluteIndex == 0 && ((lastPage?.pageIndex ?: 0) >= 0)), // TODO
                 paginationDirection = paginationDirection
             ) ?: return LoadResult.NothingToLoad()
         } else {
             val dataSource = pagingSourcesManager.pagingSources.getOrNull(dataSourceIndex)
             if (dataSource == null) {
-                val status = if (isPaginationDown) downPagingStatus else upPagingStatus
-                status.value = PagingStatus.Success(
+                currentStatusFlow.value = PagingStatus.Success(
                     hasNextPage = false,
-                    currentKey = if (status is PagingStatus.Success<*>) status.currentKey as? Key
-                    else null
+                    currentKey = if (currentStatusFlow is PagingStatus.Success<*>) {
+                        currentStatusFlow.currentKey as? Key
+                    } else null
                 )
                 return LoadResult.NothingToLoad()
             }
             nextPageKey = null
             pagingSourceWithIndex = dataSource to dataSourceIndex
         }
-        if (isPaginationDown) lastDownDataSourceIndex = pagingSourceWithIndex.second
-        else lastUpDataSourceIndex = pagingSourceWithIndex.second
+        if (isLoadingPageInOrder) {
+            if (isPaginationDown) lastDownDataSourceIndex = pagingSourceWithIndex.second
+            else lastUpDataSourceIndex = pagingSourceWithIndex.second
+        }
 
         // setting status that we loading
-        val currentStatusFlow = if (isPaginationDown) downPagingStatus else upPagingStatus
         currentStatusFlow.value = PagingStatus.Loading as PagingStatus<Key>
 
         // picking currentKey and getting cache in case it was saved earlier
@@ -174,8 +179,9 @@ internal class PageLoader<Key : Any, Data : Any>(
         // setting new status after loading completed
         val status = when (result) {
             is LoadResult.Success<*, *> -> PagingStatus.Success(
-                hasNextPage = result.nextPageKey != null || pagingSourcesManager.findNextPagingSource(
-                    currentPagingSource = if (lastPageIndex == null) pagingSourceWithIndex else {
+                hasNextPage = (isLoadingPageInOrder && result.nextPageKey != null)
+                        || pagingSourcesManager.findNextPagingSource(
+                    currentPagingSource = if (isLoadingPageInOrder) pagingSourceWithIndex else {
                         getLastSourceWithIndex(dataPages, isPaginationDown)
                     },
                     isThereKey = false,
@@ -209,7 +215,6 @@ internal class PageLoader<Key : Any, Data : Any>(
 
         // saving page to pages manager
         val previousPageKey = if (isPaginationDown) lastPage?.currentPageKey else result.nextPageKey
-        println("previousPage key $previousPageKey result.nextPageKey ${result.nextPageKey}")
         val page = DataPage(
             data = null,
             itemCount = 0,
@@ -224,7 +229,6 @@ internal class PageLoader<Key : Any, Data : Any>(
             dataSourceIndex = pagingSourceWithIndex.second,
             pageIndexInPagingSource = pageIndexInDataSource
         )
-        println("got page $page")
 
         val newIndex = currentLastPageIndex + if (isPaginationDown) 1 else -1
         val shouldReturnAwaitJob =
@@ -247,9 +251,9 @@ internal class PageLoader<Key : Any, Data : Any>(
             shouldReplaceOnConflict = shouldReplaceOnConflict,
             onPageRemoved = onPageRemoved,
             awaitDataSetChannel = dataSetChannel,
-            onLastPageNextKeyChanged = { newNextKey, isPaginationDown ->
+            onLastPageNextKeyChanged = { newNextKey, isDown ->
                 changeHasNextStatus(
-                    inEnd = isPaginationDown,
+                    isPaginationDown = isDown,
                     hasNext = newNextKey != null || pagingSourcesManager.findNextPagingSource(
                         currentPagingSource = pagingSourceWithIndex,
                         isThereKey = false,
@@ -290,8 +294,8 @@ internal class PageLoader<Key : Any, Data : Any>(
     ) = (if (isPaginationDown) dataPages.lastOrNull()
     else dataPages.fastFirstOrNull { !it.isNullified })?.pagingSourceWithIndex
 
-    private fun changeHasNextStatus(inEnd: Boolean, hasNext: Boolean) {
-        val stateFlow = if (inEnd) downPagingStatus else upPagingStatus
+    private fun changeHasNextStatus(isPaginationDown: Boolean, hasNext: Boolean) {
+        val stateFlow = if (isPaginationDown) downPagingStatus else upPagingStatus
         stateFlow.value = stateFlow.value.mapHasNext(hasNext)
     }
 }

@@ -61,10 +61,6 @@ open class PageChangedEvent<Key : Any, Data : Any>(
         changeType = changeType,
         params = params,
     )
-
-    override fun toString(): String {
-        return "${this::class.simpleName}(key=$key, sourceIndex=$sourceIndex, pageIndex=$pageIndex, pageIndexInSource=$pageIndexInSource, previousList=$previousList, items=$items, changeType=$changeType, params=$params)"
-    }
 }
 
 class PageAddedEvent<Key : Any, Data : Any>(

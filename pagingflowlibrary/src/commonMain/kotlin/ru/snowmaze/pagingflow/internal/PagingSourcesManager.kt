@@ -55,10 +55,8 @@ internal class PagingSourcesManager<Key : Any, Data : Any> {
         val sourceIndex = if (currentPagingSource?.first == null) {
             if (paginationDirection == PaginationDirection.DOWN) -1 else 0
         } else currentPagingSource.second
-        println("sourceIndex $sourceIndex currentPagingSource.second ${currentPagingSource?.second}")
         val checkingIndex =
             sourceIndex + if (paginationDirection == PaginationDirection.DOWN) 1 else -1
-        println("checking index $checkingIndex")
         return (if (checkingIndex >= 0) pagingSources.getOrNull(checkingIndex)
         else _upPagingSources.getOrNull(checkingIndex + 1))?.let { it to checkingIndex }
     }

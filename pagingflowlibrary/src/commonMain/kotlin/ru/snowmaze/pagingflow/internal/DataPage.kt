@@ -4,7 +4,7 @@ import kotlinx.coroutines.Job
 import ru.snowmaze.pagingflow.UpdatableData
 import ru.snowmaze.pagingflow.source.PagingSource
 
-internal data class DataPage<Key : Any, Data : Any>(
+internal class DataPage<Key : Any, Data : Any>(
 
     var data: UpdatableData<Key, Data>?,
 

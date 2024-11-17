@@ -75,6 +75,21 @@ class SetDataSourcesTest {
             listOf(secondDataSource, firstDataSource, fourthDataSource, fifthDataSource)
         )
 
+        pagingFlow.testSetSources(
+            presenter,
+            listOf(fourthDataSource, firstDataSource, thirdDataSource)
+        )
+
+        pagingFlow.testSetSources(
+            presenter,
+            listOf(fourthDataSource, firstDataSource)
+        )
+
+        pagingFlow.testSetSources(
+            presenter,
+            listOf(fourthDataSource, secondDataSource, thirdDataSource, firstDataSource)
+        )
+
         val allDataSources = listOf(
             firstDataSource,
             secondDataSource,

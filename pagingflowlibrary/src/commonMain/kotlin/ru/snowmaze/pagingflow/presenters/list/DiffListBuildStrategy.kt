@@ -8,6 +8,7 @@ import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.utils.fastForEach
 import ru.snowmaze.pagingflow.utils.fastSumOf
+import kotlin.math.abs
 import kotlin.math.max
 
 /**
@@ -17,7 +18,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
     private val reuseList: Boolean
 ) : ListBuildStrategy<Key, Data> {
 
-    constructor(): this(false)
+    constructor() : this(false)
 
     private val pageSizes = mutableMapOf<Int, Int>()
     override var list = if (reuseList) mutableListOf<Data?>() else emptyList()
@@ -25,7 +26,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
     override var recentLoadData: List<PagingParams> = emptyList()
     private var minIndex: Int = 0
 
-    override suspend fun buildList(
+    override fun buildList(
         events: List<DataChangedEvent<Key, Data>>,
         onInvalidate: (InvalidateBehavior?) -> Unit
     ) {
@@ -37,10 +38,10 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
         buildListInternal(list as MutableList<Data?>, events, onInvalidate)
     }
 
-    private suspend inline fun buildListInternal(
+    private inline fun buildListInternal(
         list: MutableList<Data?>,
         events: List<DataChangedEvent<Key, Data>>,
-        crossinline onInvalidate: suspend (InvalidateBehavior?) -> Unit
+        onInvalidate: (InvalidateBehavior?) -> Unit
     ) = events.fastForEach { event ->
         event.handle(
             onPageAdded = { current -> // TODO double added event inconsistent behaviour

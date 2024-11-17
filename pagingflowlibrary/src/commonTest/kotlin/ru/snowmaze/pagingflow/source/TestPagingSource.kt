@@ -21,7 +21,10 @@ class TestPagingSource(
         }
     }
 
-    fun getItems(count: Int) = items.subList(0, count)
+    fun getItems(count: Int, startFrom: Int = 0): List<String> {
+        val items = items.subList(startFrom, startFrom + count)
+        return if (isReversed) items.asReversed() else items
+    }
 
     override suspend fun loadData(
         loadParams: LoadParams<Int>,
@@ -32,7 +35,8 @@ class TestPagingSource(
         if (exception != null) throw exception
         return result(dataFlow = flow {
             delay(delayProvider())
-            emit(items.subList(startIndex, endIndex))
+            val list = items.subList(startIndex, endIndex)
+            emit(if (isReversed) list.asReversed() else list)
         })
     }
 }
