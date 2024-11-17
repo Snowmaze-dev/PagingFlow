@@ -6,12 +6,10 @@ import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.list.DiffListBuildStrategy
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
-import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class PagingBothDirectionsTest {
 
@@ -65,6 +63,14 @@ class PagingBothDirectionsTest {
                 break
             }
             pagesCount++
+            presenter.dataFlow.firstEqualsWithTimeout(
+                buildUpPages(upPagingSource, pagesCount, pageSize, maxItems)
+            )
+        }
+        while (true) {
+            pagesCount--
+            if (pagesCount == 3) break
+            pagingFlow.loadNextPageAndAwaitDataSet(PaginationDirection.DOWN)
             presenter.dataFlow.firstEqualsWithTimeout(
                 buildUpPages(upPagingSource, pagesCount, pageSize, maxItems)
             )
