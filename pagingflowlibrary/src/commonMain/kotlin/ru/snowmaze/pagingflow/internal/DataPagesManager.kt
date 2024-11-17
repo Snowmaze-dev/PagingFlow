@@ -180,12 +180,12 @@ internal class DataPagesManager<Key : Any, Data : Any>(
             loadParams.pagingParams?.getOrNull(PagingLibraryParamsKeys.InvalidateData) ?: false
 
         // page flow listening starts here
-        var isFirst = true
         lastPaginationDirection = isPaginationDown
 
         page.itemCount = 0
 
         if (result is LoadResult.Success.FlowSuccess) {
+            var isFirst = true
             val setData: suspend (data: UpdatableData<Key, Data>?) -> Unit = { value ->
                 setDataMutex.withLock {
                     try {
@@ -215,7 +215,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                     ?.collect(setData)
                 else result.dataFlow?.collect(setData)
             }
-        } else if (result is LoadResult.Success.SimpleSuccess) {
+        } else if (result is LoadResult.Success.SimpleSuccess) try {
             setNewPageData(
                 page = page,
                 value = UpdatableData(
@@ -228,9 +228,11 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                 awaitDataSetChannel = awaitDataSetChannel,
                 onPageRemoved = onPageRemoved,
                 onNextKeyChanged = onLastPageNextKeyChanged,
-                isFirst = isFirst,
+                isFirst = true,
                 isPaginationDown = isPaginationDown
             )
+        } catch (e: Exception) {
+            awaitDataSetChannel?.send(Unit)
         }
     }
 
