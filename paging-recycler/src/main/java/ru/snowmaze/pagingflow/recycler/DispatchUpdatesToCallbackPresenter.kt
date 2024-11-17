@@ -15,6 +15,7 @@ import ru.snowmaze.pagingflow.presenters.LatestData
 import ru.snowmaze.pagingflow.presenters.SimplePresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.SimpleBuildListPagingPresenter
 import ru.snowmaze.pagingflow.utils.fastForEach
+import ru.snowmaze.pagingflow.utils.platformMapOf
 
 class DispatchUpdatesToCallbackPresenter<Data : Any>(
     private val listUpdateCallback: ListUpdateCallback,
@@ -28,7 +29,7 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
     presenterConfiguration = SimplePresenterConfiguration(invalidateBehavior = invalidateBehavior)
 ) {
 
-    private val pagesIndexes = mutableMapOf<Int, List<Data?>>()
+    private val pagesIndexes = platformMapOf<Int, List<Data?>>()
     private var beforeInvalidateListSize = 0
     private var wasInvalidated = false
 

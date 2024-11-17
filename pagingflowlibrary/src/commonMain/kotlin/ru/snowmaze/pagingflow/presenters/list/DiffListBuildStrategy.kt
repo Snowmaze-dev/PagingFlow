@@ -8,7 +8,7 @@ import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.utils.fastForEach
 import ru.snowmaze.pagingflow.utils.fastSumOf
-import kotlin.math.abs
+import ru.snowmaze.pagingflow.utils.platformMapOf
 import kotlin.math.max
 
 /**
@@ -20,7 +20,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
 
     constructor() : this(false)
 
-    private val pageSizes = mutableMapOf<Int, Int>()
+    private val pageSizes = platformMapOf<Int, Int>()
     override var list = if (reuseList) mutableListOf<Data?>() else emptyList()
     override var startPageIndex: Int = 0
     override var recentLoadData: List<PagingParams> = emptyList()

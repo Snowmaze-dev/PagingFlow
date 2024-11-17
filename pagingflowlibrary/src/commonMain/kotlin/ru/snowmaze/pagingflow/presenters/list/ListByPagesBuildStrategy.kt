@@ -7,10 +7,11 @@ import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.utils.fastForEach
 import ru.snowmaze.pagingflow.utils.fastSumOf
+import ru.snowmaze.pagingflow.utils.platformMapOf
 
 class ListByPagesBuildStrategy<Key : Any, Data : Any> : ListBuildStrategy<Key, Data> {
 
-    private val indexedPages = mutableMapOf<Int, PageChangedEvent<Key, Data>>()
+    private val indexedPages = platformMapOf<Int, PageChangedEvent<Key, Data>>()
     override var list = emptyList<Data?>()
     override var startPageIndex: Int = 0
     override var recentLoadData: List<PagingParams> = emptyList()

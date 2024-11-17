@@ -10,6 +10,21 @@ kotlin {
         publishAllLibraryVariants()
     }
     jvm()
+
+    applyHierarchyTemplate {
+        common {
+            group("commonJvm") {
+                withJvm()
+                withAndroidTarget()
+            }
+            group("nonJvm") {
+                withJs()
+                withIosX64()
+                withIosArm64()
+            }
+        }
+    }
+
     js(IR) {
         browser {
             testTask {
@@ -43,6 +58,15 @@ kotlin {
         jsMain.dependencies {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
+        }
+        val commonJvmMain = getByName("commonJvmMain") {
+            kotlin.srcDir("src/commonJvmMain/kotlin")
+        }
+        commonJvmMain.dependencies {
+            implementation(libs.androidx.collection.ktx)
+        }
+        val nonJvmMain = getByName("nonJvmMain") {
+            kotlin.srcDir("src/nonJvmMain/kotlin")
         }
     }
 }

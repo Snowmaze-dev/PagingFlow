@@ -30,6 +30,7 @@ import ru.snowmaze.pagingflow.utils.fastForEach
 import ru.snowmaze.pagingflow.utils.fastIndexOfFirst
 import ru.snowmaze.pagingflow.utils.fastIndexOfLast
 import ru.snowmaze.pagingflow.utils.fastSumOf
+import ru.snowmaze.pagingflow.utils.platformMapOf
 import kotlin.concurrent.Volatile
 
 internal class DataPagesManager<Key : Any, Data : Any>(
@@ -42,7 +43,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
     val dataPages get() = _dataPages
     val isNotNullified = { item: DataPage<Key, Data> -> !item.isNullified }
 
-    private var cachedData = mutableMapOf<Int, Pair<Key?, PagingParams>>()
+    private var cachedData = platformMapOf<Int, Pair<Key?, PagingParams>>()
     val currentPagesCount get() = dataPages.size
 
     private var lastPaginationDirection = true
@@ -103,7 +104,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
     }
 
     fun updateIndexes() {
-        val newCachedData = mutableMapOf<Int, Pair<Key?, PagingParams>>()
+        val newCachedData = platformMapOf<Int, Pair<Key?, PagingParams>>()
         for (index in _dataPages.indices) {
             _dataPages[index].apply {
                 val pagingSource = pagingSourceWithIndex.first

@@ -27,7 +27,7 @@ suspend fun PagingFlow<*, *>.setPagingSourcesWithDiff(sources: List<PagingSource
     setPagingSources(sources as List<Nothing>) { oldList, newList ->
         val difference = differenceOf(oldList, newList)
         buildList {
-            val added = mutableMapOf<Int, Int>()
+            val added = platformMapOf<Int, Int>()
             fun remove(index: Int, count: Int) {
                 add(DiffOperation.Remove(index, count))
             }

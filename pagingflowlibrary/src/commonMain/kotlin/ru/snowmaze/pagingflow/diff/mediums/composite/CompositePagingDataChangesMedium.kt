@@ -17,6 +17,7 @@ import ru.snowmaze.pagingflow.diff.mediums.SubscribeForChangesDataChangesMedium
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.utils.fastSumOf
 import ru.snowmaze.pagingflow.utils.flattenWithSize
+import ru.snowmaze.pagingflow.utils.platformMapOf
 
 open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any> internal constructor(
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
@@ -25,7 +26,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
 ) : SubscribeForChangesDataChangesMedium<Key, Data, NewData>(pagingDataChangesMedium) {
 
     private val dataSourcesSections =
-        mutableMapOf<Int, CompositePresenterSection.DataSourceSection<Key, Data, NewData>>()
+        platformMapOf<Int, CompositePresenterSection.DataSourceSection<Key, Data, NewData>>()
     private val mutex = Mutex()
 
     init {
