@@ -108,7 +108,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
         if (reuseList) (list as? MutableList)?.let { list ->
             list.clear()
             if (list is ArrayList) list.trimToSize()
-        } else list = emptyList()
+        } else list = arrayListOf()
         startPageIndex = 0
         minIndex = 0
         pageSizes.clear()
