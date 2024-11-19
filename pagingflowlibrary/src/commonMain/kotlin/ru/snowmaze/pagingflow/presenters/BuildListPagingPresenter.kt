@@ -77,13 +77,12 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
 
     protected suspend fun buildList(events: List<DataChangedEvent<Key, Data>>) {
         val invalidateEvent = events.lastOrNull() as? InvalidateEvent
-        val specifiedBehaviour = invalidateEvent?.invalidateBehavior
-        if (invalidateEvent != null &&
-            ((specifiedBehaviour != null && specifiedBehaviour != INVALIDATE_IMMEDIATELY) ||
-                    (specifiedBehaviour == null && invalidateBehavior != INVALIDATE_IMMEDIATELY))
-        ) {
-            onInvalidateInternal(specifiedBehaviour)
-            return
+        if (invalidateEvent != null) {
+            val selectedBehavior = invalidateEvent.invalidateBehavior ?: invalidateBehavior
+            if (selectedBehavior != INVALIDATE_IMMEDIATELY) {
+                onInvalidateInternal(selectedBehavior)
+                return
+            }
         }
         val previousList = latestData
         listBuildStrategy.buildList(events, onInvalidateAction)
