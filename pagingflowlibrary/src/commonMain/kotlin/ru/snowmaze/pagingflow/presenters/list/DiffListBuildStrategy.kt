@@ -25,6 +25,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
     override var startPageIndex: Int = 0
     override var recentLoadData: List<PagingParams> = emptyList()
     private var minIndex: Int = 0
+    private inline val mutableList get() = list as MutableList<Data?>
 
     override fun buildList(
         events: List<DataChangedEvent<Key, Data>>,
@@ -35,11 +36,10 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
         )
         recentLoadData = newRecentLoadData
         if (!reuseList) list = ArrayList(list)
-        buildListInternal(list as MutableList<Data?>, events, onInvalidate)
+        buildListInternal(events, onInvalidate)
     }
 
     private inline fun buildListInternal(
-        list: MutableList<Data?>,
         events: List<DataChangedEvent<Key, Data>>,
         onInvalidate: (InvalidateBehavior?) -> Unit
     ) = events.fastForEach { event ->
@@ -47,7 +47,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
             onPageAdded = { current -> // TODO double added event inconsistent behaviour
                 if (current.params != null) (recentLoadData as MutableList).add(current.params)
                 removePageItemsAndAdd(
-                    list = list,
+                    list = mutableList,
                     pageIndex = current.pageIndex,
                     newItems = current.items
                 )
@@ -61,14 +61,15 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
                     startPageIndex -= pageSizes[current.pageIndex] ?: 0
                 }
                 removePageItemsAndAdd(
-                    list = list,
+                    list = mutableList,
                     pageIndex = current.pageIndex,
                     newItems = current.items
                 )
             },
             onPageRemovedEvent = { current ->
                 val startIndex = calculateStartIndex(current.pageIndex)
-                repeat(pageSizes[current.pageIndex] ?: 0) { list.removeAt(startIndex) }
+                val mutableList = mutableList
+                repeat(pageSizes[current.pageIndex] ?: 0) { mutableList.removeAt(startIndex) }
                 pageSizes.remove(current.pageIndex)
                 if (minIndex == current.pageIndex) minIndex++
             },
