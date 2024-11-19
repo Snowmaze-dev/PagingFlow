@@ -37,9 +37,9 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
         )
         recentLoadData = newRecentLoadData
         if (!reuseList) list = ArrayList(list)
-        isBuildingList = false
-        buildListInternal(events, onInvalidate)
         isBuildingList = true
+        buildListInternal(events, onInvalidate)
+        isBuildingList = false
     }
 
     private inline fun buildListInternal(
