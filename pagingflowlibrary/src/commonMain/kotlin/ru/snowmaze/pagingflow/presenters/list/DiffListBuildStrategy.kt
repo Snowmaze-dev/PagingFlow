@@ -104,10 +104,10 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
     }
 
     override fun invalidate() {
-        (list as? MutableList)?.let { list ->
+        if (reuseList) (list as? MutableList)?.let { list ->
             list.clear()
-            if (reuseList && list is ArrayList) list.trimToSize()
-        }
+            if (list is ArrayList) list.trimToSize()
+        } else list = emptyList()
         startPageIndex = 0
         minIndex = 0
         pageSizes.clear()
