@@ -3,7 +3,7 @@ package ru.snowmaze.pagingflow
 import kotlinx.coroutines.test.runTest
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
-import ru.snowmaze.pagingflow.presenters.SimplePresenterConfiguration
+import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
@@ -89,7 +89,7 @@ class BasicPagingFlowTest {
             addPagingSource(thirdTestDataSource)
         }
         val presenter = pagingFlow.pagingDataPresenter(
-            SimplePresenterConfiguration(invalidateBehavior = InvalidateBehavior.INVALIDATE_IMMEDIATELY)
+            BasicPresenterConfiguration(invalidateBehavior = InvalidateBehavior.INVALIDATE_IMMEDIATELY)
         )
         var hasNext = true
         while (hasNext) {

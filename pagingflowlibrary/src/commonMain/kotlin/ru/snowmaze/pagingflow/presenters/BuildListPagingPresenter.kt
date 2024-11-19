@@ -52,8 +52,9 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
     protected fun onInvalidateInternal(
         specifiedInvalidateBehavior: InvalidateBehavior? = null,
     ) {
-        if (latestData.data.isEmpty()) return
+        if (latestData.data.isEmpty() && latestData.loadData.isEmpty()) return
         val invalidateBehavior = specifiedInvalidateBehavior ?: invalidateBehavior
+        listBuildStrategy.invalidate()
         onInvalidateAdditionalAction()
         val previousData = latestData
         if (invalidateBehavior != InvalidateBehavior.INVALIDATE_IMMEDIATELY) {
@@ -84,7 +85,7 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
         this.lastInvalidateBehavior = null
         _latestData = LatestData(
             data = listBuildStrategy.list,
-            recentLoadData = listBuildStrategy.recentLoadData
+            loadData = listBuildStrategy.recentLoadData
         )
         _dataFlow.emit(_latestData)
         onItemsSet(events, previousList)

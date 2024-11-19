@@ -25,7 +25,7 @@ inline val <Key : Any, Data : Any> PagingDataPresenter<Key, Data>.data
 
 class LatestData<Data : Any>(
     val data: List<Data?>,
-    val recentLoadData: List<PagingParams> = listOf(PagingParams.EMPTY)
+    val loadData: List<PagingParams> = listOf()
 ) {
 
     inline val notNullData get() = data as List<Data>

@@ -12,8 +12,8 @@ import ru.snowmaze.pagingflow.diff.handle
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.LatestData
-import ru.snowmaze.pagingflow.presenters.SimplePresenterConfiguration
-import ru.snowmaze.pagingflow.presenters.SimpleBuildListPagingPresenter
+import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
+import ru.snowmaze.pagingflow.presenters.BasicBuildListPagingPresenter
 import ru.snowmaze.pagingflow.utils.fastForEach
 
 class DispatchUpdatesToCallbackPresenter<Data : Any>(
@@ -23,9 +23,9 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
     private val itemCallback: DiffUtil.ItemCallback<Data>,
     invalidateBehavior: InvalidateBehavior,
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main
-) : SimpleBuildListPagingPresenter<Any, Data>(
+) : BasicBuildListPagingPresenter<Any, Data>(
     pagingDataChangesMedium = pagingMedium as PagingDataChangesMedium<Any, Data>,
-    presenterConfiguration = SimplePresenterConfiguration(invalidateBehavior = invalidateBehavior)
+    presenterConfiguration = BasicPresenterConfiguration(invalidateBehavior = invalidateBehavior)
 ) {
 
     private val pagesIndexes = mutableMapOf<Int, List<Data?>>()

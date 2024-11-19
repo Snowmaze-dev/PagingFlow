@@ -1,9 +1,8 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
-import ru.snowmaze.pagingflow.presenters.SimplePresenterConfiguration
+import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.dataFlow
-import ru.snowmaze.pagingflow.presenters.list.DiffListBuildStrategy
 import ru.snowmaze.pagingflow.presenters.list.ListByPagesBuildStrategy
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
@@ -35,7 +34,7 @@ class PagingBothDirectionsTest {
         val upPagingSource = TestPagingSource(totalCount, isReversed = true)
         pagingFlow.addUpPagingSource(upPagingSource)
         val presenter = pagingFlow.pagingDataPresenter(
-            configuration = SimplePresenterConfiguration(
+            configuration = BasicPresenterConfiguration(
                 listBuildStrategy = ListByPagesBuildStrategy()
             )
         )

@@ -40,11 +40,11 @@ internal class PageLoader<Key : Any, Data : Any>(
     private var lastUpDataSourceIndex = 0
 
     val downPagingStatus = MutableStateFlow<PagingStatus<Key>>(
-        PagingStatus.Initial(hasNextPage = true)
+        PagingStatus.Initial(hasNextPage = pagingSourcesManager.downPagingSources.isNotEmpty())
     )
 
     val upPagingStatus = MutableStateFlow<PagingStatus<Key>>(
-        PagingStatus.Initial(hasNextPage = false)
+        PagingStatus.Initial(hasNextPage = pagingSourcesManager.upPagingSources.isNotEmpty())
     )
 
     private val onPageRemoved = { inBeginning: Boolean, pageIndex: Int ->
@@ -118,7 +118,7 @@ internal class PageLoader<Key : Any, Data : Any>(
                 paginationDirection = paginationDirection
             ) ?: return LoadResult.NothingToLoad()
         } else {
-            val dataSource = pagingSourcesManager.pagingSources.getOrNull(dataSourceIndex)
+            val dataSource = pagingSourcesManager.downPagingSources.getOrNull(dataSourceIndex)
             if (dataSource == null) {
                 currentStatusFlow.value = PagingStatus.Success(
                     hasNextPage = false,

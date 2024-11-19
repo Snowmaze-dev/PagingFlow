@@ -23,7 +23,7 @@ internal class PagingSourcesHelper<Key : Any, Data : Any>(
             newList: List<PagingSource<Key, out Data>>
         ) -> List<DiffOperation<PagingSource<Key, out Data>>>
     ) = loadDataMutex.withLock {
-        val dataSources = pagingSourcesManager.pagingSources
+        val dataSources = pagingSourcesManager.downPagingSources
         val operations = diff(dataSources, newPagingSourceList)
         if (operations.isEmpty()) return@withLock
         for (operation in operations) {
@@ -74,7 +74,7 @@ internal class PagingSourcesHelper<Key : Any, Data : Any>(
 
     private fun move(oldIndex: Int, newIndex: Int) {
         val newMaxIndex = newIndex
-            .coerceAtMost(pagingSourcesManager.pagingSources.size - 1)
+            .coerceAtMost(pagingSourcesManager.downPagingSources.size - 1)
             .coerceAtLeast(0)
         try {
             pagingSourcesManager.movePagingSource(oldIndex, newMaxIndex)

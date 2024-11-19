@@ -6,7 +6,7 @@ import kotlinx.coroutines.withTimeout
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
-import ru.snowmaze.pagingflow.presenters.SimplePresenterConfiguration
+import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.list.DiffListBuildStrategy
@@ -60,7 +60,7 @@ class PagingForwardsAndThenBackwardsTest {
             addPagingSource(TestPagingSource(totalCount, randomDelay))
         }
         val presenter = pagingFlow.pagingDataPresenter(
-            configuration = SimplePresenterConfiguration(listBuildStrategy = DiffListBuildStrategy()),
+            configuration = BasicPresenterConfiguration(listBuildStrategy = DiffListBuildStrategy()),
             eventsBatchingDurationMsProvider = { 20 },
         )
 

@@ -12,9 +12,9 @@ import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
  * Basic implementation of list building presenter.
  * It collects events and sets it to map of pages which will be later used to build list in [buildListInternal] implementation
  */
-open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
+open class BasicBuildListPagingPresenter<Key : Any, Data : Any>(
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
-    private val presenterConfiguration: SimplePresenterConfiguration<Key, Data>,
+    private val presenterConfiguration: BasicPresenterConfiguration<Key, Data>,
     config: DataChangesMediumConfig = pagingDataChangesMedium.config
 ) : BuildListPagingPresenter<Key, Data>(
     listBuildStrategy = presenterConfiguration.listBuildStrategy,
@@ -52,9 +52,5 @@ open class SimpleBuildListPagingPresenter<Key : Any, Data : Any>(
         override suspend fun onEvents(
             events: List<DataChangedEvent<Key, Data>>
         ) = withContext(processingDispatcher) { buildList(events) }
-    }
-
-    override fun onInvalidateAdditionalAction() {
-        presenterConfiguration.listBuildStrategy.invalidate()
     }
 }

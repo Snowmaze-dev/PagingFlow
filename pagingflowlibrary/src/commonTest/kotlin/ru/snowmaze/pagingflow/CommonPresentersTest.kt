@@ -1,9 +1,8 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
-import ru.snowmaze.pagingflow.presenters.SimplePresenterConfiguration
+import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.source.TestPagingSource
@@ -33,7 +32,7 @@ class CommonPresentersTest {
             addPagingSource(testDataSource)
         }
         val presenter = pagingFlow.pagingDataPresenter(
-            configuration = SimplePresenterConfiguration(
+            configuration = BasicPresenterConfiguration(
                 invalidateBehavior = InvalidateBehavior.INVALIDATE_IMMEDIATELY
             )
         )
