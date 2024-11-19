@@ -226,15 +226,15 @@ class ConcatPagingSource<Key : Any, Data : Any>(
         removeCachedData: Boolean
     ) = loadDataMutex.withLock {
         withContext(concatDataSourceConfig.processingDispatcher) {
+            dataPagesManager.invalidate(
+                invalidateBehavior = invalidateBehavior,
+                removeCachedData = removeCachedData,
+            )
             pageLoader.downPagingStatus.value = PagingStatus.Initial(
                 hasNextPage = pagingSourcesManager.upPagingSources.isNotEmpty()
             )
             pageLoader.upPagingStatus.value = PagingStatus.Initial(
                 hasNextPage = pagingSourcesManager.upPagingSources.isNotEmpty()
-            )
-            dataPagesManager.invalidate(
-                invalidateBehavior = invalidateBehavior,
-                removeCachedData = removeCachedData,
             )
         }
     }
