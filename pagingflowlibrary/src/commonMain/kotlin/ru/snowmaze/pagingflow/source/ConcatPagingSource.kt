@@ -231,7 +231,7 @@ class ConcatPagingSource<Key : Any, Data : Any>(
                 removeCachedData = removeCachedData,
             )
             pageLoader.downPagingStatus.value = PagingStatus.Initial(
-                hasNextPage = pagingSourcesManager.upPagingSources.isNotEmpty()
+                hasNextPage = pagingSourcesManager.downPagingSources.isNotEmpty()
             )
             pageLoader.upPagingStatus.value = PagingStatus.Initial(
                 hasNextPage = pagingSourcesManager.upPagingSources.isNotEmpty()
