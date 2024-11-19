@@ -26,6 +26,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
     override var recentLoadData: List<PagingParams> = emptyList()
     private var minIndex: Int = 0
     private inline val mutableList get() = list as MutableList<Data?>
+    private var isBuildingList = false
 
     override fun buildList(
         events: List<DataChangedEvent<Key, Data>>,
@@ -36,7 +37,9 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
         )
         recentLoadData = newRecentLoadData
         if (!reuseList) list = ArrayList(list)
+        isBuildingList = false
         buildListInternal(events, onInvalidate)
+        isBuildingList = true
     }
 
     private inline fun buildListInternal(
@@ -108,7 +111,8 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
         if (reuseList) (list as? MutableList)?.let { list ->
             list.clear()
             if (list is ArrayList) list.trimToSize()
-        } else list = arrayListOf()
+        } else if (isBuildingList) list = arrayListOf()
+        else list = emptyList()
         startPageIndex = 0
         minIndex = 0
         pageSizes.clear()
