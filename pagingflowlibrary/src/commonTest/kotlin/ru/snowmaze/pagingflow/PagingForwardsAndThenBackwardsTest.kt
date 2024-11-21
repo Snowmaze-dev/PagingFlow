@@ -101,7 +101,7 @@ class PagingForwardsAndThenBackwardsTest {
     }
 
     @Test
-    fun loadBothDirectionsTest() = runTest {
+    fun loadForwardsAndThenBackwards() = runTest {
         val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
             addDownPagingSource(testDataSource)
@@ -146,14 +146,8 @@ class PagingForwardsAndThenBackwardsTest {
         )
     }
 
-    fun getItemsWithPagesOffset(pagesOffset: Int): Pair<Int, Int> {
-        val startIndex = totalCount - (pageSize * (removePagesOffset + pagesOffset))
-        val endIndex = totalCount - (pagesOffset * pageSize)
-        return startIndex to endIndex
-    }
-
     @Test
-    fun loadBothDirectionsWithNullsTest() = runTest {
+    fun loadForwardsAndThenBackwardsWithNullPlaceholdersTest() = runTest {
         val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(
             basePagingFlowConfiguration.copy(
@@ -222,5 +216,11 @@ class PagingForwardsAndThenBackwardsTest {
         repeat(count) {
             add(null)
         }
+    }
+
+    private fun getItemsWithPagesOffset(pagesOffset: Int): Pair<Int, Int> {
+        val startIndex = totalCount - (pageSize * (removePagesOffset + pagesOffset))
+        val endIndex = totalCount - (pagesOffset * pageSize)
+        return startIndex to endIndex
     }
 }
