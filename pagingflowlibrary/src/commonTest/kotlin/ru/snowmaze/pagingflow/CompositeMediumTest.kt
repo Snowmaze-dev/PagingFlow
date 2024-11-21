@@ -34,7 +34,7 @@ class CompositeMediumTest {
     fun baseMediumExtensionTest() = runTestOnDispatchersDefault {
         val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
-            addPagingSource(testDataSource)
+            addDownPagingSource(testDataSource)
         }
         val data = listOf(123)
         val presenter = pagingFlow.compositeDataPresenter {
@@ -51,8 +51,8 @@ class CompositeMediumTest {
         val testDataSource = TestPagingSource(pageSize * 3)
         val testDataSource1 = TestPagingSource(totalCount, startFrom = 500)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
-            addPagingSource(testDataSource)
-            addPagingSource(testDataSource1)
+            addDownPagingSource(testDataSource)
+            addDownPagingSource(testDataSource1)
         }
         var startList = listOf(123)
         val second = listOf(1235)

@@ -27,8 +27,8 @@ class SpecificDataSourceMediumTest {
     fun baseTest() = runTestOnDispatchersDefault {
         val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
-            addPagingSource(TestPagingSource(40))
-            addPagingSource(testDataSource)
+            addDownPagingSource(TestPagingSource(40))
+            addDownPagingSource(testDataSource)
         }
         val presenterForFirst = DataSourceDataChangesMedium<Int, String, String>(
             pagingFlow,

@@ -26,7 +26,6 @@ import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.result.mapParams
 import ru.snowmaze.pagingflow.utils.DiffOperation
 import ru.snowmaze.pagingflow.utils.fastFirstOrNull
-import ru.snowmaze.pagingflow.utils.fastIndexOfFirst
 import ru.snowmaze.pagingflow.utils.mapHasNext
 import ru.snowmaze.pagingflow.utils.toInfo
 
@@ -103,14 +102,14 @@ class ConcatPagingSource<Key : Any, Data : Any>(
         return dataPagesManager.removeDataChangedCallback(callback)
     }
 
-    fun addPagingSource(pagingSource: PagingSource<Key, out Data>) {
-        pagingSourcesManager.addPagingSource(pagingSource as PagingSource<Key, Data>)
-        pageLoader.downPagingStatus.value = downPagingStatus.value.mapHasNext(true)
+    fun addDownPagingSource(pagingSource: PagingSource<Key, out Data>) {
+        pagingSourcesManager.addDownPagingSource(pagingSource as PagingSource<Key, Data>)
+        pageLoader.downPagingStatus.value = pageLoader.downPagingStatus.value.mapHasNext(true)
     }
 
-    fun addUpPagingSource(pagingSource: PagingSource<Key, Data>) {
-        pagingSourcesManager.addUpPagingSource(pagingSource)
-        pageLoader.upPagingStatus.value = upPagingStatus.value.mapHasNext(true)
+    fun addUpPagingSource(pagingSource: PagingSource<Key, out Data>) {
+        pagingSourcesManager.addUpPagingSource(pagingSource as PagingSource<Key, Data>)
+        pageLoader.upPagingStatus.value = pageLoader.upPagingStatus.value.mapHasNext(true)
     }
 
     fun removePagingSource(pagingSource: PagingSource<Key, out Data>) {

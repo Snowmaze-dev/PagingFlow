@@ -55,7 +55,7 @@ internal class PagingSourcesHelper<Key : Any, Data : Any>(
 
     private suspend fun insert(item: PagingSource<Key, Data>, index: Int) {
         val lastLoadedDataSource = dataPagesManager.dataPages.maxOfOrNull { it.dataSourceIndex }
-        pagingSourcesManager.addPagingSource(item, index)
+        pagingSourcesManager.addDownPagingSource(item, index)
         if (index > (lastLoadedDataSource ?: 0) || pagesCount == 0) return
         val previousIndex = (index - 1).coerceAtLeast(0)
         var pageIndex = if (index == 0) -1 else dataPagesManager.dataPages.fastIndexOfLast {

@@ -25,10 +25,10 @@ class SetDataSourcesTest {
         val pagingFlow = buildPagingFlow<Int, Int>(
             PagingFlowConfiguration(LoadParams(3), processingDispatcher = testDispatcher),
         ) {
-            addPagingSource(firstDataSource)
-            addPagingSource(secondDataSource)
-            addPagingSource(thirdDataSource)
-            addPagingSource(fourthDataSource)
+            addDownPagingSource(firstDataSource)
+            addDownPagingSource(secondDataSource)
+            addDownPagingSource(thirdDataSource)
+            addDownPagingSource(fourthDataSource)
         }
 
         val presenter = pagingFlow.pagingDataPresenter()

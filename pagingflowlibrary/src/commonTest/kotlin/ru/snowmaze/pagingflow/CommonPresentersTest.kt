@@ -29,7 +29,7 @@ class CommonPresentersTest {
                 shouldCollectOnlyLatest = true
             )
         ) {
-            addPagingSource(testDataSource)
+            addDownPagingSource(testDataSource)
         }
         val presenter = pagingFlow.pagingDataPresenter(
             configuration = BasicPresenterConfiguration(

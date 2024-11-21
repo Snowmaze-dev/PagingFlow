@@ -19,7 +19,7 @@ internal class PagingSourcesManager<Key : Any, Data : Any> {
     /**
      * Adds paging source to end of chain
      */
-    fun addPagingSource(pagingSource: PagingSource<Key, Data>, index: Int? = null) {
+    fun addDownPagingSource(pagingSource: PagingSource<Key, Data>, index: Int? = null) {
         if (index == null) _downPagingSources.add(pagingSource)
         else _downPagingSources.add(index, pagingSource)
     }

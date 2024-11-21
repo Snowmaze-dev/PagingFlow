@@ -42,7 +42,7 @@ class LoadSeveralPagesTest {
                 )
             )
         ) {
-            addPagingSource(source)
+            addDownPagingSource(source)
         }
         val presenter = pagingFlow.pagingDataPresenter(
             eventsBatchingDurationMsProvider = { 10 },

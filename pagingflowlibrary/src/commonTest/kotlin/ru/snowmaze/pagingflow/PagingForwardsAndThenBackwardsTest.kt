@@ -56,8 +56,8 @@ class PagingForwardsAndThenBackwardsTest {
                 shouldStorePageItems = false
             )
         ) {
-            addPagingSource(TestPagingSource(totalCount, randomDelay))
-            addPagingSource(TestPagingSource(totalCount, randomDelay))
+            addDownPagingSource(TestPagingSource(totalCount, randomDelay))
+            addDownPagingSource(TestPagingSource(totalCount, randomDelay))
         }
         val presenter = pagingFlow.pagingDataPresenter(
             configuration = BasicPresenterConfiguration(listBuildStrategy = DiffListBuildStrategy()),
@@ -104,7 +104,7 @@ class PagingForwardsAndThenBackwardsTest {
     fun loadBothDirectionsTest() = runTest {
         val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
-            addPagingSource(testDataSource)
+            addDownPagingSource(testDataSource)
         }
         val presenter = pagingFlow.pagingDataPresenter()
         pagingFlow.testLoadEverything(
@@ -162,7 +162,7 @@ class PagingForwardsAndThenBackwardsTest {
                 )
             )
         ) {
-            addPagingSource(testDataSource)
+            addDownPagingSource(testDataSource)
         }
         val presenter = pagingFlow.pagingDataPresenter()
         pagingFlow.testLoadEverything(
@@ -202,7 +202,7 @@ class PagingForwardsAndThenBackwardsTest {
                 )
             )
         ) {
-            addPagingSource(testDataSource)
+            addDownPagingSource(testDataSource)
         }
         val presenter = pagingFlow.pagingDataPresenter()
         pagingFlow.loadNextPageWithResult()
