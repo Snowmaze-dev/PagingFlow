@@ -3,6 +3,7 @@ package ru.snowmaze.pagingflow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import ru.snowmaze.pagingflow.params.LoadSeveralPagesData
+import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
@@ -16,7 +17,7 @@ import ru.snowmaze.pagingflow.utils.fastForEach
  */
 suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPageWithResult(
     paginationDirection: PaginationDirection? = null,
-    pagingParams: PagingParams? = null
+    pagingParams: MutablePagingParams? = null
 ) = load(paginationDirection, pagingParams)
 
 /**
@@ -25,7 +26,7 @@ suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPageWithResult
  */
 fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPage(
     paginationDirection: PaginationDirection? = null,
-    pagingParams: PagingParams? = null
+    pagingParams: MutablePagingParams? = null
 ) = pagingFlowConfiguration.coroutineScope.launch {
     load(paginationDirection, pagingParams)
 }
@@ -48,13 +49,13 @@ suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadSeveralPages(
         .paginationDirection,
     awaitDataSet: Boolean = false,
     awaitTimeout: Long? = null,
-    pagingParams: PagingParams? = null,
+    pagingParams: MutablePagingParams? = null,
     onSuccess: ((LoadResult.Success<Key, Data>) -> Unit)? = null,
-    getPagingParams: suspend (LoadResult<Key, Data>?) -> PagingParams?,
+    getPagingParams: suspend (LoadResult<Key, Data>?) -> MutablePagingParams?,
 ): LoadNextPageResult<Key> {
     val result = load(
         paginationDirection = paginationDirection,
-        pagingParams = (pagingParams ?: PagingParams(1)).apply {
+        pagingParams = (pagingParams ?: MutablePagingParams(1)).apply {
             put(
                 PagingLibraryParamsKeys.LoadSeveralPages, LoadSeveralPagesData(
                     getPagingParams = {
@@ -96,11 +97,11 @@ suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPageAndAwaitDa
     paginationDirection: PaginationDirection = pagingFlowConfiguration.defaultParamsProvider()
         .paginationDirection,
     timeout: Long? = null,
-    pagingParams: PagingParams? = null
+    pagingParams: MutablePagingParams? = null
 ): LoadNextPageResult<Key> {
     val result = load(
         paginationDirection = paginationDirection,
-        pagingParams = (pagingParams ?: PagingParams(1)).apply {
+        pagingParams = (pagingParams ?: MutablePagingParams(1)).apply {
             put(PagingLibraryParamsKeys.ReturnAwaitJob, true)
         }
     )

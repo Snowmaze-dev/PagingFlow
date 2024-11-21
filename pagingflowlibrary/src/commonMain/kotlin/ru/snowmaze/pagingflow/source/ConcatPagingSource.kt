@@ -18,9 +18,11 @@ import ru.snowmaze.pagingflow.internal.DataPagesManager
 import ru.snowmaze.pagingflow.internal.PagingSourcesHelper
 import ru.snowmaze.pagingflow.internal.PagingSourcesManager
 import ru.snowmaze.pagingflow.internal.PageLoader
+import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
+import ru.snowmaze.pagingflow.params.toMutableParams
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.result.mapParams
@@ -168,7 +170,7 @@ class ConcatPagingSource<Key : Any, Data : Any>(
                     currentResult as? LoadResult<Any, Any>
                 ) ?: break
                 val defaultPagingParams =
-                    concatDataSourceConfig.defaultParamsProvider().pagingParams
+                    concatDataSourceConfig.defaultParamsProvider().pagingParams?.toMutableParams()
                 defaultPagingParams?.put(currentPagingParams)
                 lastResult = pageLoader.loadData(
                     loadParams = loadParams.copy(
@@ -194,15 +196,16 @@ class ConcatPagingSource<Key : Any, Data : Any>(
                 (if (isPaginationDown) pageLoader.downPagingStatus
                 else pageLoader.upPagingStatus).value = it
             }
-            lastResult = lastResult.mapParams(
-                lastResult.returnData?.let { PagingParams(it) } ?: PagingParams()
-            )
-            val returnData = lastResult.returnData
-            returnData?.getOrNull(key)
+            val returnData = lastResult.returnData?.let {
+                PagingParams(it)
+            } ?: MutablePagingParams()
+
+            lastResult = lastResult.mapParams(returnData)
+            returnData.getOrNull(key)
                 ?.returnData?.let { PagingParams(it) }?.let {
                     returnData.put(key, returnData[key].copy(returnData = it))
                 }
-            (returnData?.getOrNull(key)?.returnData ?: returnData)?.put(
+            (returnData.getOrNull(key)?.returnData ?: returnData)?.put(
                 ReturnPagingLibraryKeys.PagingParamsList,
                 resultPagingParams
             )

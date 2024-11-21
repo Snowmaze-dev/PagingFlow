@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
+import ru.snowmaze.pagingflow.params.pagingParamsOf
 import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
@@ -51,7 +52,9 @@ class LoadSeveralPagesTest {
         val result = pagingFlow.loadSeveralPages(
             getPagingParams = {
                 pages++
-                PagingParams(PagingLibraryParamsKeys.ReturnAwaitJob to true).takeUnless { pages > 2 }
+                pagingParamsOf(
+                    PagingLibraryParamsKeys.ReturnAwaitJob to true
+                ).takeUnless { pages > 2 }
             },
         )
         assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
@@ -69,7 +72,7 @@ class LoadSeveralPagesTest {
             getPagingParams = {
                 pages++
                 if (pages > 4) null
-                else PagingParams(PagingLibraryParamsKeys.ReturnAwaitJob to true)
+                else pagingParamsOf(PagingLibraryParamsKeys.ReturnAwaitJob to true)
             },
         )
         presenter.dataFlow.firstWithTimeout {

@@ -34,7 +34,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
             section.sourceIndex = index
             if (section is CompositePresenterSection.DataSourceSection<Key, Data, NewData>) {
                 if (dataSourcesSections.containsKey(section.dataSourceIndex)) { // TODO support multiple same datasources indexes
-                    throw IllegalArgumentException("For now library not supports multiple same data sources in single composite changes medium.")
+                    throw IllegalArgumentException("For now library not supports multiple same paging sources in single composite changes medium.")
                 }
                 dataSourcesSections[section.dataSourceIndex] = section
             } else if (

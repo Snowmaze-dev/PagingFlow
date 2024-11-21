@@ -3,6 +3,7 @@ package ru.snowmaze.pagingflow
 import kotlinx.coroutines.invoke
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.mapDataPresenter
@@ -95,7 +96,7 @@ class PagingFlow<Key : Any, Data : Any>(
      * @return [LoadNextPageResult] of loading next pages of data in given direction
      */
     internal suspend fun load(
-        paginationDirection: PaginationDirection?, pagingParams: PagingParams? = null
+        paginationDirection: PaginationDirection?, pagingParams: MutablePagingParams? = null
     ): LoadNextPageResult<Key> = pagingFlowConfiguration.processingDispatcher {
         val defaultParams = pagingFlowConfiguration.defaultParamsProvider()
         val defaultPagingParams = defaultParams.pagingParams
@@ -106,7 +107,7 @@ class PagingFlow<Key : Any, Data : Any>(
             defaultParams.copy(
                 paginationDirection = pickedPaginationDirection,
                 pagingParams = defaultPagingParams?.let {
-                    PagingParams(it)
+                    MutablePagingParams(it)
                 }?.apply {
                     pagingParams?.let { put(it) }
                 } ?: pagingParams

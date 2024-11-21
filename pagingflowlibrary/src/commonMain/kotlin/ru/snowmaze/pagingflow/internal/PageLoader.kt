@@ -11,11 +11,13 @@ import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.PagingStatus
 import ru.snowmaze.pagingflow.errorshandler.PagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.params.DataKey
+import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
 import ru.snowmaze.pagingflow.params.SourceKeys.pageLoaderResult
 import ru.snowmaze.pagingflow.params.SourceKeys.sourceResultKey
+import ru.snowmaze.pagingflow.params.toMutableParams
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.source.PageLoaderConfig
 import ru.snowmaze.pagingflow.source.ConcatSourceData
@@ -268,7 +270,8 @@ internal class PageLoader<Key : Any, Data : Any>(
         // updating indexes in case when inserted new page in middle of other pages
         if (!shouldReplaceOnConflict) dataPagesManager.updateIndexes()
 
-        val resultData = result.returnData ?: if (job != null) PagingParams() else null
+        val resultData = result.returnData?.toMutableParams()
+            ?: if (job != null) MutablePagingParams() else null
         job?.let { resultData?.put(ReturnPagingLibraryKeys.DataSetJob, job) }
 
         val returnData = PagingParams(2 + if (shouldSetNewStatus) 0 else 1) {
