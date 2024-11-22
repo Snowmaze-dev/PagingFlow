@@ -323,8 +323,10 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         }
         if (isLastPageChanged) onNextKeyChanged(value.nextPageKey, isPaginationDown)
         if (!notified) {
-            delay(1000)
-            awaitEvent?.callback?.invoke()
+            if (awaitEvent != null) {
+                delay(1000)
+                awaitEvent.callback.invoke()
+            }
         } else if (pageLoaderConfig.shouldCollectOnlyLatest) awaitChannel?.receive()
 
         if (page.isCancelled) page.listenJob.cancel()

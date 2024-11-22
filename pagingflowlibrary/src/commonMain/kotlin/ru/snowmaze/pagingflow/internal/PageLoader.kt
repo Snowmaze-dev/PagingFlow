@@ -31,7 +31,7 @@ internal class PageLoader<Key : Any, Data : Any>(
     private val pagingSourcesManager: PagingSourcesManager<Key, Data>,
     private val dataPagesManager: DataPagesManager<Key, Data>,
     val pageLoaderConfig: PageLoaderConfig<Key>,
-    private val pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler,
+    private val pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler<Key, Data>,
     private val defaultLoadParams: LoadParams<Key>?
 ) {
 
@@ -172,12 +172,11 @@ internal class PageLoader<Key : Any, Data : Any>(
             ?: defaultLoadParams?.cachedResult,
             pagingParams = loadParams.pagingParams ?: defaultLoadParams?.pagingParams
         )
+
         val result = try {
             pagingSource.load(nextLoadParams)
         } catch (e: Throwable) {
-            val errorHandler =
-                (pagingSource.pagingUnhandledErrorsHandler ?: pagingUnhandledErrorsHandler)
-            errorHandler.handle(e)
+            (pagingSource.pagingUnhandledErrorsHandler ?: pagingUnhandledErrorsHandler).handle(e)
         }
 
         // setting new status after loading completed
@@ -199,7 +198,11 @@ internal class PageLoader<Key : Any, Data : Any>(
             )
 
             is LoadResult.NothingToLoad -> PagingStatus.Success(
-                hasNextPage = pagingSourcesManager.findNextPagingSource(
+                hasNextPage = if (isLoadingPageInOrder) pagingSourcesManager.findNextPagingSource(
+                    currentPagingSource = pagingSourceWithIndex,
+                    isThereKey = false,
+                    paginationDirection = paginationDirection
+                ) != null else pagingSourcesManager.findNextPagingSource(
                     currentPagingSource = getLastSourceWithIndex(dataPages, isPaginationDown),
                     isThereKey = false,
                     paginationDirection = paginationDirection
@@ -211,9 +214,8 @@ internal class PageLoader<Key : Any, Data : Any>(
         if (result !is LoadResult.Success) {
             currentStatusFlow.value = status
 
-            return result as LoadResult<Key, Data>
+            return result
         }
-        result as LoadResult.Success<Key, Data>
 
         if (shouldSetNewStatus) currentStatusFlow.value = status
 
@@ -290,7 +292,7 @@ internal class PageLoader<Key : Any, Data : Any>(
         // preparing result
         return when (result) {
             is LoadResult.Success.SimpleSuccess -> {
-                (result as LoadResult.Success.SimpleSuccess<Key, Data>).copy(
+                result.copy(
                     data = result.data,
                     nextPageKey = result.nextPageKey,
                     returnData = returnData
@@ -298,7 +300,7 @@ internal class PageLoader<Key : Any, Data : Any>(
             }
 
             is LoadResult.Success.FlowSuccess -> {
-                (result as LoadResult.Success.FlowSuccess<Key, Data>).copy(
+                result.copy(
                     dataFlow = result.dataFlow,
                     nextPageKey = result.nextPageKey,
                     returnData = returnData

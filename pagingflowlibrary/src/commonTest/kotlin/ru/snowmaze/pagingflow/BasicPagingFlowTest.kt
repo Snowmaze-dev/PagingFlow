@@ -14,6 +14,7 @@ import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 
@@ -43,6 +44,19 @@ class BasicPagingFlowTest {
             firstSource = testDataSource,
             pagingDataPresenter = presenter,
             invalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST)
+    }
+
+    @Test
+    fun paginateFirstAndNothingToLoad() = runTest {
+        val testDataSource = TestPagingSource(pageSize)
+        val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
+            addDownPagingSource(testDataSource)
+            addDownPagingSource(NothingToLoadSource())
+        }
+        pagingFlow.loadNextPageWithResult()
+        assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
+        assertIs<LoadNextPageResult.NothingToLoad<Int>>(pagingFlow.loadNextPageWithResult())
+        assertFalse(pagingFlow.downPagingStatus.value.hasNextPage)
     }
 
     @Test

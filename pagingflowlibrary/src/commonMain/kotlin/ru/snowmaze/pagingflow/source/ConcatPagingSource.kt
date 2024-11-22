@@ -14,6 +14,7 @@ import ru.snowmaze.pagingflow.PagingStatus
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.errorshandler.DefaultPagingUnhandledErrorsHandler
+import ru.snowmaze.pagingflow.errorshandler.PagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.internal.DataPagesManager
 import ru.snowmaze.pagingflow.internal.PagingSourcesHelper
 import ru.snowmaze.pagingflow.internal.PagingSourcesManager
@@ -33,6 +34,8 @@ import ru.snowmaze.pagingflow.utils.toInfo
 
 class ConcatPagingSource<Key : Any, Data : Any>(
     private val concatDataSourceConfig: PageLoaderConfig<Key>,
+    override val pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler<Key, Data> =
+        DefaultPagingUnhandledErrorsHandler()
 ) : PagingSource<Key, Data>, PagingDataChangesMedium<Key, Data> {
 
     private val loadDataMutex = Mutex()
@@ -56,8 +59,6 @@ class ConcatPagingSource<Key : Any, Data : Any>(
     val isLoading
         get() = upPagingStatus.value is PagingStatus.Loading ||
                 downPagingStatus.value is PagingStatus.Loading
-
-    override val pagingUnhandledErrorsHandler = DefaultPagingUnhandledErrorsHandler()
 
     private val pageLoader = PageLoader(
         pagingSourcesManager = pagingSourcesManager,

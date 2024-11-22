@@ -1,8 +1,9 @@
 package ru.snowmaze.pagingflow
 
-import kotlinx.coroutines.invoke
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import ru.snowmaze.pagingflow.errorshandler.DefaultPagingUnhandledErrorsHandler
+import ru.snowmaze.pagingflow.errorshandler.PagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
@@ -162,6 +163,7 @@ class PagingFlow<Key : Any, Data : Any>(
  */
 fun <Key : Any, Data : Any> buildPagingFlow(
     configuration: PagingFlowConfiguration<Key>,
+    pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler<Key, Data> = DefaultPagingUnhandledErrorsHandler(),
     loadFirstPage: Boolean = false,
     builder: PagingFlow<Key, Data>.() -> Unit = {}
 ) = PagingFlow<Key, Data>(
@@ -173,8 +175,10 @@ fun <Key : Any, Data : Any> buildPagingFlow(
             coroutineScope = configuration.coroutineScope,
             shouldStorePageItems = configuration.shouldStorePageItems,
             shouldCollectOnlyLatest = configuration.shouldCollectOnlyLatest
-        )
-    ), configuration
+        ),
+        pagingUnhandledErrorsHandler = pagingUnhandledErrorsHandler
+    ),
+    configuration,
 ).apply {
     apply(builder)
     if (loadFirstPage) loadNextPage()
@@ -202,8 +206,13 @@ fun <Key : Any, Data : Any> buildPagingFlow(
 fun <Key : Any, Data : Any> buildPagingFlow(
     configuration: PagingFlowConfiguration<Key>,
     loadFirstPage: Boolean,
-    vararg pagingSources: PagingSource<Key, out Data>
-) = buildPagingFlow(configuration = configuration, loadFirstPage = loadFirstPage) {
+    vararg pagingSources: PagingSource<Key, out Data>,
+    pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler<Key, Data> = DefaultPagingUnhandledErrorsHandler(),
+) = buildPagingFlow(
+    configuration = configuration,
+    loadFirstPage = loadFirstPage,
+    pagingUnhandledErrorsHandler = pagingUnhandledErrorsHandler
+) {
     for (pagingSource in pagingSources) {
         addDownPagingSource(pagingSource)
     }
@@ -211,8 +220,12 @@ fun <Key : Any, Data : Any> buildPagingFlow(
 
 fun <Key : Any, Data : Any> buildPagingFlow(
     configuration: PagingFlowConfiguration<Key>,
-    vararg pagingSources: PagingSource<Key, out Data>
-) = buildPagingFlow(configuration = configuration) {
+    vararg pagingSources: PagingSource<Key, out Data>,
+    pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler<Key, Data> = DefaultPagingUnhandledErrorsHandler(),
+) = buildPagingFlow(
+    configuration = configuration,
+    pagingUnhandledErrorsHandler = pagingUnhandledErrorsHandler
+) {
     for (pagingSource in pagingSources) {
         addDownPagingSource(pagingSource)
     }
