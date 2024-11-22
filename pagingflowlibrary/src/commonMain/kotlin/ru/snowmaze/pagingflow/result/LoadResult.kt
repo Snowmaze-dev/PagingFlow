@@ -24,7 +24,7 @@ sealed class LoadResult<Key : Any, Data : Any> {
     sealed class Success<Key : Any, Data : Any>: LoadResult<Key, Data>() {
 
         abstract val nextPageKey: Key?
-        abstract val cachedResult: PagingParams?
+        abstract val cachedResult: MutablePagingParams?
 
         data class FlowSuccess<Key : Any, Data : Any>(
             val dataFlow: Flow<UpdatableData<Key, Data>>?, // You can specify null to use dataFlow from last page

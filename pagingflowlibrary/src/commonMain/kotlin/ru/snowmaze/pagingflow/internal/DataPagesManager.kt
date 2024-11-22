@@ -20,6 +20,7 @@ import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
 import ru.snowmaze.pagingflow.diff.mediums.DefaultPagingDataChangesMedium
+import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
@@ -43,7 +44,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
     val dataPages get() = _dataPages
     val isNotNullified = { item: DataPage<Key, Data> -> !item.isNullified }
 
-    private var cachedData = platformMapOf<Int, Pair<Key?, PagingParams>>()
+    private var cachedData = platformMapOf<Int, Pair<Key?, MutablePagingParams>>()
     val currentPagesCount get() = dataPages.size
 
     private var lastPaginationDirection = true
@@ -104,7 +105,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
     }
 
     fun updateIndexes() {
-        val newCachedData = platformMapOf<Int, Pair<Key?, PagingParams>>()
+        val newCachedData = platformMapOf<Int, Pair<Key?, MutablePagingParams>>()
         for (index in _dataPages.indices) {
             _dataPages[index].apply {
                 val pagingSource = pagingSourceWithIndex.first
