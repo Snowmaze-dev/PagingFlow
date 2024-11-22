@@ -69,7 +69,7 @@ internal class PageLoader<Key : Any, Data : Any>(
             shouldSetNewStatus = shouldSetNewStatus,
             dataSourceIndex = null
         )
-        if (loadResult is LoadResult.NothingToLoad && lastPageIndex != null) {
+        if (loadResult is LoadResult.NothingToLoad) {
             val isLoadingDown = loadParams.paginationDirection == PaginationDirection.DOWN
             val status = if (isLoadingDown) downPagingStatus else upPagingStatus
             while (loadResult is LoadResult.NothingToLoad &&
@@ -108,6 +108,7 @@ internal class PageLoader<Key : Any, Data : Any>(
         val pagingSourceWithIndex: Pair<PagingSource<Key, Data>, Int>
         val lastPage = dataPages.getOrNull(currentLastPageIndex)
         val nextPageKey: Key?
+
         if (dataSourceIndex == null) {
             nextPageKey = if (isPaginationDown) lastPage?.nextPageKey else lastPage?.previousPageKey
 
@@ -118,7 +119,17 @@ internal class PageLoader<Key : Any, Data : Any>(
                 isThereKey = nextPageKey != null ||
                         (newAbsoluteIndex == 0 && ((lastPage?.pageIndex ?: 0) >= 0)), // TODO
                 paginationDirection = paginationDirection
-            ) ?: return LoadResult.NothingToLoad()
+            ) ?: run {
+                currentStatusFlow.value = getSuccessStatus(
+                    isLoadingPageInOrder = isLoadingPageInOrder,
+                    pagingSourceWithIndex = lastPage?.pagingSourceWithIndex,
+                    currentKey = lastPage?.currentPageKey,
+                    dataPages = dataPages,
+                    isPaginationDown = isPaginationDown,
+                    paginationDirection = paginationDirection
+                )
+                return LoadResult.NothingToLoad()
+            }
         } else {
             val dataSource = pagingSourcesManager.downPagingSources.getOrNull(dataSourceIndex)
             if (dataSource == null) {
@@ -127,6 +138,14 @@ internal class PageLoader<Key : Any, Data : Any>(
                     currentKey = if (currentStatusFlow is PagingStatus.Success<*>) {
                         currentStatusFlow.currentKey as? Key
                     } else null
+                )
+                currentStatusFlow.value = getSuccessStatus(
+                    isLoadingPageInOrder = isLoadingPageInOrder,
+                    pagingSourceWithIndex = lastPage?.pagingSourceWithIndex,
+                    currentKey = lastPage?.currentPageKey,
+                    dataPages = dataPages,
+                    isPaginationDown = isPaginationDown,
+                    paginationDirection = paginationDirection
                 )
                 return LoadResult.NothingToLoad()
             }
@@ -181,33 +200,27 @@ internal class PageLoader<Key : Any, Data : Any>(
 
         // setting new status after loading completed
         val status = when (result) {
-            is LoadResult.Success -> PagingStatus.Success(
-                hasNextPage = (isLoadingPageInOrder && result.nextPageKey != null)
-                        || pagingSourcesManager.findNextPagingSource(
-                    currentPagingSource = if (isLoadingPageInOrder) pagingSourceWithIndex else {
-                        getLastSourceWithIndex(dataPages, isPaginationDown)
-                    },
-                    isThereKey = false,
-                    paginationDirection = paginationDirection
-                ) != null,
-                currentKey = currentKey
+            is LoadResult.Success -> getSuccessStatus(
+                isLoadingPageInOrder = isLoadingPageInOrder,
+                pagingSourceWithIndex = pagingSourceWithIndex,
+                currentKey = currentKey,
+                nextPageKey = result.nextPageKey,
+                dataPages = dataPages,
+                isPaginationDown = isPaginationDown,
+                paginationDirection = paginationDirection
             )
 
             is LoadResult.Failure -> PagingStatus.Failure(
                 throwable = result.throwable
             )
 
-            is LoadResult.NothingToLoad -> PagingStatus.Success(
-                hasNextPage = if (isLoadingPageInOrder) pagingSourcesManager.findNextPagingSource(
-                    currentPagingSource = pagingSourceWithIndex,
-                    isThereKey = false,
-                    paginationDirection = paginationDirection
-                ) != null else pagingSourcesManager.findNextPagingSource(
-                    currentPagingSource = getLastSourceWithIndex(dataPages, isPaginationDown),
-                    isThereKey = false,
-                    paginationDirection = paginationDirection
-                ) != null,
-                currentKey = currentKey
+            is LoadResult.NothingToLoad -> getSuccessStatus(
+                isLoadingPageInOrder = isLoadingPageInOrder,
+                pagingSourceWithIndex = pagingSourceWithIndex,
+                currentKey = currentKey,
+                dataPages = dataPages,
+                isPaginationDown = isPaginationDown,
+                paginationDirection = paginationDirection
             )
         }
 
@@ -308,6 +321,25 @@ internal class PageLoader<Key : Any, Data : Any>(
             }
         }
     }
+
+    private inline fun getSuccessStatus(
+        isLoadingPageInOrder: Boolean,
+        pagingSourceWithIndex: Pair<PagingSource<Key, Data>, Int>?,
+        currentKey: Key?,
+        dataPages: List<DataPage<Key, Data>>,
+        isPaginationDown: Boolean,
+        paginationDirection: PaginationDirection,
+        nextPageKey: Key? = null,
+    ) = PagingStatus.Success(
+        hasNextPage = (isLoadingPageInOrder && nextPageKey != null) ||
+                pagingSourcesManager.findNextPagingSource(
+                    currentPagingSource = if (isLoadingPageInOrder) pagingSourceWithIndex
+                    else getLastSourceWithIndex(dataPages, isPaginationDown),
+                    isThereKey = false,
+                    paginationDirection = paginationDirection
+                ) != null,
+        currentKey = currentKey
+    )
 
     private inline fun getLastSourceWithIndex(
         dataPages: List<DataPage<Key, Data>>,

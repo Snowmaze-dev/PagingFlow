@@ -48,14 +48,17 @@ class BasicPagingFlowTest {
 
     @Test
     fun paginateFirstAndNothingToLoad() = runTest {
-        val testDataSource = TestPagingSource(pageSize)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
-            addDownPagingSource(testDataSource)
+            addDownPagingSource(TestPagingSource(pageSize))
             addDownPagingSource(NothingToLoadSource())
         }
         pagingFlow.loadNextPageWithResult()
         assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
         assertIs<LoadNextPageResult.NothingToLoad<Int>>(pagingFlow.loadNextPageWithResult())
+        assertFalse(pagingFlow.downPagingStatus.value.hasNextPage)
+        pagingFlow.addDownPagingSource(TestPagingSource(pageSize))
+        assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
+        assertIs<LoadNextPageResult.Success<Int>>(pagingFlow.loadNextPageWithResult())
         assertFalse(pagingFlow.downPagingStatus.value.hasNextPage)
     }
 

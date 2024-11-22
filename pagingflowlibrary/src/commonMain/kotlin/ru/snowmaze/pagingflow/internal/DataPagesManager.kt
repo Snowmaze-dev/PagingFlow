@@ -74,13 +74,14 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         skipPage: DataPage<Key, Data>? = null,
         removeCachedData: Boolean = true,
     ) {
+        val dataPages = _dataPages
         for (page in dataPages) {
             if (page == skipPage) continue
             page.listenJob.cancel()
             page.data = null
         }
-        _dataPages.clear()
-        skipPage?.let { _dataPages.add(it) }
+        dataPages.clear()
+        skipPage?.let { dataPages.add(it) }
         if (removeCachedData) cachedData.clear()
         isAnyDataChanged = false
         notifyOnEvent(InvalidateEvent(invalidateBehavior))
@@ -106,21 +107,22 @@ internal class DataPagesManager<Key : Any, Data : Any>(
 
     fun updateIndexes() {
         val newCachedData = platformMapOf<Int, Pair<Key?, MutablePagingParams>>()
-        for (index in _dataPages.indices) {
-            _dataPages[index].apply {
+        val dataPages = _dataPages
+        for (index in dataPages.indices) {
+            dataPages[index].apply {
                 val pagingSource = pagingSourceWithIndex.first
                 cachedData[pageIndex]?.let { newCachedData[index] = it }
                 pageIndex = index
                 dataSourceIndex = pagingSourcesManager.getSourceIndex(pagingSource)
                 pagingSourceWithIndex = pagingSource to dataSourceIndex
 
-                val previousPage = _dataPages.getOrNull(index - 1)
+                val previousPage = dataPages.getOrNull(index - 1)
                 val isPreviousPageHaveSameDataSource =
                     previousPage?.pagingSourceWithIndex?.first == pagingSource
                 previousPageKey = if (isPreviousPageHaveSameDataSource) {
                     previousPage?.currentPageKey
                 } else null
-                val nextPage = _dataPages.getOrNull(index + 1)
+                val nextPage = dataPages.getOrNull(index + 1)
                 nextPageKey = if (isPreviousPageHaveSameDataSource) {
                     nextPage?.currentPageKey
                 } else null
@@ -251,8 +253,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         isPaginationDown: Boolean
     ) {
         if (value == null) return
-        val isPageDataSizeChanged =
-            value.data.size != (page.data?.data?.size ?: page.itemCount ?: 0)
+        val isPageDataSizeChanged = value.data.size != page.currentItemCount
         if (pageLoaderConfig.shouldStorePageItems) page.data = value
         page.itemCount = value.data.size
         val trimEvents = if (isPageDataSizeChanged) trimPages(lastPaginationDirection, page)
@@ -394,7 +395,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                     sourceIndex = page.dataSourceIndex,
                     pageIndex = page.pageIndex,
                     pageIndexInSource = page.pageIndexInPagingSource,
-                    itemsCount = page.data?.data?.size ?: page.itemCount ?: 0
+                    itemsCount = page.currentItemCount
                 )
                 page.data = null
                 page.itemCount = null

@@ -4,7 +4,7 @@ import kotlinx.coroutines.Job
 import ru.snowmaze.pagingflow.UpdatableData
 import ru.snowmaze.pagingflow.source.PagingSource
 
-internal class DataPage<Key : Any, Data : Any>(
+internal data class DataPage<Key : Any, Data : Any>(
 
     var data: UpdatableData<Key, Data>?,
 
@@ -20,6 +20,8 @@ internal class DataPage<Key : Any, Data : Any>(
     var dataSourceIndex: Int,
     var pageIndexInPagingSource: Int
 ) {
+
+    inline val currentItemCount get() = data?.data?.size ?: itemCount ?: 0
 
     inline val isNullified get() = itemCount == null
 }
