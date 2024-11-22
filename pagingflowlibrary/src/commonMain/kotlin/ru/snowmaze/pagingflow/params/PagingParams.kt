@@ -5,19 +5,14 @@ package ru.snowmaze.pagingflow.params
  * @see PagingLibraryParamsKeys
  * @see DataKey
  */
-abstract class PagingParams internal constructor() {
+open class PagingParams internal constructor(
+    internalMap: Map<String, Any?>,
+    reuseMap: Boolean = true
+) {
 
     companion object {
 
-        val EMPTY: PagingParams = MutablePagingParams(emptyMap())
-
-        fun Map<DataKey<*>, Any>.pagingParams() = MutablePagingParams(mapKeys { it.key.key })
-
-        operator fun invoke() = MutablePagingParams()
-
-        operator fun invoke(map: Map<String, Any?>) = MutablePagingParams(map, reuseMap = false)
-
-        operator fun invoke(pagingParams: PagingParams) = MutablePagingParams(pagingParams)
+        val EMPTY = PagingParams(emptyMap())
 
         operator fun invoke(
             capacity: Int = 5,
@@ -25,51 +20,30 @@ abstract class PagingParams internal constructor() {
         ) = MutablePagingParams(capacity).apply(builder)
     }
 
-    abstract val entries: Set<Map.Entry<String, Any?>>
-    abstract val keys: Set<String>
-    abstract val size: Int
-    abstract val values: Collection<Any?>
-
-    operator fun <T> get(key: DataKey<T>): T = getOrNull(key)
-        ?: throw IllegalArgumentException("You should specify ${key.key} key for that operation.")
-
-    abstract fun <T> getOrNull(key: DataKey<T>): T?
-
-    abstract fun isEmpty(): Boolean
-
-    abstract fun containsValue(value: Any): Boolean
-
-    abstract fun containsKey(key: DataKey<*>): Boolean
-
-    abstract fun getStringKeysMap(): Map<String, Any?>
-}
-
-open class ReadOnlyPagingParams internal constructor(
-    internalMap: Map<String, Any?>,
-    reuseMap: Boolean = true
-): PagingParams() {
-
-    constructor(pagingParams: ReadOnlyPagingParams) : this(pagingParams.map, reuseMap = false)
+    constructor(pagingParams: PagingParams) : this(pagingParams.map, reuseMap = false)
 
     internal open val map = if (reuseMap) internalMap
     else LinkedHashMap(internalMap)
 
-    override val entries get() = map.entries
-    override val keys get() = map.keys
-    override val size get() = map.size
-    override val values get() = map.values
+    val entries get() = map.entries
+    val keys get() = map.keys
+    val size get() = map.size
+    val values get() = map.values
 
-    override fun <T> getOrNull(key: DataKey<T>): T? {
+    operator fun <T> get(key: DataKey<T>): T = getOrNull(key)
+        ?: throw IllegalArgumentException("You should specify ${key.key} key for that operation.")
+
+    fun <T> getOrNull(key: DataKey<T>): T? {
         return map[key.key] as? T
     }
 
-    override fun isEmpty() = map.isEmpty()
+    fun isEmpty() = map.isEmpty()
 
-    override fun containsValue(value: Any) = map.containsValue(value)
+    fun containsValue(value: Any) = map.containsValue(value)
 
-    override fun containsKey(key: DataKey<*>) = map.containsKey(key.key)
+    fun containsKey(key: DataKey<*>) = map.containsKey(key.key)
 
-    override fun getStringKeysMap() = map.mapKeys { it.key }
+    fun getStringKeysMap() = map.mapKeys { it.key }
 
     override fun toString(): String {
         return getStringKeysMap().toString()
@@ -79,20 +53,20 @@ open class ReadOnlyPagingParams internal constructor(
 class MutablePagingParams internal constructor(
     map: Map<String, Any?>,
     reuseMap: Boolean = true
-) : ReadOnlyPagingParams(map, reuseMap) {
+) : PagingParams(map, reuseMap) {
 
     constructor(): this(LinkedHashMap())
 
     constructor(capacity: Int) : this(LinkedHashMap(capacity))
 
     constructor(pagingParams: PagingParams) : this(
-        (pagingParams as ReadOnlyPagingParams).map, reuseMap = false
+        pagingParams.map, reuseMap = false
     )
 
     private val internalMap get() = map as MutableMap<String, Any?>
 
     fun put(pagingParams: PagingParams) {
-        internalMap.putAll((pagingParams as ReadOnlyPagingParams).map)
+        internalMap.putAll(pagingParams.map)
     }
 
     fun clear() = internalMap.clear()
@@ -101,14 +75,16 @@ class MutablePagingParams internal constructor(
 
     fun <T> put(key: DataKey<T>, value: T?) = internalMap.put(key.key, value)
 
-    fun asReadOnly(): PagingParams = ReadOnlyPagingParams(internalMap)
+    fun asReadOnly(): PagingParams = PagingParams(internalMap)
 }
 
 fun <T : Any> pagingParamsOf(pair: Pair<DataKey<T>, T>) = PagingParams(1) {
     put(pair.first, pair.second)
 }
 
-fun pagingParamsOf(vararg pairs: Pair<DataKey<out Any?>, Any?>) = PagingParams(buildMap(pairs.size) {
+fun pagingParamsOf(
+    vararg pairs: Pair<DataKey<out Any?>, Any?>
+) = MutablePagingParams(buildMap(pairs.size) {
     putAll(pairs = pairs.map { it.first.key to it.second })
 })
 

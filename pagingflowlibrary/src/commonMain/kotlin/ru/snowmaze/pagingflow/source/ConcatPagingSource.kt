@@ -197,15 +197,14 @@ class ConcatPagingSource<Key : Any, Data : Any>(
                 else pageLoader.upPagingStatus).value = it
             }
             val returnData = lastResult.returnData?.let {
-                PagingParams(it)
+                MutablePagingParams(it)
             } ?: MutablePagingParams()
 
             lastResult = lastResult.mapParams(returnData)
-            returnData.getOrNull(key)
-                ?.returnData?.let { PagingParams(it) }?.let {
-                    returnData.put(key, returnData[key].copy(returnData = it))
-                }
-            (returnData.getOrNull(key)?.returnData ?: returnData)?.put(
+            returnData.getOrNull(key)?.returnData?.let { MutablePagingParams(it) }?.let {
+                returnData.put(key, returnData[key].copy(returnData = it))
+            }
+            (returnData.getOrNull(key)?.returnData ?: returnData).put(
                 ReturnPagingLibraryKeys.PagingParamsList,
                 resultPagingParams
             )
