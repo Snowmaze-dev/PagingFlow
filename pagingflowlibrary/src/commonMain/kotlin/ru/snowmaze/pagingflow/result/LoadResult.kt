@@ -3,6 +3,7 @@ package ru.snowmaze.pagingflow.result
 import kotlinx.coroutines.flow.Flow
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.UpdatableData
+import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.source.PagingSource
 
@@ -29,7 +30,7 @@ sealed class LoadResult<Key : Any, Data : Any> {
             val dataFlow: Flow<UpdatableData<Key, Data>>?, // You can specify null to use dataFlow from last page
             override val nextPageKey: Key? = null,
             override val returnData: PagingParams? = null,
-            override val cachedResult: PagingParams? = null,
+            override val cachedResult: MutablePagingParams? = null,
         ) : Success<Key, Data>()
 
         /**
@@ -39,7 +40,7 @@ sealed class LoadResult<Key : Any, Data : Any> {
             val data: List<Data?>?,
             override val nextPageKey: Key? = null,
             override val returnData: PagingParams? = null,
-            override val cachedResult: PagingParams? = null,
+            override val cachedResult: MutablePagingParams? = null,
         ) : Success<Key, Data>()
     }
 

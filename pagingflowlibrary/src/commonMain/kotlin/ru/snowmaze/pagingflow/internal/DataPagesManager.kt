@@ -184,7 +184,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
 
         page.itemCount = 0
 
-        if (result is LoadResult.Success.FlowSuccess) {
+        if (result is LoadResult.Success.FlowSuccess && result.dataFlow != null) {
             var isFirst = true
             val setData: suspend (data: UpdatableData<Key, Data>?) -> Unit = { value ->
                 setDataMutex.withLock {
@@ -200,7 +200,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                             isFirst = isFirst,
                             isPaginationDown = isPaginationDown
                         )
-                    } catch (e: Exception) {
+                    } catch (e: Throwable) {
                         if (isFirst) awaitDataSetChannel?.send(Unit)
                     }
                     isFirst = false
@@ -211,15 +211,15 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                 pageLoaderConfig.processingDispatcher + page.listenJob
             ) {
                 if (pageLoaderConfig.shouldCollectOnlyLatest) result.dataFlow
-                    ?.buffer(0, onBufferOverflow = BufferOverflow.DROP_OLDEST)
-                    ?.collect(setData)
-                else result.dataFlow?.collect(setData)
+                    .buffer(0, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+                    .collect(setData)
+                else result.dataFlow.collect(setData)
             }
-        } else if (result is LoadResult.Success.SimpleSuccess) try {
+        } else if (result is LoadResult.Success.SimpleSuccess && result.data != null) try {
             setNewPageData(
                 page = page,
                 value = UpdatableData(
-                    data = result.data ?: return,
+                    data = result.data,
                     nextPageKey = result.nextPageKey,
                     params = result.returnData
                 ),
@@ -231,7 +231,9 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                 isFirst = true,
                 isPaginationDown = isPaginationDown
             )
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
+            awaitDataSetChannel?.send(Unit)
+        } else {
             awaitDataSetChannel?.send(Unit)
         }
     }

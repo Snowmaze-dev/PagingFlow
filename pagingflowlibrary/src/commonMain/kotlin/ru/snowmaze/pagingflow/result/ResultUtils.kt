@@ -7,6 +7,7 @@ import kotlinx.coroutines.flow.map
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.UpdatableData
+import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.source.PagingSource
 import kotlin.contracts.ExperimentalContracts
@@ -58,7 +59,7 @@ inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.result(
     data: List<Data?>,
     nextPageKey: Key? = null,
     returnData: PagingParams? = null,
-    cachedResult: PagingParams? = null,
+    cachedResult: MutablePagingParams? = null,
 ): LoadResult.Success<Key, Data> {
     return LoadResult.Success.SimpleSuccess(
         data = data,
@@ -72,7 +73,7 @@ inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.result(
     dataFlow: Flow<List<Data?>>,
     nextPageKey: Key? = null,
     returnData: PagingParams? = null,
-    cachedResult: PagingParams? = null,
+    cachedResult: MutablePagingParams? = null,
 ) = updatableResult(
     dataFlow = dataFlow.map { UpdatableData(it, nextPageKey, returnData) },
     nextPageKey = nextPageKey,
@@ -84,7 +85,7 @@ inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.updatableResult(
     dataFlow: Flow<UpdatableData<Key, Data>>,
     nextPageKey: Key? = null,
     returnData: PagingParams? = null,
-    cachedResult: PagingParams? = null,
+    cachedResult: MutablePagingParams? = null,
 ) = LoadResult.Success.FlowSuccess(
     dataFlow = dataFlow,
     nextPageKey = nextPageKey,
@@ -99,7 +100,7 @@ inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.resultWithSingleRetur
     dataFlow: Flow<List<Data?>>,
     nextPageKey: Key? = null,
     returnData: PagingParams,
-    cachedResult: PagingParams? = null,
+    cachedResult: MutablePagingParams? = null,
 ): LoadResult.Success<Key, Data> {
     var currentReturnData: PagingParams? = returnData
     return LoadResult.Success.FlowSuccess(
@@ -117,7 +118,7 @@ inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.resultWithSingleRetur
 inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.useLastPageResult(
     nextPageKey: Key? = null,
     returnData: PagingParams? = null,
-    cachedResult: PagingParams? = null,
+    cachedResult: MutablePagingParams? = null,
 ) = LoadResult.Success.FlowSuccess<Key, Data>(
     dataFlow = null,
     nextPageKey = nextPageKey,
