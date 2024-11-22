@@ -16,8 +16,12 @@ open class PagingParams internal constructor(
 
         operator fun invoke(
             capacity: Int = 5,
-            builder: MutablePagingParams.() -> Unit
-        ) = MutablePagingParams(capacity).apply(builder)
+            builder: (MutablePagingParams.() -> Unit)? = null
+        ): MutablePagingParams {
+            val params = MutablePagingParams(capacity)
+            if (builder != null) params.builder()
+            return params
+        }
     }
 
     constructor(pagingParams: PagingParams) : this(pagingParams.map, reuseMap = false)
@@ -50,7 +54,7 @@ open class PagingParams internal constructor(
     }
 }
 
-class MutablePagingParams internal constructor(
+class MutablePagingParams(
     map: Map<String, Any?>,
     reuseMap: Boolean = true
 ) : PagingParams(map, reuseMap) {
@@ -84,7 +88,7 @@ fun <T : Any> pagingParamsOf(pair: Pair<DataKey<T>, T>) = PagingParams(1) {
 
 fun pagingParamsOf(
     vararg pairs: Pair<DataKey<out Any?>, Any?>
-) = MutablePagingParams(buildMap(pairs.size) {
+) = MutablePagingParams(LinkedHashMap<String, Any?>(pairs.size).apply {
     putAll(pairs = pairs.map { it.first.key to it.second })
 })
 

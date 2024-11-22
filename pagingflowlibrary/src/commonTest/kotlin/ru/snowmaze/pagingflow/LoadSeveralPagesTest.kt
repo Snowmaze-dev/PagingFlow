@@ -2,6 +2,7 @@ package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
+import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
 import ru.snowmaze.pagingflow.params.pagingParamsOf
 import ru.snowmaze.pagingflow.presenters.dataFlow
@@ -50,13 +51,11 @@ class LoadSeveralPagesTest {
         )
         var pages = 0
         val result = pagingFlow.loadSeveralPages(
-            getPagingParams = {
-                pages++
-                pagingParamsOf(
-                    PagingLibraryParamsKeys.ReturnAwaitJob to true
-                ).takeUnless { pages > 2 }
-            },
-        )
+            awaitDataSet = true
+        ) {
+            pages++
+            PagingParams(0).takeUnless { pages > 2 }
+        }
         assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
         assertFalse(pagingFlow.upPagingStatus.value.hasNextPage)
         assertEquals(
@@ -70,13 +69,11 @@ class LoadSeveralPagesTest {
         pages = 0
         assertIs<PagingStatus.Success<Int>>(pagingFlow.downPagingStatus.value)
         assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
-        pagingFlow.loadSeveralPages(
-            getPagingParams = {
-                pages++
-                if (pages > 4) null
-                else pagingParamsOf(PagingLibraryParamsKeys.ReturnAwaitJob to true)
-            },
-        )
+        pagingFlow.loadSeveralPages {
+            pages++
+            if (pages > 4) null
+            else pagingParamsOf(PagingLibraryParamsKeys.ReturnAwaitJob to true)
+        }
         assertIs<PagingStatus.Success<Int>>(pagingFlow.downPagingStatus.value)
         assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
         presenter.dataFlow.firstWithTimeout {
