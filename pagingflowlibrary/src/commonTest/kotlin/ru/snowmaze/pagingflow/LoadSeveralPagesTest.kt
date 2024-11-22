@@ -2,7 +2,6 @@ package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
-import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
 import ru.snowmaze.pagingflow.params.pagingParamsOf
 import ru.snowmaze.pagingflow.presenters.dataFlow
@@ -12,6 +11,7 @@ import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertTrue
 
 class LoadSeveralPagesTest {
@@ -68,6 +68,8 @@ class LoadSeveralPagesTest {
         presenter.dataFlow.firstWithTimeout { it.size == pageSize * 2 }
 
         pages = 0
+        assertIs<PagingStatus.Success<Int>>(pagingFlow.downPagingStatus.value)
+        assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
         pagingFlow.loadSeveralPages(
             getPagingParams = {
                 pages++
@@ -75,6 +77,8 @@ class LoadSeveralPagesTest {
                 else pagingParamsOf(PagingLibraryParamsKeys.ReturnAwaitJob to true)
             },
         )
+        assertIs<PagingStatus.Success<Int>>(pagingFlow.downPagingStatus.value)
+        assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
         presenter.dataFlow.firstWithTimeout {
             source.getItems(pageSize * 6).takeLast(maxItems) == it
         }

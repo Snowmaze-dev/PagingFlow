@@ -97,14 +97,14 @@ class PagingFlow<Key : Any, Data : Any>(
      */
     internal suspend fun load(
         paginationDirection: PaginationDirection?, pagingParams: MutablePagingParams? = null
-    ): LoadNextPageResult<Key> = pagingFlowConfiguration.processingDispatcher {
+    ): LoadNextPageResult<Key> {
         val defaultParams = pagingFlowConfiguration.defaultParamsProvider()
         val defaultPagingParams = defaultParams.pagingParams
         val pickedPaginationDirection = paginationDirection
             ?: pagingFlowConfiguration.defaultParamsProvider().paginationDirection
 
         val loadData = concatDataSource.load(
-            defaultParams.copy(
+            loadParams = defaultParams.copy(
                 paginationDirection = pickedPaginationDirection,
                 pagingParams = defaultPagingParams?.let {
                     MutablePagingParams(it)
@@ -115,7 +115,7 @@ class PagingFlow<Key : Any, Data : Any>(
         )
         val result = loadData.returnData?.getOrNull(concatDataSource.concatSourceResultKey)
         val returnData = result?.returnData ?: loadData.returnData ?: PagingParams.EMPTY
-        when (loadData) {
+        return when (loadData) {
             is LoadResult.Success<Key, Data> -> LoadNextPageResult.Success(
                 currentKey = result?.currentKey,
                 hasNext = result?.hasNext ?: false,

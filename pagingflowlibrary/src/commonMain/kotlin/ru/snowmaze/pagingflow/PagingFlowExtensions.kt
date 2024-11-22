@@ -1,5 +1,6 @@
 package ru.snowmaze.pagingflow
 
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import ru.snowmaze.pagingflow.params.LoadSeveralPagesData
@@ -18,7 +19,9 @@ import ru.snowmaze.pagingflow.utils.fastForEach
 suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPageWithResult(
     paginationDirection: PaginationDirection? = null,
     pagingParams: MutablePagingParams? = null
-) = load(paginationDirection, pagingParams)
+) = pagingFlowConfiguration.coroutineScope.async(pagingFlowConfiguration.processingDispatcher) {
+    load(paginationDirection, pagingParams)
+}.await()
 
 /**
  * Loads next page async
@@ -27,7 +30,7 @@ suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPageWithResult
 fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPage(
     paginationDirection: PaginationDirection? = null,
     pagingParams: MutablePagingParams? = null
-) = pagingFlowConfiguration.coroutineScope.launch {
+) = pagingFlowConfiguration.coroutineScope.launch(pagingFlowConfiguration.processingDispatcher) {
     load(paginationDirection, pagingParams)
 }
 
@@ -53,7 +56,7 @@ suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadSeveralPages(
     onSuccess: ((LoadResult.Success<Key, Data>) -> Unit)? = null,
     getPagingParams: suspend (LoadResult<Key, Data>?) -> MutablePagingParams?,
 ): LoadNextPageResult<Key> {
-    val result = load(
+    val result = loadNextPageWithResult(
         paginationDirection = paginationDirection,
         pagingParams = (pagingParams ?: MutablePagingParams(1)).apply {
             put(
@@ -99,7 +102,7 @@ suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPageAndAwaitDa
     timeout: Long? = null,
     pagingParams: MutablePagingParams? = null
 ): LoadNextPageResult<Key> {
-    val result = load(
+    val result = loadNextPageWithResult(
         paginationDirection = paginationDirection,
         pagingParams = (pagingParams ?: MutablePagingParams(1)).apply {
             put(PagingLibraryParamsKeys.ReturnAwaitJob, true)
