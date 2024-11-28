@@ -139,11 +139,13 @@ class ConcatPagingSource<Key : Any, Data : Any>(
         ) -> List<DiffOperation<PagingSource<Key, out Data>>>
     ) = dataSourcesHelper.setPagingSources(newPagingSourceList, diff)
 
-    suspend fun invalidateAndSetPagingSources(pagingSourceList: List<PagingSource<Key, Data>>) {
+    suspend fun invalidateAndSetPagingSources(pagingSourceList: List<PagingSource<Key, out Data>>) {
         loadDataMutex.withLock {
             withContext(concatDataSourceConfig.processingDispatcher) {
                 dataPagesManager.invalidate(removeCachedData = true)
-                pagingSourcesManager.replacePagingSources(pagingSourceList)
+                pagingSourcesManager.replacePagingSources(
+                    pagingSourceList as List<PagingSource<Key, Data>>
+                )
             }
         }
     }

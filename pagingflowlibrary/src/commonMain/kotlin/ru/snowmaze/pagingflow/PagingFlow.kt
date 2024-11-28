@@ -64,7 +64,7 @@ class PagingFlow<Key : Any, Data : Any>(
         concatDataSource.removePagingSource(dataSourceIndex)
     }
 
-    suspend fun invalidateAndSetPagingSources(pagingSourceList: List<PagingSource<Key, Data>>) {
+    suspend fun invalidateAndSetPagingSources(pagingSourceList: List<PagingSource<Key, out Data>>) {
         concatDataSource.invalidateAndSetPagingSources(pagingSourceList)
     }
 
