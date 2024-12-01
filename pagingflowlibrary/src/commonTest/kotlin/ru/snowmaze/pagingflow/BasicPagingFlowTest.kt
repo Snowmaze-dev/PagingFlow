@@ -43,7 +43,8 @@ class BasicPagingFlowTest {
             pagingFlow = pagingFlow,
             firstSource = testDataSource,
             pagingDataPresenter = presenter,
-            invalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST)
+            invalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST
+        )
     }
 
     @Test
@@ -97,10 +98,17 @@ class BasicPagingFlowTest {
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
             addDownPagingSource(testDataSource)
         }
+        val presenter = pagingFlow.pagingDataPresenter()
         testDataSource.currentException = IllegalArgumentException()
         val result = pagingFlow.loadNextPageWithResult()
-        assertTrue(result is LoadNextPageResult.Failure<Int>)
-        assertTrue(pagingFlow.downPagingStatus.value is PagingStatus.Failure)
+        assertIs<LoadNextPageResult.Failure<Int>>(result)
+        assertIs<PagingStatus.Failure<Int>>(pagingFlow.downPagingStatus.value)
+        testDataSource.currentException = null
+        val resultWithoutError = pagingFlow.loadNextPageWithResult()
+        assertIs<LoadNextPageResult.Success<Int>>(resultWithoutError)
+        assertIs<PagingStatus.Success<Int>>(pagingFlow.downPagingStatus.value)
+        assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
+        assertContentEquals(testDataSource.getItems(pageSize), presenter.data)
     }
 
     @Test
