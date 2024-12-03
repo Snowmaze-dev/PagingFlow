@@ -15,6 +15,7 @@ import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.EventFromDataSource
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
+import ru.snowmaze.pagingflow.diff.OnDataLoaded
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
@@ -67,6 +68,10 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                 resendAllPages(listOf(callback))
             }
         }
+    }
+
+    suspend fun notifyIfNeeded(pagingParams: PagingParams?) {
+        if (!isAnyDataChanged) notifyOnEvent(OnDataLoaded(pagingParams))
     }
 
     suspend fun invalidate(
@@ -152,7 +157,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
             }
             add(
                 0, if (isEmpty()) InvalidateEvent(InvalidateBehavior.INVALIDATE_IMMEDIATELY)
-                else InvalidateEvent()
+                else InvalidateEvent(null)
             )
         }
         toCallbacks.fastForEach { it.onEvents(events) }

@@ -214,14 +214,17 @@ internal class PageLoader<Key : Any, Data : Any>(
                 throwable = result.throwable
             )
 
-            is LoadResult.NothingToLoad -> getSuccessStatus(
-                isLoadingPageInOrder = isLoadingPageInOrder,
-                pagingSourceWithIndex = pagingSourceWithIndex,
-                currentKey = currentKey,
-                dataPages = dataPages,
-                isPaginationDown = isPaginationDown,
-                paginationDirection = paginationDirection
-            )
+            is LoadResult.NothingToLoad -> {
+                dataPagesManager.notifyIfNeeded(result.returnData)
+                getSuccessStatus(
+                    isLoadingPageInOrder = isLoadingPageInOrder,
+                    pagingSourceWithIndex = pagingSourceWithIndex,
+                    currentKey = currentKey,
+                    dataPages = dataPages,
+                    isPaginationDown = isPaginationDown,
+                    paginationDirection = paginationDirection
+                )
+            }
         }
 
         if (result !is LoadResult.Success) {
