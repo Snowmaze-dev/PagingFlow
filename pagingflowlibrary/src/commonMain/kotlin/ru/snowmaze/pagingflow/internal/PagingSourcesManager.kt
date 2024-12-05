@@ -6,38 +6,45 @@ import ru.snowmaze.pagingflow.utils.fastIndexOfFirst
 
 internal class PagingSourcesManager<Key : Any, Data : Any> {
 
-    private val _pagingSources = mutableListOf<PagingSource<Key, Data>>()
-    val pagingSources: List<PagingSource<Key, Data>> get() = _pagingSources
+    private val _downPagingSources = mutableListOf<PagingSource<Key, Data>>()
+    val downPagingSources: List<PagingSource<Key, Data>> get() = _downPagingSources
+    private val _upPagingSources = mutableListOf<PagingSource<Key, Data>>()
+    val upPagingSources = _upPagingSources
 
     fun replacePagingSources(pagingSourceList: List<PagingSource<Key, Data>>) {
-        _pagingSources.clear()
-        _pagingSources.addAll(pagingSourceList)
+        _downPagingSources.clear()
+        _downPagingSources.addAll(pagingSourceList)
     }
 
     /**
      * Adds paging source to end of chain
      */
-    fun addPagingSource(pagingSource: PagingSource<Key, Data>, index: Int? = null) {
-        if (index == null) _pagingSources.add(pagingSource)
-        else _pagingSources.add(index, pagingSource)
+    fun addDownPagingSource(pagingSource: PagingSource<Key, Data>, index: Int? = null) {
+        if (index == null) _downPagingSources.add(pagingSource)
+        else _downPagingSources.add(index, pagingSource)
+    }
+
+    fun addUpPagingSource(pagingSource: PagingSource<Key, Data>) {
+        _upPagingSources.add(pagingSource)
     }
 
     /**
      * Removes paging source and invalidates all data
      */
     fun removePagingSource(pagingSource: PagingSource<Key, Data>) {
-        _pagingSources.remove(pagingSource)
+        _downPagingSources.remove(pagingSource)
     }
 
     fun removePagingSource(dataSourceIndex: Int): Boolean {
-        _pagingSources.getOrNull(dataSourceIndex) ?: return false
-        _pagingSources.removeAt(dataSourceIndex)
+        _downPagingSources.getOrNull(dataSourceIndex) ?: return false
+        _downPagingSources.removeAt(dataSourceIndex)
         return true
     }
 
     fun getSourceIndex(
         pagingSource: PagingSource<Key, Data>
-    ) = pagingSources.fastIndexOfFirst { it == pagingSource }
+    ) = _upPagingSources.fastIndexOfFirst { it == pagingSource }.takeUnless { it == -1 }
+        ?: _downPagingSources.fastIndexOfFirst { it == pagingSource }
 
     fun findNextPagingSource(
         currentPagingSource: Pair<PagingSource<Key, Data>, Int>?,
@@ -45,22 +52,18 @@ internal class PagingSourcesManager<Key : Any, Data : Any> {
         isThereKey: Boolean
     ): Pair<PagingSource<Key, Data>, Int>? {
         if (isThereKey && currentPagingSource?.first != null) return currentPagingSource
-        val sourceIndex = if (currentPagingSource?.first == null) -1
-        else {
-            val foundSourceIndex = getSourceIndex(currentPagingSource.first)
-            if (foundSourceIndex == -1) throw IllegalStateException(
-                "Cant find current data sources. Looks like bug in library. Report to developer."
-            )
-            foundSourceIndex
-        }
+        val sourceIndex = if (currentPagingSource?.first == null) {
+            if (paginationDirection == PaginationDirection.DOWN) -1 else 0
+        } else currentPagingSource.second
         val checkingIndex =
             sourceIndex + if (paginationDirection == PaginationDirection.DOWN) 1 else -1
-        return pagingSources.getOrNull(checkingIndex)?.let { it to checkingIndex }
+        return (if (checkingIndex >= 0) downPagingSources.getOrNull(checkingIndex)
+        else _upPagingSources.getOrNull(checkingIndex + 1))?.let { it to checkingIndex }
     }
 
     fun movePagingSource(oldIndex: Int, newIndex: Int) {
-        val old = pagingSources.getOrNull(oldIndex) ?: return
-        _pagingSources.removeAt(oldIndex)
-        _pagingSources.add(newIndex.coerceAtMost(pagingSources.size), old)
+        val old = downPagingSources.getOrNull(oldIndex) ?: return
+        _downPagingSources.removeAt(oldIndex)
+        _downPagingSources.add(newIndex.coerceAtMost(downPagingSources.size), old)
     }
 }

@@ -2,7 +2,7 @@ package ru.snowmaze.pagingflow.source
 
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.result.LoadResult
-import ru.snowmaze.pagingflow.result.simpleResult
+import ru.snowmaze.pagingflow.result.result
 
 class DefinedItemsTestPagingSource<T : Any>(
     val key: String, val items: List<T>
@@ -15,7 +15,7 @@ class DefinedItemsTestPagingSource<T : Any>(
         startIndex: Int,
         endIndex: Int
     ): LoadResult<Int, T> {
-        return simpleResult(items.subList(startIndex, endIndex))
+        return result(items.subList(startIndex, endIndex))
     }
 
     override fun hashCode() = key.hashCode()

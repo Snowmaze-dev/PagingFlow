@@ -10,7 +10,7 @@ interface ListBuildStrategy<Key : Any, Data : Any> {
     val startPageIndex: Int
     val recentLoadData: List<PagingParams>
 
-    suspend fun buildList(
+    fun buildList(
         events: List<DataChangedEvent<Key, Data>>,
         onInvalidate: (InvalidateBehavior?) -> Unit
     )

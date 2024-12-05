@@ -12,7 +12,7 @@ interface PagingSource<Key : Any, Data : Any> {
 
     val defaultLoadParams: LoadParams<Key>? get() = null
 
-    val pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler? get() = null
+    val pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler<Key, Data>? get() = null
 
     /**
      * Loads next page of data which can be updated when flow in result is updated

@@ -16,7 +16,7 @@ internal fun <T, R> List<T>.flattenWithSize(): List<R> {
 @OptIn(ExperimentalContracts::class)
 inline fun <T> List<T>.fastForEach(action: (T) -> Unit) {
     contract { callsInPlace(action) }
-    for (index in indices) {
+    for (index in 0..size - 1) {
         action(get(index))
     }
 }
@@ -36,9 +36,17 @@ internal inline fun <T> List<T>.fastIndexOfFirst(predicate: (T) -> Boolean): Int
     contract { callsInPlace(predicate) }
     var index = 0
     fastForEach { item ->
-        if (predicate(item))
-            return index
+        if (predicate(item)) return index
         index++
+    }
+    return -1
+}
+
+@OptIn(ExperimentalContracts::class)
+internal inline fun <T> List<T>.fastIndexOfLast(predicate: (T) -> Boolean): Int {
+    contract { callsInPlace(predicate) }
+    for (index in (0..size - 1).reversed()) {
+        if (predicate(get(index))) return index
     }
     return -1
 }

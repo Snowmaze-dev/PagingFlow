@@ -14,24 +14,28 @@ import ru.snowmaze.pagingflow.PagingStatus
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.errorshandler.DefaultPagingUnhandledErrorsHandler
+import ru.snowmaze.pagingflow.errorshandler.PagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.internal.DataPagesManager
 import ru.snowmaze.pagingflow.internal.PagingSourcesHelper
 import ru.snowmaze.pagingflow.internal.PagingSourcesManager
 import ru.snowmaze.pagingflow.internal.PageLoader
+import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
+import ru.snowmaze.pagingflow.params.toMutableParams
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.result.mapParams
 import ru.snowmaze.pagingflow.utils.DiffOperation
 import ru.snowmaze.pagingflow.utils.fastFirstOrNull
-import ru.snowmaze.pagingflow.utils.fastIndexOfFirst
 import ru.snowmaze.pagingflow.utils.mapHasNext
 import ru.snowmaze.pagingflow.utils.toInfo
 
 class ConcatPagingSource<Key : Any, Data : Any>(
     private val concatDataSourceConfig: PageLoaderConfig<Key>,
+    override val pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler<Key, Data> =
+        DefaultPagingUnhandledErrorsHandler()
 ) : PagingSource<Key, Data>, PagingDataChangesMedium<Key, Data> {
 
     private val loadDataMutex = Mutex()
@@ -55,8 +59,6 @@ class ConcatPagingSource<Key : Any, Data : Any>(
     val isLoading
         get() = upPagingStatus.value is PagingStatus.Loading ||
                 downPagingStatus.value is PagingStatus.Loading
-
-    override val pagingUnhandledErrorsHandler = DefaultPagingUnhandledErrorsHandler()
 
     private val pageLoader = PageLoader(
         pagingSourcesManager = pagingSourcesManager,
@@ -103,9 +105,14 @@ class ConcatPagingSource<Key : Any, Data : Any>(
         return dataPagesManager.removeDataChangedCallback(callback)
     }
 
-    fun addPagingSource(pagingSource: PagingSource<Key, out Data>) {
-        pagingSourcesManager.addPagingSource(pagingSource as PagingSource<Key, Data>)
-        pageLoader.downPagingStatus.value = downPagingStatus.value.mapHasNext(true)
+    fun addDownPagingSource(pagingSource: PagingSource<Key, out Data>) {
+        pagingSourcesManager.addDownPagingSource(pagingSource as PagingSource<Key, Data>)
+        pageLoader.downPagingStatus.value = pageLoader.downPagingStatus.value.mapHasNext(true)
+    }
+
+    fun addUpPagingSource(pagingSource: PagingSource<Key, out Data>) {
+        pagingSourcesManager.addUpPagingSource(pagingSource as PagingSource<Key, Data>)
+        pageLoader.upPagingStatus.value = pageLoader.upPagingStatus.value.mapHasNext(true)
     }
 
     fun removePagingSource(pagingSource: PagingSource<Key, out Data>) {
@@ -132,11 +139,13 @@ class ConcatPagingSource<Key : Any, Data : Any>(
         ) -> List<DiffOperation<PagingSource<Key, out Data>>>
     ) = dataSourcesHelper.setPagingSources(newPagingSourceList, diff)
 
-    suspend fun invalidateAndSetPagingSources(pagingSourceList: List<PagingSource<Key, Data>>) {
+    suspend fun invalidateAndSetPagingSources(pagingSourceList: List<PagingSource<Key, out Data>>) {
         loadDataMutex.withLock {
             withContext(concatDataSourceConfig.processingDispatcher) {
                 dataPagesManager.invalidate(removeCachedData = true)
-                pagingSourcesManager.replacePagingSources(pagingSourceList)
+                pagingSourcesManager.replacePagingSources(
+                    pagingSourceList as List<PagingSource<Key, Data>>
+                )
             }
         }
     }
@@ -164,7 +173,7 @@ class ConcatPagingSource<Key : Any, Data : Any>(
                     currentResult as? LoadResult<Any, Any>
                 ) ?: break
                 val defaultPagingParams =
-                    concatDataSourceConfig.defaultParamsProvider().pagingParams
+                    concatDataSourceConfig.defaultParamsProvider().pagingParams?.toMutableParams()
                 defaultPagingParams?.put(currentPagingParams)
                 lastResult = pageLoader.loadData(
                     loadParams = loadParams.copy(
@@ -190,15 +199,15 @@ class ConcatPagingSource<Key : Any, Data : Any>(
                 (if (isPaginationDown) pageLoader.downPagingStatus
                 else pageLoader.upPagingStatus).value = it
             }
-            lastResult = lastResult.mapParams(
-                lastResult.returnData?.let { PagingParams(it) } ?: PagingParams()
-            )
-            val returnData = lastResult.returnData
-            returnData?.getOrNull(key)
-                ?.returnData?.let { PagingParams(it) }?.let {
-                    returnData.put(key, returnData[key].copy(returnData = it))
-                }
-            (returnData?.getOrNull(key)?.returnData ?: returnData)?.put(
+            val returnData = lastResult.returnData?.let {
+                MutablePagingParams(it)
+            } ?: MutablePagingParams()
+
+            lastResult = lastResult.mapParams(returnData)
+            returnData.getOrNull(key)?.returnData?.let { MutablePagingParams(it) }?.let {
+                returnData.put(key, returnData[key].copy(returnData = it))
+            }
+            (returnData.getOrNull(key)?.returnData ?: returnData).put(
                 ReturnPagingLibraryKeys.PagingParamsList,
                 resultPagingParams
             )
@@ -224,6 +233,12 @@ class ConcatPagingSource<Key : Any, Data : Any>(
             dataPagesManager.invalidate(
                 invalidateBehavior = invalidateBehavior,
                 removeCachedData = removeCachedData,
+            )
+            pageLoader.downPagingStatus.value = PagingStatus.Initial(
+                hasNextPage = pagingSourcesManager.downPagingSources.isNotEmpty()
+            )
+            pageLoader.upPagingStatus.value = PagingStatus.Initial(
+                hasNextPage = pagingSourcesManager.upPagingSources.isNotEmpty()
             )
         }
     }

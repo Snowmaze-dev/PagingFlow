@@ -68,7 +68,7 @@ class PageAddedEvent<Key : Any, Data : Any>(
     sourceIndex: Int,
     pageIndex: Int,
     pageIndexInSource: Int,
-    items: List<Data>,
+    items: List<Data?>,
     params: PagingParams? = null,
 ) : PageChangedEvent<Key, Data>(
     key = key,
@@ -119,11 +119,15 @@ class PageRemovedEvent<Key : Any, Data : Any>(
  * @see [PagingFlow.invalidate]
  */
 class InvalidateEvent<Key : Any, Data : Any>(
-    val invalidateBehavior: InvalidateBehavior? = null
+    val invalidateBehavior: InvalidateBehavior?
 ) : DataChangedEvent<Key, Data>()
 
 class AwaitDataSetEvent<Key : Any, Data : Any>(
     val callback: () -> Unit
+) : DataChangedEvent<Key, Data>()
+
+class OnDataLoaded<Key : Any, Data : Any>(
+    val params: PagingParams?
 ) : DataChangedEvent<Key, Data>()
 
 @OptIn(ExperimentalContracts::class)

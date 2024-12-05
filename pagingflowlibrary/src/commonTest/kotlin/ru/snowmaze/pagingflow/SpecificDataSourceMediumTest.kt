@@ -2,7 +2,7 @@ package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
 import ru.snowmaze.pagingflow.diff.mediums.DataSourceDataChangesMedium
-import ru.snowmaze.pagingflow.presenters.dataFlow
+import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
@@ -27,8 +27,8 @@ class SpecificDataSourceMediumTest {
     fun baseTest() = runTestOnDispatchersDefault {
         val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
-            addPagingSource(TestPagingSource(40))
-            addPagingSource(testDataSource)
+            addDownPagingSource(TestPagingSource(40))
+            addDownPagingSource(testDataSource)
         }
         val presenterForFirst = DataSourceDataChangesMedium<Int, String, String>(
             pagingFlow,
@@ -38,15 +38,14 @@ class SpecificDataSourceMediumTest {
             pagingFlow,
             1
         ).pagingDataPresenter()
-        pagingFlow.loadNextPageAndAwaitDataSet()
-        presenterForFirst.dataFlow.firstEqualsWithTimeout(testDataSource.getItems(20))
+        pagingFlow.loadNextPageWithResult()
+        assertEquals(testDataSource.getItems(20), presenterForFirst.data)
         assertEquals(emptyList(), presenterForSecond.latestData.data)
-        pagingFlow.loadNextPageAndAwaitDataSet()
-        presenterForFirst.dataFlow.firstEqualsWithTimeout(testDataSource.getItems(40))
+        pagingFlow.loadNextPageWithResult()
+        assertEquals(testDataSource.getItems(40), presenterForFirst.data)
         assertEquals(emptyList(), presenterForSecond.latestData.data)
-        pagingFlow.loadNextPageAndAwaitDataSet()
-
-        presenterForFirst.dataFlow.firstEqualsWithTimeout(testDataSource.getItems(40).takeLast(20))
-        presenterForSecond.dataFlow.firstEqualsWithTimeout(testDataSource.getItems(20))
+        pagingFlow.loadNextPageWithResult()
+        assertEquals(testDataSource.getItems(40).takeLast(20), presenterForFirst.data)
+        assertEquals(testDataSource.getItems(20), presenterForSecond.data)
     }
 }

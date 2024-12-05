@@ -21,5 +21,7 @@ internal data class DataPage<Key : Any, Data : Any>(
     var pageIndexInPagingSource: Int
 ) {
 
+    inline val currentItemCount get() = data?.data?.size ?: itemCount ?: 0
+
     inline val isNullified get() = itemCount == null
 }

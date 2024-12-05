@@ -2,7 +2,7 @@ package ru.snowmaze.pagingflow.utils
 
 import ru.snowmaze.pagingflow.PagingStatus
 
-internal fun <Key: Any> PagingStatus<Key>.mapHasNext(
+internal inline fun <Key: Any> PagingStatus<Key>.mapHasNext(
     hasNext: Boolean,
 ) = when (this) {
     is PagingStatus.Success -> PagingStatus.Success(hasNext, currentKey)

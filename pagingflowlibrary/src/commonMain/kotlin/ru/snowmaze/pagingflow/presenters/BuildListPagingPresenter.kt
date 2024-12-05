@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import ru.snowmaze.pagingflow.diff.AwaitDataSetEvent
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.diff.InvalidateEvent
+import ru.snowmaze.pagingflow.presenters.InvalidateBehavior.*
 import ru.snowmaze.pagingflow.presenters.list.ListBuildStrategy
 import ru.snowmaze.pagingflow.utils.fastForEach
 import ru.snowmaze.pagingflow.utils.limitedParallelismCompat
@@ -52,11 +54,12 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
     protected fun onInvalidateInternal(
         specifiedInvalidateBehavior: InvalidateBehavior? = null,
     ) {
-        if (latestData.data.isEmpty()) return
+        if (latestData.data.isEmpty() && latestData.loadData.isEmpty()) return
         val invalidateBehavior = specifiedInvalidateBehavior ?: invalidateBehavior
+        listBuildStrategy.invalidate()
         onInvalidateAdditionalAction()
         val previousData = latestData
-        if (invalidateBehavior != InvalidateBehavior.INVALIDATE_IMMEDIATELY) {
+        if (invalidateBehavior != INVALIDATE_IMMEDIATELY) {
             lastInvalidateBehavior = invalidateBehavior
         }
         afterInvalidatedAction(invalidateBehavior, previousData)
@@ -73,10 +76,18 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
     private val onInvalidateAction = ::onInvalidateInternal
 
     protected suspend fun buildList(events: List<DataChangedEvent<Key, Data>>) {
+        val invalidateEvent = events.lastOrNull() as? InvalidateEvent
+        if (invalidateEvent != null) {
+            val selectedBehavior = invalidateEvent.invalidateBehavior ?: invalidateBehavior
+            if (selectedBehavior != INVALIDATE_IMMEDIATELY) {
+                onInvalidateInternal(selectedBehavior)
+                return
+            }
+        }
         val previousList = latestData
         listBuildStrategy.buildList(events, onInvalidateAction)
         _startIndex = listBuildStrategy.startPageIndex
-        if (lastInvalidateBehavior == InvalidateBehavior.SEND_EMPTY_LIST_BEFORE_NEXT_VALUE_SET &&
+        if (lastInvalidateBehavior == SEND_EMPTY_LIST_BEFORE_NEXT_VALUE_SET &&
             listBuildStrategy.list.isNotEmpty()
         ) {
             _dataFlow.emit(LatestData(emptyList()))
@@ -84,7 +95,7 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
         this.lastInvalidateBehavior = null
         _latestData = LatestData(
             data = listBuildStrategy.list,
-            recentLoadData = listBuildStrategy.recentLoadData
+            loadData = listBuildStrategy.recentLoadData
         )
         _dataFlow.emit(_latestData)
         onItemsSet(events, previousList)

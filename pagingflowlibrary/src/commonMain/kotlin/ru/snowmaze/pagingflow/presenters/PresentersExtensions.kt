@@ -1,7 +1,6 @@
 package ru.snowmaze.pagingflow.presenters
 
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.mediums.BufferEventsDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.MappingFlowPagingDataChangesMedium
@@ -9,8 +8,6 @@ import ru.snowmaze.pagingflow.diff.mediums.MappingPagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.BatchingPagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.composite.CompositePagingDataChangesMediumBuilder
-import ru.snowmaze.pagingflow.presenters.list.ListBuildStrategy
-import ru.snowmaze.pagingflow.presenters.list.ListByPagesBuildStrategy
 
 /**
  * Creates mapping presenter, which maps only changed pages and have throttling mechanism
@@ -20,7 +17,7 @@ import ru.snowmaze.pagingflow.presenters.list.ListByPagesBuildStrategy
  * @see pagingDataPresenter for arguments docs on arguments
  */
 fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mapDataPresenter(
-    configuration: SimplePresenterConfiguration<Key, NewData> = SimplePresenterConfiguration(),
+    configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
     transform: (PageChangedEvent<Key, Data>) -> List<NewData?>
 ) = MappingPagingDataChangesMedium(
     pagingDataChangesMedium = this,
@@ -31,7 +28,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
  * Maps events to flow of data
  */
 fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mapDataFlowPresenter(
-    configuration: SimplePresenterConfiguration<Key, NewData> = SimplePresenterConfiguration(),
+    configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
     transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>
 ) = MappingFlowPagingDataChangesMedium(
     pagingDataChangesMedium = this,
@@ -46,7 +43,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
  * @param transform mapping lambda
  */
 fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mapDataPresenter(
-    configuration: SimplePresenterConfiguration<Key, NewData> = SimplePresenterConfiguration(),
+    configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
     eventsBatchingDurationMsProvider: () -> Long = { 0 },
     shouldBatchAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
@@ -67,7 +64,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
  * Maps events to flow of data
  */
 fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mapDataFlowPresenter(
-    configuration: SimplePresenterConfiguration<Key, NewData> = SimplePresenterConfiguration(),
+    configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
     eventsBatchingDurationMsProvider: () -> Long = { 0 },
     shouldBatchAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
@@ -90,8 +87,8 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
  * @see InvalidateBehavior
  */
 fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresenter(
-    configuration: SimplePresenterConfiguration<Key, Data> = SimplePresenterConfiguration()
-) = SimpleBuildListPagingPresenter(
+    configuration: BasicPresenterConfiguration<Key, Data> = BasicPresenterConfiguration()
+) = BasicBuildListPagingPresenter(
     pagingDataChangesMedium = this,
     presenterConfiguration = configuration
 )
@@ -103,7 +100,7 @@ fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresent
  * @param shouldBufferEvents see [BufferEventsDataChangesMedium]
  */
 fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresenter(
-    configuration: SimplePresenterConfiguration<Key, Data> = SimplePresenterConfiguration(),
+    configuration: BasicPresenterConfiguration<Key, Data> = BasicPresenterConfiguration(),
     eventsBatchingDurationMsProvider: () -> Long = { 0 },
     shouldBatchAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
@@ -114,7 +111,7 @@ fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresent
 ).pagingDataPresenter(configuration)
 
 fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.compositeDataPresenter(
-    configuration: SimplePresenterConfiguration<Key, NewData> = SimplePresenterConfiguration(),
+    configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
     shouldBufferEvents: Boolean = false,
     builder: CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.() -> Unit
 ) = CompositePagingDataChangesMediumBuilder.build(
@@ -123,7 +120,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.co
 ).pagingDataPresenter(configuration)
 
 fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.compositeDataPresenter(
-    configuration: SimplePresenterConfiguration<Key, NewData> = SimplePresenterConfiguration(),
+    configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
     eventsBatchingDurationMsProvider: () -> Long = { 0 },
     shouldBatchAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,

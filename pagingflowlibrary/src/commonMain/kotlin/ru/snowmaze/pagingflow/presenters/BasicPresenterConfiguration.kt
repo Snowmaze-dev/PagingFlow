@@ -5,9 +5,9 @@ import ru.snowmaze.pagingflow.presenters.list.ListBuildStrategy
 import ru.snowmaze.pagingflow.presenters.list.ListByPagesBuildStrategy
 
 /**
- * Configuration for [SimpleBuildListPagingPresenter]
+ * Configuration for [BasicBuildListPagingPresenter]
  */
-class SimplePresenterConfiguration<Key : Any, Data : Any>(
+class BasicPresenterConfiguration<Key : Any, Data : Any>(
     val listBuildStrategy: ListBuildStrategy<Key, Data> = ListByPagesBuildStrategy(),
     val invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
     val shouldBeAlwaysSubscribed: Boolean = false,

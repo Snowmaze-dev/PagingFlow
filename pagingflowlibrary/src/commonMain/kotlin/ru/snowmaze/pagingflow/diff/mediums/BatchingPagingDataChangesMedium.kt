@@ -8,6 +8,7 @@ import kotlinx.coroutines.sync.withLock
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
+import ru.snowmaze.pagingflow.utils.fastIndexOfLast
 
 class BatchingPagingDataChangesMedium<Key : Any, Data : Any>(
     private val pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
@@ -27,8 +28,9 @@ class BatchingPagingDataChangesMedium<Key : Any, Data : Any>(
     override suspend fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
         mutex.withLock {
             var newEvents = events
-            if (!shouldBatchAddPagesEvents && eventsBatchingDurationMsProvider() != 0L) {
-                val lastIndex = events.indexOfLast { it is PageAddedEvent<Key, Data> }
+            val batchingTime = eventsBatchingDurationMsProvider()
+            if (!shouldBatchAddPagesEvents && batchingTime != 0L) {
+                val lastIndex = events.fastIndexOfLast { it is PageAddedEvent<Key, Data> }
                 if (lastIndex != -1) {
                     val toIndex = lastIndex + 1
                     val notifyEvents = savedEvents + events.subList(0, toIndex)
@@ -40,14 +42,16 @@ class BatchingPagingDataChangesMedium<Key : Any, Data : Any>(
             }
             if (newEvents.isNotEmpty()) {
                 savedEvents.addAll(newEvents)
-                sendEvents()
+                if (batchingTime == 0L) notifyOnEventsInternal()
+                else sendEvents()
             }
         }
     }
 
     override suspend fun onEvent(event: DataChangedEvent<Key, Data>) {
         mutex.withLock {
-            if (event is PageAddedEvent && !shouldBatchAddPagesEvents) {
+            val batchingTime = eventsBatchingDurationMsProvider()
+            if (event is PageAddedEvent && !shouldBatchAddPagesEvents && batchingTime != 0L) {
                 if (savedEvents.isEmpty()) notifyOnEvent(event)
                 else {
                     val newList = savedEvents + event
@@ -56,20 +60,27 @@ class BatchingPagingDataChangesMedium<Key : Any, Data : Any>(
                 }
             } else {
                 savedEvents.add(event)
-                sendEvents()
+                if (batchingTime == 0L) {
+                    job?.cancel()
+                    notifyOnEventsInternal()
+                } else sendEvents(batchingTime)
             }
         }
     }
 
-    fun sendEvents() {
+    fun sendEvents(batchingTime: Long = eventsBatchingDurationMsProvider()): Job {
         job?.cancel()
-        job = coroutineScope.launch(config.processingDispatcher) {
-            delay(eventsBatchingDurationMsProvider())
-            mutex.withLock {
-                if (savedEvents.size == 1) notifyOnEvent(savedEvents.first())
-                else notifyOnEvents(savedEvents.toList())
-                savedEvents.clear()
-            }
+        val job = coroutineScope.launch(config.processingDispatcher) {
+            delay(batchingTime)
+            mutex.withLock { notifyOnEventsInternal() }
         }
+        this.job = job
+        return job
+    }
+
+    private suspend inline fun notifyOnEventsInternal() {
+        if (savedEvents.size == 1) notifyOnEvent(savedEvents.first())
+        else notifyOnEvents(savedEvents.toList())
+        savedEvents.clear()
     }
 }

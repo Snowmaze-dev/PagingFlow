@@ -28,5 +28,5 @@ class SinglePagePagingSource<Key : Any, Data : Any>(
 
     override suspend fun load(
         loadParams: LoadParams<Key>,
-    ) = LoadResult.Success<Key, Data>(dataFlow = dataFlow)
+    ) = LoadResult.Success.FlowSuccess(dataFlow = dataFlow)
 }

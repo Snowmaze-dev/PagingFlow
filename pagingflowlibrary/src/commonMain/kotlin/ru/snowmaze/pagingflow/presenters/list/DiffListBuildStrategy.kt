@@ -8,6 +8,7 @@ import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.utils.fastForEach
 import ru.snowmaze.pagingflow.utils.fastSumOf
+import ru.snowmaze.pagingflow.utils.platformMapOf
 import kotlin.math.max
 
 /**
@@ -17,15 +18,17 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
     private val reuseList: Boolean
 ) : ListBuildStrategy<Key, Data> {
 
-    constructor(): this(false)
+    constructor() : this(false)
 
-    private val pageSizes = mutableMapOf<Int, Int>()
+    private val pageSizes = platformMapOf<Int, Int>()
     override var list = if (reuseList) mutableListOf<Data?>() else emptyList()
     override var startPageIndex: Int = 0
     override var recentLoadData: List<PagingParams> = emptyList()
     private var minIndex: Int = 0
+    private inline val mutableList get() = list as MutableList<Data?>
+    private var isBuildingList = false
 
-    override suspend fun buildList(
+    override fun buildList(
         events: List<DataChangedEvent<Key, Data>>,
         onInvalidate: (InvalidateBehavior?) -> Unit
     ) {
@@ -34,19 +37,20 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
         )
         recentLoadData = newRecentLoadData
         if (!reuseList) list = ArrayList(list)
-        buildListInternal(list as MutableList<Data?>, events, onInvalidate)
+        isBuildingList = true
+        buildListInternal(events, onInvalidate)
+        isBuildingList = false
     }
 
-    private suspend inline fun buildListInternal(
-        list: MutableList<Data?>,
+    private inline fun buildListInternal(
         events: List<DataChangedEvent<Key, Data>>,
-        crossinline onInvalidate: suspend (InvalidateBehavior?) -> Unit
+        onInvalidate: (InvalidateBehavior?) -> Unit
     ) = events.fastForEach { event ->
         event.handle(
             onPageAdded = { current -> // TODO double added event inconsistent behaviour
                 if (current.params != null) (recentLoadData as MutableList).add(current.params)
                 removePageItemsAndAdd(
-                    list = list,
+                    list = mutableList,
                     pageIndex = current.pageIndex,
                     newItems = current.items
                 )
@@ -60,14 +64,15 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
                     startPageIndex -= pageSizes[current.pageIndex] ?: 0
                 }
                 removePageItemsAndAdd(
-                    list = list,
+                    list = mutableList,
                     pageIndex = current.pageIndex,
                     newItems = current.items
                 )
             },
             onPageRemovedEvent = { current ->
                 val startIndex = calculateStartIndex(current.pageIndex)
-                repeat(pageSizes[current.pageIndex] ?: 0) { list.removeAt(startIndex) }
+                val mutableList = mutableList
+                repeat(pageSizes[current.pageIndex] ?: 0) { mutableList.removeAt(startIndex) }
                 pageSizes.remove(current.pageIndex)
                 if (minIndex == current.pageIndex) minIndex++
             },
@@ -103,10 +108,11 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
     }
 
     override fun invalidate() {
-        (list as? MutableList)?.let { list ->
+        if (reuseList) (list as? MutableList)?.let { list ->
             list.clear()
-            if (reuseList && list is ArrayList) list.trimToSize()
-        }
+            if (list is ArrayList) list.trimToSize()
+        } else if (isBuildingList) list = arrayListOf()
+        else list = emptyList()
         startPageIndex = 0
         minIndex = 0
         pageSizes.clear()
