@@ -1,25 +1,24 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.invoke
-import kotlinx.coroutines.joinAll
-import kotlinx.coroutines.test.runTest
-import ru.snowmaze.pagingflow.params.LoadSeveralPagesData
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
-import ru.snowmaze.pagingflow.presenters.data
+import ru.snowmaze.pagingflow.params.pagingParamsOf
+import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
-import ru.snowmaze.pagingflow.sources.MaxItemsConfiguration
-import ru.snowmaze.pagingflow.sources.TestDataSource
+import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
+import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
+import kotlin.test.assertTrue
 
 class LoadSeveralPagesTest {
 
-    val pageSize = 20
-    val removePagesOffset = 4
+    private val pageSize = 20
+    private val removePagesOffset = 4
 
     private val basePagingFlowConfiguration = PagingFlowConfiguration(
         defaultParams = LoadParams(pageSize, 0),
@@ -30,10 +29,11 @@ class LoadSeveralPagesTest {
         )
     )
 
+    // TODO add testing paging flow with multiple paging sources first of which returns nothing to load
     @Test
-    fun testLoadSeveralPages() = runTest {
-        val totalCount = 100
-        val source = TestDataSource(totalCount, 0L)
+    fun testLoadSeveralPages() = runTestOnDispatchersDefault {
+        val totalCount = 1000
+        val source = TestPagingSource(totalCount)
         val maxItems = pageSize * 4
         val pagingFlow = buildPagingFlow(
             basePagingFlowConfiguration.copy(
@@ -44,46 +44,40 @@ class LoadSeveralPagesTest {
                 )
             )
         ) {
-            addDataSource(source)
+            addDownPagingSource(source)
         }
         val presenter = pagingFlow.pagingDataPresenter(
-            debounceBufferDurationMsProvider = { 10 },
+            eventsBatchingDurationMsProvider = { 10 },
         )
         var pages = 0
-        val jobs = pagingFlow.loadNextPageWithResult(
-            pagingParams = PagingParams(
-                PagingLibraryParamsKeys.LoadSeveralPages to LoadSeveralPagesData<Int, String>(
-                    getPagingParams = {
-                        pages++
-                        if (pages > 2) null
-                        else PagingParams(PagingLibraryParamsKeys.ReturnAwaitJob to true)
-                    },
-                    onSuccess = {
-                    }
-                )
-            )
-        ).returnData[ReturnPagingLibraryKeys.PagingParamsList].mapNotNull {
-            it?.getOrNull(ReturnPagingLibraryKeys.DataSetJob)
+        val result = pagingFlow.loadSeveralPages(
+            awaitDataSet = true
+        ) {
+            pages++
+            PagingParams(0).takeUnless { pages > 2 }
         }
-        assertEquals(2, jobs.size)
-        jobs.joinAll()
-        assertEquals(source.getItems(pageSize * 2), presenter.data)
+        assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
+        assertFalse(pagingFlow.upPagingStatus.value.hasNextPage)
+        assertEquals(
+            2,
+            result.returnData[ReturnPagingLibraryKeys.PagingParamsList].mapNotNull {
+                it?.getOrNull(ReturnPagingLibraryKeys.DataSetJob)
+            }.size
+        )
+        presenter.dataFlow.firstWithTimeout { it.size == pageSize * 2 }
 
         pages = 0
-        pagingFlow.loadNextPageWithResult(
-            pagingParams = PagingParams(
-                PagingLibraryParamsKeys.LoadSeveralPages to LoadSeveralPagesData<Int, String>(
-                    getPagingParams = {
-                        pages++
-                        if (pages > 4) null
-                        else PagingParams(PagingLibraryParamsKeys.ReturnAwaitJob to true)
-                    },
-                )
-            )
-        ).returnData[ReturnPagingLibraryKeys.PagingParamsList].mapNotNull {
-            it?.getOrNull(ReturnPagingLibraryKeys.DataSetJob)
-        }.joinAll()
-        Dispatchers.Default.invoke { delay(50) }
-        assertEquals(source.getItems(pageSize * 5).takeLast(maxItems), presenter.data)
+        assertIs<PagingStatus.Success<Int>>(pagingFlow.downPagingStatus.value)
+        assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
+        pagingFlow.loadSeveralPages {
+            pages++
+            if (pages > 4) null
+            else pagingParamsOf(PagingLibraryParamsKeys.ReturnAwaitJob to true)
+        }
+        assertIs<PagingStatus.Success<Int>>(pagingFlow.downPagingStatus.value)
+        assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
+        presenter.dataFlow.firstWithTimeout {
+            source.getItems(pageSize * 6).takeLast(maxItems) == it
+        }
     }
 }

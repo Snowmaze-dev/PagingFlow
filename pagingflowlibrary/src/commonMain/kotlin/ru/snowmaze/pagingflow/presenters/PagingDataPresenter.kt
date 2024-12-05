@@ -17,7 +17,7 @@ interface PagingDataPresenter<Key : Any, Data : Any> {
     val startIndex: Int
 }
 
-val <Key: Any, Data: Any> PagingDataPresenter<Key, Data>.dataFlow
+inline val <Key: Any, Data: Any> PagingDataPresenter<Key, Data>.dataFlow
     get() = latestDataFlow.map { it.data }
 
 inline val <Key : Any, Data : Any> PagingDataPresenter<Key, Data>.data
@@ -25,13 +25,16 @@ inline val <Key : Any, Data : Any> PagingDataPresenter<Key, Data>.data
 
 class LatestData<Data : Any>(
     val data: List<Data?>,
-    val recentLoadData: List<PagingParams> = listOf(PagingParams.EMPTY)
-)
+    val loadData: List<PagingParams> = listOf()
+) {
 
-val PagingDataPresenter<*, *>.itemCount get() = latestData.data.size
+    inline val notNullData get() = data as List<Data>
+}
+
+inline val PagingDataPresenter<*, *>.itemCount get() = latestData.data.size
 
 inline val <Key : Any, Data : Any> PagingDataPresenter<Key, Data>.notNullFlow
-    get() = latestDataFlow.map { it.data as List<Data> }
+    get() = latestDataFlow.map { it.notNullData }
 
 inline val <Key : Any, Data : Any> PagingDataPresenter<Key, Data>.notNullData
-    get() = latestData.data as List<Data>
+    get() = latestData.notNullData

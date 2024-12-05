@@ -1,76 +1,105 @@
 package ru.snowmaze.pagingflow.params
 
 /**
- * Paging params where you can specify typesafe params for data sources
+ * Paging params where you can specify typesafe params for paging sources
  * @see PagingLibraryParamsKeys
  * @see DataKey
  */
-class PagingParams(map: Map<String, Any?> = emptyMap()) {
+open class PagingParams internal constructor(
+    internalMap: Map<String, Any?>,
+    reuseMap: Boolean = true
+) {
 
     companion object {
 
-        val EMPTY = PagingParams()
+        val EMPTY = PagingParams(emptyMap())
 
-        fun Map<DataKey<*>, Any>.pagingParams() = PagingParams(mapKeys { it.key.key })
+        operator fun invoke(
+            capacity: Int = 5,
+            builder: (MutablePagingParams.() -> Unit)? = null
+        ): MutablePagingParams {
+            val params = MutablePagingParams(capacity)
+            if (builder != null) params.builder()
+            return params
+        }
     }
 
-    constructor(pagingParams: PagingParams) : this(pagingParams.internalMap)
+    constructor(pagingParams: PagingParams) : this(pagingParams.map, reuseMap = false)
 
-    constructor(builder: PagingParams.() -> Unit) : this(
-        PagingParams(emptyMap<String, Any>()).apply(builder)
-    )
+    internal open val map = if (reuseMap) internalMap
+    else LinkedHashMap(internalMap)
 
-    private val internalMap = LinkedHashMap(map)
-
-    val entries get() = internalMap.entries
-    val keys get() = internalMap.keys
-    val size get() = internalMap.size
-    val values get() = internalMap.values
-
-    fun put(pagingParams: PagingParams) {
-        internalMap.putAll(pagingParams.internalMap)
-    }
+    val entries get() = map.entries
+    val keys get() = map.keys
+    val size get() = map.size
+    val values get() = map.values
 
     operator fun <T> get(key: DataKey<T>): T = getOrNull(key)
         ?: throw IllegalArgumentException("You should specify ${key.key} key for that operation.")
 
     fun <T> getOrNull(key: DataKey<T>): T? {
-        return internalMap[key.key] as? T
+        return map[key.key] as? T
     }
 
-    fun clear() = internalMap.clear()
+    fun isEmpty() = map.isEmpty()
 
-    fun isEmpty() = internalMap.isEmpty()
+    fun containsValue(value: Any) = map.containsValue(value)
 
-    fun <T> remove(key: DataKey<T>) = internalMap.remove(key.key) as? T
+    fun containsKey(key: DataKey<*>) = map.containsKey(key.key)
 
-    fun <T> put(key: DataKey<T>, value: T?) = internalMap.put(key.key, value)
-
-    fun containsValue(value: Any) = internalMap.containsValue(value)
-
-    fun containsKey(key: DataKey<*>) = internalMap.containsKey(key.key)
-
-    fun getStringKeysMap() = internalMap.mapKeys { it.key }
+    fun getStringKeysMap() = map.mapKeys { it.key }
 
     override fun toString(): String {
         return getStringKeysMap().toString()
     }
 }
 
-fun <T : Any> PagingParams(pair: Pair<DataKey<T>, T>) = PagingParams {
+class MutablePagingParams(
+    map: Map<String, Any?>,
+    reuseMap: Boolean = true
+) : PagingParams(map, reuseMap) {
+
+    constructor(): this(LinkedHashMap())
+
+    constructor(capacity: Int) : this(LinkedHashMap(capacity))
+
+    constructor(pagingParams: PagingParams) : this(
+        pagingParams.map, reuseMap = false
+    )
+
+    private val internalMap get() = map as MutableMap<String, Any?>
+
+    fun put(pagingParams: PagingParams) {
+        internalMap.putAll(pagingParams.map)
+    }
+
+    fun clear() = internalMap.clear()
+
+    fun <T> remove(key: DataKey<T>) = internalMap.remove(key.key) as? T
+
+    fun <T> put(key: DataKey<T>, value: T?) = internalMap.put(key.key, value)
+
+    fun asReadOnly(): PagingParams = PagingParams(internalMap)
+}
+
+fun <T : Any> pagingParamsOf(pair: Pair<DataKey<T>, T>) = PagingParams(1) {
     put(pair.first, pair.second)
 }
 
-fun PagingParams(vararg pairs: Pair<DataKey<out Any?>, Any?>) = PagingParams(buildMap(pairs.size) {
+fun pagingParamsOf(
+    vararg pairs: Pair<DataKey<out Any?>, Any?>
+) = MutablePagingParams(LinkedHashMap<String, Any?>(pairs.size).apply {
     putAll(pairs = pairs.map { it.first.key to it.second })
 })
 
 fun PagingParams.contains(key: DataKey<*>) = containsKey(key)
 
-fun <T> PagingParams.poll(key: DataKey<T>): T? = remove(key)
+fun <T> MutablePagingParams.poll(key: DataKey<T>): T? = remove(key)
 
-fun <T> PagingParams.pollNotNull(key: DataKey<T>) = requireNotNull(poll(key))
+fun <T> MutablePagingParams.pollNotNull(key: DataKey<T>) = requireNotNull(poll(key))
 
-fun <T> PagingParams?.getOrElse(key: DataKey<T>, orElse: () -> T): T {
+fun <T> MutablePagingParams?.getOrElse(key: DataKey<T>, orElse: () -> T): T {
     return this?.getOrNull(key) ?: orElse()
 }
+
+fun PagingParams.toMutableParams() = MutablePagingParams(this)

@@ -10,6 +10,21 @@ kotlin {
         publishAllLibraryVariants()
     }
     jvm()
+
+    applyHierarchyTemplate {
+        common {
+            group("commonJvm") {
+                withJvm()
+                withAndroidTarget()
+            }
+            group("nonJvm") {
+                withJs()
+                withIosX64()
+                withIosArm64()
+            }
+        }
+    }
+
     js(IR) {
         browser {
             testTask {
@@ -44,6 +59,15 @@ kotlin {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
         }
+        val commonJvmMain = getByName("commonJvmMain") {
+            kotlin.srcDir("src/commonJvmMain/kotlin")
+        }
+        commonJvmMain.dependencies {
+            implementation(libs.androidx.collection.ktx)
+        }
+        val nonJvmMain = getByName("nonJvmMain") {
+            kotlin.srcDir("src/nonJvmMain/kotlin")
+        }
     }
 }
 
@@ -51,7 +75,7 @@ afterEvaluate {
     publishing {
         publications {
             withType<MavenPublication> {
-                version = "1.0.9-alpha"
+                version = "1.1.1-alpha"
                 group = "ru.snowmaze.pagingflow"
                 val postfix = if (name == "androidRelease") "android" else name
                 artifactId = "common-$postfix"
@@ -68,9 +92,5 @@ android {
     }
     kotlin {
         jvmToolchain(11)
-    }
-    compileOptions {
-        sourceCompatibility(JavaVersion.VERSION_11)
-        targetCompatibility(JavaVersion.VERSION_11)
     }
 }

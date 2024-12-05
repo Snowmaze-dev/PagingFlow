@@ -2,13 +2,13 @@ package ru.snowmaze.pagingflow.params
 
 import ru.snowmaze.pagingflow.PagingFlow
 import ru.snowmaze.pagingflow.result.LoadResult
-import ru.snowmaze.pagingflow.sources.ConcatDataSource
-import ru.snowmaze.pagingflow.sources.DataSource
+import ru.snowmaze.pagingflow.source.ConcatPagingSource
+import ru.snowmaze.pagingflow.source.PagingSource
 
 object PagingLibraryParamsKeys {
 
     /**
-     * Invalidates all data except new page in [ConcatDataSource]
+     * Invalidates all data except new page in [ConcatPagingSource]
      */
     object InvalidateData : DataKey<Boolean> {
 
@@ -17,7 +17,7 @@ object PagingLibraryParamsKeys {
 
     /**
      * Specifies that loadNextPage should return a job
-     * which awaits until first data event received from [DataSource.load] is handled by presenter
+     * which awaits until first data event received from [PagingSource.load] is handled by presenter
      * You can supply this param to [PagingFlow.loadNextPageWithResult] params
      * Then to get job you can use key [ReturnPagingLibraryKeys.DataSetJob]
      */
@@ -58,6 +58,6 @@ object PagingLibraryParamsKeys {
  * @param onSuccess called on successful load
  */
 class LoadSeveralPagesData<Key : Any, Data : Any>(
-    val getPagingParams: (LoadResult<Key, Data>?) -> PagingParams?,
-    val onSuccess: ((LoadResult.Success<Key, Data>) -> Unit)? = null
+    val onSuccess: ((LoadResult.Success<Key, Data>) -> Unit)? = null,
+    val getPagingParams: suspend (LoadResult<Key, Data>?) -> PagingParams?,
 )

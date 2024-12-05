@@ -2,9 +2,10 @@ package ru.snowmaze.pagingflow.errorshandler
 
 import ru.snowmaze.pagingflow.result.LoadResult
 
-class DefaultPagingUnhandledErrorsHandler : PagingUnhandledErrorsHandler() {
+class DefaultPagingUnhandledErrorsHandler<Key : Any, Data : Any> :
+    PagingUnhandledErrorsHandler<Key, Data>() {
 
-    override fun handle(throwable: Throwable): LoadResult.Failure<Any, Any> {
+    override suspend fun handle(throwable: Throwable): LoadResult<Key, Data> {
         return LoadResult.Failure(
             returnData = null,
             throwable = throwable

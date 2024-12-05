@@ -1,15 +1,11 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.invoke
-import kotlinx.coroutines.test.runTest
-import ru.snowmaze.pagingflow.diff.mediums.MappingPagingDataChangesMedium
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
-import ru.snowmaze.pagingflow.presenters.composite.CompositePagingPresenterBuilder
+import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
-import ru.snowmaze.pagingflow.sources.TestDataSource
+import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.random.Random
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -20,66 +16,33 @@ class CommonPresentersTest {
 
     private val basePagingFlowConfiguration = PagingFlowConfiguration(
         defaultParams = LoadParams(pageSize, 0),
-        processingDispatcher = testDispatcher
+        processingDispatcher = testDispatcher,
     )
 
     @Test
-    fun compositePresenterTest() = runTest {
+    fun asyncBehaviorPresenterTest() = runTestOnDispatchersDefault {
         val totalCount = Random.nextInt(80, 1000)
-        val testDataSource = TestDataSource(totalCount)
-        val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
-            addDataSource(testDataSource)
-        }
-        val prependItems = listOf(-1, -5)
-        val presenter = CompositePagingPresenterBuilder.create(
-            pagingDataChangesMedium = MappingPagingDataChangesMedium(pagingFlow) { event ->
-                event.items.mapIndexed { _: Int, s: String? ->
-                    s?.let { s.split(" ")[1].toInt() }
-                }
-            },
-            invalidateBehavior = InvalidateBehavior.INVALIDATE_IMMEDIATELY
-        ) {
-            section { prependItems }
-            dataSourceSection(0)
-        }
-
-        pagingFlow.testLoadEverything(
-            dataSources = listOf(testDataSource),
-            pagingPresenter = pagingFlow.pagingDataPresenter()
-        )
-        assertEquals(
-            prependItems + List(totalCount) { index: Int -> index },
-            presenter.data
-        )
-        pagingFlow.invalidate()
-        assertEquals(
-            prependItems,
-            presenter.data
-        )
-    }
-
-    @Test
-    fun asyncBehaviorPresenterTest() = runTest {
-        val totalCount = Random.nextInt(80, 1000)
-        val testDataSource = TestDataSource(totalCount)
+        val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(
             basePagingFlowConfiguration.copy(
-                processingDispatcher = Dispatchers.Default
+                processingDispatcher = Dispatchers.Default,
+                shouldCollectOnlyLatest = true
             )
         ) {
-            addDataSource(testDataSource)
+            addDownPagingSource(testDataSource)
         }
-        val presenter =
-            pagingFlow.pagingDataPresenter(invalidateBehavior = InvalidateBehavior.INVALIDATE_IMMEDIATELY)
+        val presenter = pagingFlow.pagingDataPresenter(
+            configuration = BasicPresenterConfiguration(
+                invalidateBehavior = InvalidateBehavior.INVALIDATE_IMMEDIATELY
+            )
+        )
 
         pagingFlow.loadNextPageWithResult()
-        Dispatchers.Default { delay(30L) }
         assertEquals(
             pageSize,
             presenter.data.size
         )
         pagingFlow.invalidate()
-        Dispatchers.Default { delay(30L) }
         assertEquals(
             0,
             presenter.data.size

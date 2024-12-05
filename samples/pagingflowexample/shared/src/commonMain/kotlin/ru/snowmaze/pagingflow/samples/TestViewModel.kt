@@ -5,7 +5,8 @@ import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.PagingFlowConfiguration
 import ru.snowmaze.pagingflow.buildPagingFlow
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
-import ru.snowmaze.pagingflow.sources.MaxItemsConfiguration
+import ru.snowmaze.pagingflow.loadNextPage
+import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 
 class TestViewModel : ViewModel() {
 
@@ -24,10 +25,9 @@ class TestViewModel : ViewModel() {
             maxItemsConfiguration = MaxItemsConfiguration(
                 maxItemsCount = REMOVE_PAGE_OFFSET * EXAMPLE_LOAD_SIZE
             )
-        )
-    ) {
-        addDataSource(TestDataSource(totalItemsCount, true))
-        loadNextPage()
-    }
+        ),
+        loadFirstPage = true,
+        TestPagingSource(totalItemsCount, true)
+    )
     val pagingDataChangesMedium: PagingDataChangesMedium<Int, String> = pagingFlow
 }

@@ -1,16 +1,16 @@
 # PagingFlow
 
-### A library that enables multiplatform pagination over multiple data sources and allows for the implementation of infinite scrolling.
+### A library that enables multiplatform pagination over multiple paging sources and allows for the implementation of infinite scrolling.
 Its also provides the capabilities for custom argument passing and setting custom statuses, as well as various options for transforming data pages into full-fledged lists.
 
 # Usage
 
-### Data source
+### PagingSource
 ```kotlin
-class ExampleDataSource(
+class ExamplePagingSource(
     private val networkSource: NetworkSource,
     private val databaseSource: DatabaseSource
-) : DataSource<Int, String, Any> {
+) : PagingSource<Int, String, Any> {
 
     override suspend fun load(loadParams: LoadParams<Int>): LoadResult<Int, String, Any> {
         val offset = loadParams.key ?: 0
@@ -41,7 +41,7 @@ val pagingFlow = buildPagingFlow(
         maxPagesCount = 3
     )
 ) {
-    addDataSource(ExampleDataSource(networkSource, databaseSource))
+    addPagingSource(ExamplePagingSource(networkSource, databaseSource))
     loadNextPage()
 }
 val pagingDataPresenter = pagingFlow.pagingDataPresenter()

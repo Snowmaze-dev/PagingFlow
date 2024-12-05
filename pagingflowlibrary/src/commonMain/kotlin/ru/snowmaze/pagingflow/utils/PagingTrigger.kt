@@ -8,6 +8,7 @@ import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.PagingFlow
+import ru.snowmaze.pagingflow.loadNextPageWithResult
 
 /**
  * The helper class which calls pagination when end of page reached.
@@ -78,8 +79,7 @@ class PagingTrigger(
     fun checkLastIndexAgain(scrollDirection: PaginationDirection? = null) {
         onItemVisible(
             index = if (scrollDirection == PaginationDirection.DOWN) lastIndexDown
-            else lastIndexUp,
-            scrollDirection = scrollDirection
+            else lastIndexUp, scrollDirection = scrollDirection
         )
     }
 
@@ -90,9 +90,7 @@ class PagingTrigger(
         val currentTime = currentTimeMillisProvider()
         if (scrollDirection == PaginationDirection.DOWN) downJob?.cancel()
         else upJob?.cancel()
-        if (throttleTimeMillis != 0 &&
-            throttleTimeMillis > currentTime - lastTimeTriggered
-        ) {
+        if (throttleTimeMillis != 0 && throttleTimeMillis > currentTime - lastTimeTriggered) {
             if (saveLastThrottledEvent) {
                 val repeatJob = coroutineScope.launch(Dispatchers.Main) {
                     delay(throttleTimeMillis.toLong())
@@ -116,8 +114,7 @@ class PagingTrigger(
                 prefetchUpDistance * ((maxItemsCount / pageSize) - 1) >= relativeStartIndex
             } else prefetchUpDistance >= relativeStartIndex
             if (shouldLoadUp) PaginationDirection.UP else return false
-        }
-        else return false
+        } else return false
         _isLoading = true
         coroutineScope.launch {
             onEndReached(direction)

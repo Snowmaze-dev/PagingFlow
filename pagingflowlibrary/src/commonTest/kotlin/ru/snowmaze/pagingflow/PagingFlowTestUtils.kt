@@ -1,17 +1,25 @@
 package ru.snowmaze.pagingflow
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.invoke
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.withTimeoutOrNull
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
-import ru.snowmaze.pagingflow.sources.TestDataSource
+import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.math.ceil
 import kotlin.test.assertEquals
 
 val testDispatcher = UnconfinedTestDispatcher()
 
 suspend fun PagingFlow<Int, String>.testLoadEverything(
-    dataSources: List<TestDataSource>,
+    dataSources: List<TestPagingSource>,
     shouldTestItems: Boolean = true,
     pagingPresenter: PagingDataPresenter<Int, String>
 ) {
@@ -30,6 +38,8 @@ suspend fun PagingFlow<Int, String>.testLoadEverything(
         currentSourceLoadedCount += currentLoadSize
         overallLoadedCount += currentLoadSize
         assertEquals(overallLoadedCount != overallTotalCountOfItems, result.asSuccess().hasNext)
+        assertEquals(result.asSuccess().hasNext, downPagingStatus.value.hasNextPage)
+
         currentLoadSize = (currentTotalCount - currentSourceLoadedCount).coerceAtMost(pageSize)
         if (shouldTestItems) {
             var testItems: List<String?> = loadingSources.mapIndexed { index, testDataSource ->
@@ -42,8 +52,10 @@ suspend fun PagingFlow<Int, String>.testLoadEverything(
             val maxItemsConfiguration = pagingFlowConfiguration.maxItemsConfiguration
             val maxItemsOffset = maxItemsConfiguration?.maxItemsCount
             if (maxItemsOffset != null) {
-                val removeItemsCount = (ceil((overallLoadedCount - maxItemsOffset)
-                    .coerceAtLeast(0) / pageSize.toDouble()) * pageSize).toInt()
+                val removeItemsCount = (ceil(
+                    (overallLoadedCount - maxItemsOffset)
+                        .coerceAtLeast(0) / pageSize.toDouble()
+                ) * pageSize).toInt()
                 testItems = if (maxItemsConfiguration.enableDroppedPagesNullPlaceholders) {
                     testItems.mapIndexed { index, item ->
                         if (removeItemsCount > index) null
@@ -68,5 +80,39 @@ suspend fun PagingFlow<Int, String>.testLoadEverything(
     }
 }
 
-fun <Key : Any, Data : Any> LoadNextPageResult<Key, Data>.asSuccess() =
-    this as LoadNextPageResult.Success<Key, Data>
+fun <Key : Any> LoadNextPageResult<Key>.asSuccess() = this as LoadNextPageResult.Success<Key>
+
+inline fun runTestOnDispatchersDefault(
+    noinline block: suspend CoroutineScope.() -> Unit
+) = runTest {
+    Dispatchers.Default.invoke(block)
+}
+
+suspend inline fun <T> Flow<T>.firstEqualsWithTimeout(
+    value: T,
+    timeout: Long = 300
+) = firstWithTimeout(timeout, {
+    "expected $value but was $it"
+}) {
+    value == it
+}
+
+suspend fun <T> Flow<T>.firstWithTimeout(
+    timeout: Long = 1000,
+    message: ((T?) -> String)? = null,
+    predicate: suspend (T) -> Boolean
+): T {
+    val cause = Exception()
+    return if (message == null) withTimeout(timeout) { first(predicate) }
+    else {
+        var lastValue: T? = null
+        val result = withTimeoutOrNull(timeout) {
+            first {
+                lastValue = it
+                predicate(it)
+            }
+        }
+        if (result == null) throw AssertionError(message(lastValue), cause)
+        result
+    }
+}

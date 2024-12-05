@@ -50,10 +50,9 @@ android {
 }
 
 dependencies {
-    val paging_version = "3.2.1"
 
-    implementation("androidx.paging:paging-runtime:$paging_version")
-    implementation("androidx.paging:paging-compose:$paging_version")
+    implementation(libs.androidx.paging.runtime)
+    implementation(libs.androidx.paging.compose)
     implementation(projects.samples.pagingflowexample.shared)
     implementation(libs.androidx.core.ktx)
     implementation(libs.lifecycleRuntimeKtx)

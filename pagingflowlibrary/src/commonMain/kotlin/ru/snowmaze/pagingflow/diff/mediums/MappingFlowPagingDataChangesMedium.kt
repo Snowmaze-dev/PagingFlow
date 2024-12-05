@@ -10,6 +10,8 @@ import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
+import ru.snowmaze.pagingflow.diff.handle
+import ru.snowmaze.pagingflow.utils.platformMapOf
 
 class MappingFlowPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
@@ -18,11 +20,11 @@ class MappingFlowPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
         (DataChangedEvent<Key, Data>) -> EventsMapper<Key, NewData>
     )? = null,
     private val transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>,
-) : SubscribeForChangesDataChangesMedium<Key, NewData, Data>(pagingDataChangesMedium) {
+) : SubscribeForChangesDataChangesMedium<Key, Data, NewData>(pagingDataChangesMedium) {
 
-    private val addedJobsMap = mutableMapOf<Int, Job>()
-    private val jobsMap = mutableMapOf<Int, Job>()
-    private val otherEventsListeners = mutableMapOf<Long, Job>()
+    private val addedJobsMap = platformMapOf<Int, Job>()
+    private val jobsMap = platformMapOf<Int, Job>()
+    private val otherEventsListeners = platformMapOf<Long, Job>()
 
     private val callback = object : DataChangedCallback<Key, Data> {
 
@@ -38,16 +40,18 @@ class MappingFlowPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
                                 if (isFirstValue) {
                                     PageAddedEvent(
                                         key = event.key,
-                                        pageIndex = event.pageIndex,
                                         sourceIndex = event.sourceIndex,
+                                        pageIndex = event.pageIndex,
+                                        pageIndexInSource = event.pageIndexInSource,
                                         items = it as List<NewData>,
-                                        params = event.params
+                                        params = event.params,
                                     )
                                 } else {
                                     PageChangedEvent(
                                         key = event.key,
-                                        pageIndex = event.pageIndex,
                                         sourceIndex = event.sourceIndex,
+                                        pageIndex = event.pageIndex,
+                                        pageIndexInSource = event.pageIndexInSource,
                                         items = it as List<NewData>,
                                         params = event.params
                                     )
@@ -65,8 +69,9 @@ class MappingFlowPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
                             notifyOnEvent(
                                 PageChangedEvent(
                                     key = event.key,
-                                    pageIndex = event.pageIndex,
                                     sourceIndex = event.sourceIndex,
+                                    pageIndex = event.pageIndex,
+                                    pageIndexInSource = event.pageIndexInSource,
                                     items = it as List<NewData>,
                                     params = event.params
                                 )
