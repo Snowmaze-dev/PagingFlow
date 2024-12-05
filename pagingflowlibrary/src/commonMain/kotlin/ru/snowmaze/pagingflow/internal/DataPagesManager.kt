@@ -351,7 +351,6 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         val itemsCount = dataPages.fastSumOf { it.data?.data?.size ?: it.itemCount ?: 0 }
         if (itemsCount > maxItemsCount) {
 
-            // заменить на удаляемую страницу
             val pageIndex = if (isPaginationDown) dataPages.fastIndexOfFirst(isNotNullified)
             else dataPages.fastIndexOfLast(isNotNullified)
             val page = dataPages.getOrNull(pageIndex) ?: return null
