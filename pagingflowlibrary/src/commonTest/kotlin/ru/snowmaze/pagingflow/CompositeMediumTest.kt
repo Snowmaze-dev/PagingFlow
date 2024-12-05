@@ -1,7 +1,6 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
@@ -11,8 +10,8 @@ import ru.snowmaze.pagingflow.diff.mediums.composite.CompositePagingDataChangesM
 import ru.snowmaze.pagingflow.diff.mediums.composite.section
 import ru.snowmaze.pagingflow.presenters.compositeDataPresenter
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
-import ru.snowmaze.pagingflow.sources.MaxItemsConfiguration
-import ru.snowmaze.pagingflow.sources.TestDataSource
+import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
+import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
@@ -33,9 +32,9 @@ class CompositeMediumTest {
 
     @Test
     fun baseMediumExtensionTest() = runTestOnDispatchersDefault {
-        val testDataSource = TestDataSource(totalCount)
+        val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
-            addDataSource(testDataSource)
+            addPagingSource(testDataSource)
         }
         val data = listOf(123)
         val presenter = pagingFlow.compositeDataPresenter {
@@ -49,11 +48,11 @@ class CompositeMediumTest {
 
     @Test
     fun baseMediumTest() = runTestOnDispatchersDefault {
-        val testDataSource = TestDataSource(pageSize * 3)
-        val testDataSource1 = TestDataSource(totalCount, startFrom = 500)
+        val testDataSource = TestPagingSource(pageSize * 3)
+        val testDataSource1 = TestPagingSource(totalCount, startFrom = 500)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
-            addDataSource(testDataSource)
-            addDataSource(testDataSource1)
+            addPagingSource(testDataSource)
+            addPagingSource(testDataSource1)
         }
         var startList = listOf(123)
         val second = listOf(1235)

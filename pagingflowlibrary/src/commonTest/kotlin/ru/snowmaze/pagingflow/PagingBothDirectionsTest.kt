@@ -1,19 +1,21 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
+import ru.snowmaze.pagingflow.presenters.SimplePresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.data
+import ru.snowmaze.pagingflow.presenters.dataFlow
+import ru.snowmaze.pagingflow.presenters.list.DiffListBuildStrategy
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
-import ru.snowmaze.pagingflow.sources.MaxItemsConfiguration
-import ru.snowmaze.pagingflow.sources.TestDataSource
+import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
+import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.random.Random
 import kotlin.test.Test
-import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -42,21 +44,24 @@ class PagingBothDirectionsTest {
     @Test
     fun testAsyncLoad() = runTestOnDispatchersDefault {
         val totalCount = 1000
-        val testDataSource = TestDataSource(totalCount, randomDelay)
+        val testDataSource = TestPagingSource(totalCount, randomDelay)
         val pagingFlow = buildPagingFlow(
             basePagingFlowConfiguration.copy(
                 processingDispatcher = Dispatchers.Default,
                 maxItemsConfiguration = basePagingFlowConfiguration.maxItemsConfiguration?.copy(
                     maxItemsCount = pageSize * 4,
                     enableDroppedPagesNullPlaceholders = false
-                )
+                ),
+                shouldCollectOnlyLatest = true,
+                shouldStorePageItems = false
             )
         ) {
-            addDataSource(TestDataSource(totalCount, randomDelay))
-            addDataSource(TestDataSource(totalCount, randomDelay))
+            addPagingSource(TestPagingSource(totalCount, randomDelay))
+            addPagingSource(TestPagingSource(totalCount, randomDelay))
         }
         val presenter = pagingFlow.pagingDataPresenter(
-            debounceBufferDurationMsProvider = { 20 },
+            configuration = SimplePresenterConfiguration(listBuildStrategy = DiffListBuildStrategy()),
+            eventsBatchingDurationMsProvider = { 20 },
         )
 
         var hasNext = true
@@ -68,37 +73,38 @@ class PagingBothDirectionsTest {
                 }
             ).asSuccess()
             hasNext = result.hasNext
-            if (!hasNext) result.returnData[ReturnPagingLibraryKeys.DataSetJob].join()
+            if (!hasNext) withTimeout(5000L) {
+                result.returnData[ReturnPagingLibraryKeys.DataSetJob].join()
+            }
             assertEquals(hasNext, pagingFlow.downPagingStatus.value.hasNextPage)
         }
-        delay(150) // delay because library needs some time to trim pages
         val maxItemsCount =
             pagingFlow.pagingFlowConfiguration.maxItemsConfiguration?.maxItemsCount!!
-        assertTrue(
-            maxItemsCount >= presenter.data.size,
-            "expected $maxItemsCount but was ${presenter.data.size}"
-        )
-        assertContentEquals(
-            testDataSource.getItems(totalCount).takeLast(presenter.data.size),
-            presenter.data
+        presenter.dataFlow.firstWithTimeout(
+            message = {
+                "expected less count than $maxItemsCount but was ${it?.size}"
+            }
+        ) { maxItemsCount >= it.size }
+        presenter.dataFlow.firstEqualsWithTimeout(
+            testDataSource.getItems(totalCount).takeLast(maxItemsCount)
         )
         hasNext = true
         while (hasNext) {
             hasNext =
                 pagingFlow.loadNextPageWithResult(PaginationDirection.UP).asSuccess().hasNext
         }
-        delay(150)
-        assertTrue(
-            maxItemsCount >= presenter.data.size,
-            "expected $maxItemsCount but was ${presenter.data.size}"
-        )
+        presenter.dataFlow.firstWithTimeout(
+            message = {
+                "expected less count than $maxItemsCount but was ${it?.size}"
+            }
+        ) { maxItemsCount >= it.size }
     }
 
     @Test
     fun loadBothDirectionsTest() = runTest {
-        val testDataSource = TestDataSource(totalCount)
+        val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
-            addDataSource(testDataSource)
+            addPagingSource(testDataSource)
         }
         val presenter = pagingFlow.pagingDataPresenter()
         pagingFlow.testLoadEverything(
@@ -148,7 +154,7 @@ class PagingBothDirectionsTest {
 
     @Test
     fun loadBothDirectionsWithNullsTest() = runTest {
-        val testDataSource = TestDataSource(totalCount)
+        val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(
             basePagingFlowConfiguration.copy(
                 maxItemsConfiguration = basePagingFlowConfiguration.maxItemsConfiguration?.copy(
@@ -156,7 +162,7 @@ class PagingBothDirectionsTest {
                 )
             )
         ) {
-            addDataSource(testDataSource)
+            addPagingSource(testDataSource)
         }
         val presenter = pagingFlow.pagingDataPresenter()
         pagingFlow.testLoadEverything(
@@ -185,7 +191,7 @@ class PagingBothDirectionsTest {
 
     @Test
     fun loadSmallPagesTest() = runTest {
-        val testDataSource = TestDataSource(totalCount)
+        val testDataSource = TestPagingSource(totalCount)
         var currentLoadParams = LoadParams<Int>(2)
         val maxItemsCount = 5
         val pagingFlow = buildPagingFlow(
@@ -196,20 +202,20 @@ class PagingBothDirectionsTest {
                 )
             )
         ) {
-            addDataSource(testDataSource)
+            addPagingSource(testDataSource)
         }
         val presenter = pagingFlow.pagingDataPresenter()
         pagingFlow.loadNextPageWithResult()
-        assertEquals(2, presenter.data.size)
-        repeat(2) {
-            pagingFlow.loadNextPageWithResult()
-        }
-        assertEquals(4, presenter.data.size)
+        assertEquals(testDataSource.getItems(2), presenter.data)
+        pagingFlow.loadNextPageWithResult()
+        assertEquals(testDataSource.getItems(4), presenter.data)
+        pagingFlow.loadNextPageWithResult()
+        assertEquals(testDataSource.getItems(6).drop(2), presenter.data)
         currentLoadParams = LoadParams(1)
         pagingFlow.loadNextPageWithResult()
-        assertEquals(5, presenter.data.size)
+        assertEquals(testDataSource.getItems(7).drop(2), presenter.data)
         pagingFlow.loadNextPageWithResult()
-        assertEquals(4, presenter.data.size)
+        assertEquals(testDataSource.getItems(8).drop(4), presenter.data)
     }
 
     private fun buildListOfNulls(count: Int) = buildList {

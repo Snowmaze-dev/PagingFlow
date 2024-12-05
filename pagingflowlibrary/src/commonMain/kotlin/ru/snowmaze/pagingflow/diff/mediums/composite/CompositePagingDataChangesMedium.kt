@@ -1,6 +1,5 @@
 package ru.snowmaze.pagingflow.diff.mediums.composite
 
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -16,13 +15,14 @@ import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.SubscribeForChangesDataChangesMedium
 import ru.snowmaze.pagingflow.params.PagingParams
+import ru.snowmaze.pagingflow.utils.fastSumOf
 import ru.snowmaze.pagingflow.utils.flattenWithSize
 
 open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any> internal constructor(
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
     private val sections: List<CompositePresenterSection<Key, Data, NewData>>,
     final override val config: DataChangesMediumConfig = pagingDataChangesMedium.config
-) : SubscribeForChangesDataChangesMedium<Key, NewData, Data>(pagingDataChangesMedium) {
+) : SubscribeForChangesDataChangesMedium<Key, Data, NewData>(pagingDataChangesMedium) {
 
     private val dataSourcesSections =
         mutableMapOf<Int, CompositePresenterSection.DataSourceSection<Key, Data, NewData>>()
@@ -39,7 +39,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
             } else if (
                 section is CompositePresenterSection.FlowSection<Key, Data, NewData>
             ) config.coroutineScope.launch {
-                section.itemsFlow.collectLatest {
+                section.itemsFlow.collect {
                     mutex.withLock {
                         onCompositeSectionChanged(
                             section = section,
@@ -227,7 +227,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
         )
         if (pickedAddIndex >= section.pages.size) section.pages.add(event)
         else section.pages.add(pickedAddIndex, event)
-        val pagesSize = sections.sumOf { it.pages.size }
+        val pagesSize = sections.fastSumOf { it.pages.size }
         var index = section.firstPageIndex + pickedAddIndex
         while (pagesSize > index) {
             val currentSection = sections.getOrNull(currentSectionIndex) ?: break
@@ -292,7 +292,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
         } else 0
         val pickedIndexInSource = indexInSource - indexShift
         var currentSectionIndex = section.sourceIndex
-        val pagesSize = sections.sumOf { it.pages.size }
+        val pagesSize = sections.fastSumOf { it.pages.size }
         val removedEvent = section.pages.removeAt(pickedIndexInSource)
         var index = section.firstPageIndex + pickedIndexInSource
         var previousEvent = removedEvent

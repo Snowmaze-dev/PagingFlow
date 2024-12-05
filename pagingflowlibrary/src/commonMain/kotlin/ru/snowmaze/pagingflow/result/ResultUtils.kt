@@ -9,7 +9,7 @@ import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.UpdatableData
 import ru.snowmaze.pagingflow.params.PagingParams
-import ru.snowmaze.pagingflow.sources.DataSource
+import ru.snowmaze.pagingflow.source.PagingSource
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
@@ -18,7 +18,7 @@ import kotlin.contracts.contract
  * Extension function which helps to calculate next key based on current offset and pagination direction
  * @return next key or null if theres no next page or next key below 0
  */
-fun DataSource<*, *>.positiveOffset(
+fun PagingSource<*, *>.positiveOffset(
     paginationDirection: PaginationDirection,
     currentOffset: Int,
     pageSize: Int,
@@ -35,7 +35,8 @@ fun LoadParams<Int>.positiveOffset(
     else (currentOffset - pageSize).takeIf { it >= 0 }).takeIf { hasNextPage }
 }
 
-fun <Key : Any, Data : Any> LoadResult<Key, Data>.mapSuccess(
+@OptIn(ExperimentalContracts::class)
+inline fun <Key : Any, Data : Any> LoadResult<Key, Data>.mapSuccess(
     transform: (LoadResult.Success<Key, Data>) -> LoadResult<Key, Data>
 ): LoadResult<Key, Data> {
     contract {
@@ -44,7 +45,7 @@ fun <Key : Any, Data : Any> LoadResult<Key, Data>.mapSuccess(
     return if (this is LoadResult.Success<Key, Data>) transform(this) else this
 }
 
-fun <T : Any, Key : Any, Data : Any> Result<T>.toLoadResult(
+inline fun <T : Any, Key : Any, Data : Any> Result<T>.toLoadResult(
     onFailure: (Throwable) -> LoadResult<Key, Data> = {
         LoadResult.Failure(throwable = it)
     },
@@ -54,19 +55,25 @@ fun <T : Any, Key : Any, Data : Any> Result<T>.toLoadResult(
     onFailure = onFailure
 )
 
-fun <Key : Any, Data : Any> DataSource<Key, Data>.simpleResult(
+fun <Key : Any, Data : Any> PagingSource<Key, Data>.simpleResult(
     data: List<Data>,
     nextPageKey: Key? = null,
     returnData: PagingParams? = null,
     cachedResult: PagingParams? = null,
-) = LoadResult.Success(
-    dataFlow = flow { emit(UpdatableData(data, nextPageKey, returnData)) },
-    nextPageKey = nextPageKey,
-    returnData = returnData,
-    cachedResult = cachedResult
-)
+): LoadResult.Success<Key, Data> {
+    var localData: List<Data>? = data
+    return LoadResult.Success(
+        dataFlow = flow {
+            emit(UpdatableData(localData ?: return@flow, nextPageKey, returnData))
+            localData = null
+        },
+        nextPageKey = nextPageKey,
+        returnData = returnData,
+        cachedResult = cachedResult
+    )
+}
 
-fun <Key : Any, Data : Any> DataSource<Key, Data>.result(
+fun <Key : Any, Data : Any> PagingSource<Key, Data>.result(
     dataFlow: Flow<List<Data>>,
     nextPageKey: Key? = null,
     returnData: PagingParams? = null,
@@ -81,7 +88,7 @@ fun <Key : Any, Data : Any> DataSource<Key, Data>.result(
 /**
  * Sends returnData in UpdatableData in flow one time and then further sends null instead of returnData
  */
-fun <Key : Any, Data : Any> DataSource<Key, Data>.resultWithSingleReturnData(
+fun <Key : Any, Data : Any> PagingSource<Key, Data>.resultWithSingleReturnData(
     dataFlow: Flow<List<Data>>,
     nextPageKey: Key? = null,
     returnData: PagingParams,
@@ -100,7 +107,7 @@ fun <Key : Any, Data : Any> DataSource<Key, Data>.resultWithSingleReturnData(
     )
 }
 
-fun <Key : Any, Data : Any> DataSource<Key, Data>.useLastPageResult(
+fun <Key : Any, Data : Any> PagingSource<Key, Data>.useLastPageResult(
     nextPageKey: Key? = null,
     returnData: PagingParams? = null,
     cachedResult: PagingParams? = null,

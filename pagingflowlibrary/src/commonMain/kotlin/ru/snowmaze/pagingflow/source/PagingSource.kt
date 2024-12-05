@@ -1,4 +1,4 @@
-package ru.snowmaze.pagingflow.sources
+package ru.snowmaze.pagingflow.source
 
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.result.LoadResult
@@ -6,9 +6,9 @@ import ru.snowmaze.pagingflow.errorshandler.PagingUnhandledErrorsHandler
 
 /**
  * Stateless base provider of dynamic pageable data for pagination
- * You can override default [LoadParams] and [PagingUnhandledErrorsHandler] for each data source
+ * You can override default [LoadParams] and [PagingUnhandledErrorsHandler] for each paging source
  */
-interface DataSource<Key : Any, Data : Any> {
+interface PagingSource<Key : Any, Data : Any> {
 
     val defaultLoadParams: LoadParams<Key>? get() = null
 

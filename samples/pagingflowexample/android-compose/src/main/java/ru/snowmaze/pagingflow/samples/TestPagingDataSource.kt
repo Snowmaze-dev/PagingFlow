@@ -7,7 +7,7 @@ import ru.snowmaze.pagingflow.LoadParams
 
 class TestPagingDataSource(private val itemsCount: Int) : PagingSource<Int, String>() {
 
-    private val testDataSource = TestDataSource(itemsCount)
+    private val testDataSource = TestPagingSource(itemsCount)
 
     override fun getRefreshKey(state: PagingState<Int, String>): Int? {
         return state.anchorPosition?.let { anchorPosition ->

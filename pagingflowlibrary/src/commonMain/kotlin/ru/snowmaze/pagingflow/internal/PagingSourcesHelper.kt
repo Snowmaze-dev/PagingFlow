@@ -3,35 +3,37 @@ package ru.snowmaze.pagingflow.internal
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import ru.snowmaze.pagingflow.result.LoadResult
-import ru.snowmaze.pagingflow.sources.DataSource
+import ru.snowmaze.pagingflow.source.PagingSource
 import ru.snowmaze.pagingflow.utils.DiffOperation
 
-internal class DataSourceHelper<Key : Any, Data : Any>(
-    private val dataSourcesManager: DataSourcesManager<Key, Data>,
+internal class PagingSourcesHelper<Key : Any, Data : Any>(
+    private val pagingSourcesManager: PagingSourcesManager<Key, Data>,
     private val dataPagesManager: DataPagesManager<Key, Data>,
     private val pageLoader: PageLoader<Key, Data>,
     private val loadDataMutex: Mutex
 ) {
 
-    private val pagesCount get() = dataPagesManager.dataPages.count { it.data != null }
+    private val pagesCount get() = dataPagesManager.dataPages.count { !it.isNullified }
 
-    suspend fun setDataSources(
-        newDataSourceList: List<DataSource<Key, Data>>,
+    suspend fun setPagingSources(
+        newPagingSourceList: List<PagingSource<Key, out Data>>,
         diff: (
-            oldList: List<DataSource<Key, Data>>,
-            newList: List<DataSource<Key, Data>>
-        ) -> List<DiffOperation<DataSource<Key, Data>>>
+            oldList: List<PagingSource<Key, out Data>>,
+            newList: List<PagingSource<Key, out Data>>
+        ) -> List<DiffOperation<PagingSource<Key, out Data>>>
     ) = loadDataMutex.withLock {
-        val dataSources = dataSourcesManager.dataSources
-        val operations = diff(dataSources, newDataSourceList)
+        val dataSources = pagingSourcesManager.pagingSources
+        val operations = diff(dataSources, newPagingSourceList)
         if (operations.isEmpty()) return@withLock
         for (operation in operations) {
             when (operation) {
                 is DiffOperation.Remove<*> -> repeat(operation.count) { remove(operation.index) }
 
-                is DiffOperation.Add<DataSource<Key, Data>> -> {
+                is DiffOperation.Add<PagingSource<Key, out Data>> -> {
                     for (item in (operation.items ?: continue).withIndex()) {
-                        insert(item.value, operation.index + item.index)
+                        insert(
+                            item.value as PagingSource<Key, Data>, operation.index + item.index
+                        )
                     }
                 }
 
@@ -45,14 +47,14 @@ internal class DataSourceHelper<Key : Any, Data : Any>(
     }
 
     fun remove(index: Int) {
-        if (dataSourcesManager.removeDataSource(index)) {
-            dataPagesManager.removeDataSourcePages(index)
+        if (pagingSourcesManager.removePagingSource(index)) {
+            dataPagesManager.removePagingSourcePages(index)
         }
     }
 
-    private suspend fun insert(item: DataSource<Key, Data>, index: Int) {
+    private suspend fun insert(item: PagingSource<Key, Data>, index: Int) {
         val lastLoadedDataSource = dataPagesManager.dataPages.maxOfOrNull { it.dataSourceIndex }
-        dataSourcesManager.addDataSource(item, index)
+        pagingSourcesManager.addPagingSource(item, index)
         if (index > (lastLoadedDataSource ?: 0) || pagesCount == 0) return
         val previousIndex = (index - 1).coerceAtLeast(0)
         var pageIndex = if (index == 0) -1 else dataPagesManager.dataPages.indexOfLast {
@@ -62,7 +64,8 @@ internal class DataSourceHelper<Key : Any, Data : Any>(
             val result = pageLoader.loadData(
                 loadParams = pageLoader.pageLoaderConfig.defaultParamsProvider(),
                 lastPageIndex = pageIndex,
-                shouldReplaceOnConflict = false
+                shouldReplaceOnConflict = false,
+                shouldSetNewStatus = true
             )
             pageIndex++
         } while (result is LoadResult.Success<Key, Data> && result.nextPageKey != null)
@@ -70,11 +73,12 @@ internal class DataSourceHelper<Key : Any, Data : Any>(
 
     private fun move(oldIndex: Int, newIndex: Int) {
         val newMaxIndex = newIndex
-            .coerceAtMost(dataSourcesManager.dataSources.size - 1)
+            .coerceAtMost(pagingSourcesManager.pagingSources.size - 1)
             .coerceAtLeast(0)
         try {
-            dataSourcesManager.moveDataSource(oldIndex, newMaxIndex)
+            pagingSourcesManager.movePagingSource(oldIndex, newMaxIndex)
             dataPagesManager.movePages(oldIndex, newMaxIndex)
-        } catch (e: Exception) { }
+        } catch (e: Exception) {
+        }
     }
 }

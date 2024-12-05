@@ -1,4 +1,4 @@
-package ru.snowmaze.pagingflow.sources
+package ru.snowmaze.pagingflow.source
 
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -7,21 +7,21 @@ import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.UpdatableData
 import ru.snowmaze.pagingflow.result.LoadResult
 
-class SinglePageDataSource<Key : Any, Data : Any>(
+class SinglePagePagingSource<Key : Any, Data : Any>(
     private val dataFlow: Flow<UpdatableData<Key, Data>>,
-) : DataSource<Key, Data> {
+) : PagingSource<Key, Data> {
 
     companion object {
 
         fun <Key : Any, Data : Any> singlePageDataSource(
             data: Flow<List<Data>>
-        ) = SinglePageDataSource<Key, Data>(data.map { items ->
+        ) = SinglePagePagingSource<Key, Data>(data.map { items ->
             UpdatableData(items, null)
         })
 
         fun <Key : Any, Data : Any> singlePage(
             items: List<Data>,
-        ) = SinglePageDataSource<Key, Data>(
+        ) = SinglePagePagingSource<Key, Data>(
             flow { emit(UpdatableData(items, null)) }
         )
     }

@@ -1,4 +1,4 @@
-package ru.snowmaze.pagingflow.sources
+package ru.snowmaze.pagingflow.source
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
@@ -6,11 +6,11 @@ import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.result.result
 
-class TestDataSource(
+class TestPagingSource(
     override val totalCount: Int,
     private val delayProvider: () -> Long = { 0L },
     startFrom: Int = 0
-) : SegmentedDataSource<String>() {
+) : SegmentedPagingSource<String>() {
 
     var currentException: Exception? = null
 

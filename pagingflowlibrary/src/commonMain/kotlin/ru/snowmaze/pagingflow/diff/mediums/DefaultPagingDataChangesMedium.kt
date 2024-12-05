@@ -2,6 +2,7 @@ package ru.snowmaze.pagingflow.diff.mediums
 
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.utils.fastForEach
 import kotlin.concurrent.Volatile
 
 abstract class DefaultPagingDataChangesMedium<Key : Any, Data : Any> : PagingDataChangesMedium<Key, Data> {
@@ -21,17 +22,19 @@ abstract class DefaultPagingDataChangesMedium<Key : Any, Data : Any> : PagingDat
 
     protected inline fun callDataChangedCallbacks(
         block: DataChangedCallback<Key, Data>.() -> Unit
-    ) {
-        dataChangedCallbacks.forEach(block)
+    ): Boolean {
+        val dataChangedCallbacks = dataChangedCallbacks
+        dataChangedCallbacks.fastForEach(block)
+        return dataChangedCallbacks.isNotEmpty()
     }
 
-    protected suspend inline fun notifyOnEvent(event: DataChangedEvent<Key, Data>) {
-        callDataChangedCallbacks { onEvent(event) }
-    }
+    protected suspend inline fun notifyOnEvent(
+        event: DataChangedEvent<Key, Data>
+    ) = callDataChangedCallbacks { onEvent(event) }
 
-    protected suspend inline fun notifyOnEvents(events: List<DataChangedEvent<Key, Data>>) {
-        callDataChangedCallbacks { onEvents(events) }
-    }
+    protected suspend inline fun notifyOnEvents(
+        events: List<DataChangedEvent<Key, Data>>
+    ) = callDataChangedCallbacks { onEvents(events) }
 
     protected fun createDefaultDataChangedCallback(
     ) = object : DataChangedCallback<Key, Data> {

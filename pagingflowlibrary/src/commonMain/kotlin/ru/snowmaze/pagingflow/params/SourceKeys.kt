@@ -1,7 +1,7 @@
 package ru.snowmaze.pagingflow.params
 
 import ru.snowmaze.pagingflow.result.LoadResult
-import ru.snowmaze.pagingflow.sources.ConcatSourceData
+import ru.snowmaze.pagingflow.source.ConcatSourceData
 
 object SourceKeys {
 

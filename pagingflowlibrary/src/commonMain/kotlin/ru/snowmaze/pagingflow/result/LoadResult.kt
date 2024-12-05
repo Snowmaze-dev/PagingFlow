@@ -3,17 +3,17 @@ package ru.snowmaze.pagingflow.result
 import kotlinx.coroutines.flow.Flow
 import ru.snowmaze.pagingflow.UpdatableData
 import ru.snowmaze.pagingflow.params.PagingParams
-import ru.snowmaze.pagingflow.sources.DataSource
+import ru.snowmaze.pagingflow.source.PagingSource
 
 /**
- * The class which holds result of loading data from [DataSource].
+ * The class which holds result of loading data from [PagingSource].
  */
 sealed class LoadResult<Key : Any, Data : Any> {
 
     abstract val returnData: PagingParams?
 
     /**
-     * Success result object for [DataSource.load]
+     * Success result object for [PagingSource.load]
      * @param [nextPageKey] key of next page of pagination, if end is reached you need to specify null instead of key
      * @param returnData params which will be returned to caller of loading next page
      * @param cachedResult you can use cached result to reuse result of, for example, network operation and load data from database again.
@@ -27,7 +27,7 @@ sealed class LoadResult<Key : Any, Data : Any> {
     ) : LoadResult<Key, Data>()
 
     /**
-     * Failure result object for [DataSource.load]
+     * Failure result object for [PagingSource.load]
      * @param returnData params which will be returned to caller of loading next page
      * @param throwable exception that occurred
      */
@@ -37,7 +37,7 @@ sealed class LoadResult<Key : Any, Data : Any> {
     ) : LoadResult<Key, Data>()
 
     /**
-     * Result object for [DataSource.load] which indicates that theres is nothing to load now
+     * Result object for [PagingSource.load] which indicates that theres is nothing to load now
      */
     data class NothingToLoad<Key : Any, Data : Any>(
         override val returnData: PagingParams? = null
