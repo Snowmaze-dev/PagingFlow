@@ -1,5 +1,6 @@
 package ru.snowmaze.pagingflow.diff.mediums.composite
 
+import androidx.collection.MutableScatterMap
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -14,10 +15,9 @@ import ru.snowmaze.pagingflow.diff.handle
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.diff.mediums.SubscribeForChangesDataChangesMedium
-import ru.snowmaze.pagingflow.params.PagingParams
+import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.utils.fastSumOf
 import ru.snowmaze.pagingflow.utils.flattenWithSize
-import ru.snowmaze.pagingflow.utils.platformMapOf
 
 open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any> internal constructor(
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
@@ -26,7 +26,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
 ) : SubscribeForChangesDataChangesMedium<Key, Data, NewData>(pagingDataChangesMedium) {
 
     private val dataSourcesSections =
-        platformMapOf<Int, CompositePresenterSection.DataSourceSection<Key, Data, NewData>>()
+        MutableScatterMap<Int, CompositePresenterSection.DataSourceSection<Key, Data, NewData>>()
     private val mutex = Mutex()
 
     init {
@@ -45,7 +45,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
                         onCompositeSectionChanged(
                             section = section,
                             data = it,
-                            pagingParams = PagingParams.EMPTY
+                            pagingParams = MutablePagingParams.noCapacity()
                         )?.let { flowValue -> notifyOnEventsInternal(flowValue) }
                     }
                 }
@@ -80,6 +80,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
                         sourceIndex = section.sourceIndex,
                         pageIndexInSource = it.pageIndexInSource,
                         previousList = section.pages[it.pageIndexInSource].items,
+                        previousItemCount = section.pages[it.pageIndexInSource].items.size,
                         items = if (it.changeType == ChangeType.CHANGE_TO_NULLS) {
                             it as List<NewData>
                         } else section.mapData(it.items as List<Data>),
@@ -134,7 +135,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
                         onCompositeSectionChanged(
                             section = section,
                             data = section.itemsProvider(),
-                            pagingParams = PagingParams.EMPTY
+                            pagingParams = MutablePagingParams.noCapacity()
                         ) ?: continue
                     )
                 }
@@ -158,7 +159,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
                     onCompositeSectionChanged(
                         section = section,
                         data = section.itemsProvider(),
-                        pagingParams = PagingParams.EMPTY
+                        pagingParams = MutablePagingParams.noCapacity()
                     )?.let { notifyOnEventsInternal(it) }
                 }
             }
@@ -176,7 +177,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
     private fun onCompositeSectionChanged(
         section: CompositePresenterSection<Key, Data, NewData>,
         data: List<NewData>,
-        pagingParams: PagingParams
+        pagingParams: MutablePagingParams
     ): Any? = when {
         section.pages.isEmpty() -> onAddPage(
             section = section,
@@ -196,6 +197,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
                 sourceIndex = section.sourceIndex,
                 pageIndexInSource = 0,
                 previousList = section.pages[0].items,
+                previousItemCount = section.pages[0].items.size,
                 items = data,
                 params = pagingParams
             )
@@ -208,7 +210,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
         section: CompositePresenterSection<Key, Data, NewData>,
         key: Key?,
         data: List<NewData>,
-        pagingParams: PagingParams?,
+        pagingParams: MutablePagingParams?,
         addIndex: Int
     ): List<DataChangedEvent<Key, NewData>> = buildList {
         var currentSectionIndex = section.sourceIndex
@@ -249,7 +251,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
             if (!hasNextData) {
                 for (nextSectionIndex in currentSectionIndex until sections.size) {
                     val nextSection = sections[nextSectionIndex]
-                    if (nextSection.pages.size != 0) {
+                    if (nextSection.pages.isNotEmpty()) {
                         hasNextData = true
                         break
                     }
@@ -262,6 +264,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
                 pageIndexInSource = if (isAddSection) currentEvent.pageIndexInSource + 1
                 else currentEvent.pageIndexInSource,
                 previousList = nextEvent?.items,
+                previousItemCount = nextEvent?.items?.size ?: 0,
                 items = currentEvent.items,
                 changeType = ChangeType.COMMON_CHANGE,
                 params = currentEvent.params,
@@ -337,6 +340,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
                 pageIndexInSource = (currentEvent.pageIndexInSource + if (isRemoveSection) -1 else 0)
                     .coerceAtLeast(0),
                 previousList = previousEvent.items,
+                previousItemCount = nextEvent?.items?.size ?: 0,
                 items = currentEvent.items,
                 changeType = ChangeType.COMMON_CHANGE,
                 params = currentEvent.params,

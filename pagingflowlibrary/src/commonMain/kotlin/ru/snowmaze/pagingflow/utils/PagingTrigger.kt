@@ -7,7 +7,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import ru.snowmaze.pagingflow.PaginationDirection
-import ru.snowmaze.pagingflow.PagingFlow
+import ru.snowmaze.pagingflow.PagingFlowLoader
+import ru.snowmaze.pagingflow.isLoading
 import ru.snowmaze.pagingflow.loadNextPageWithResult
 
 /**
@@ -34,7 +35,7 @@ class PagingTrigger(
 ) {
 
     constructor(
-        pagingFlow: () -> PagingFlow<*, *>,
+        pagingFlow: () -> PagingFlowLoader<*>,
         itemCount: () -> Int = { 0 },
         currentStartIndex: () -> Int = { 0 },
         prefetchDownDistance: Int = 1,

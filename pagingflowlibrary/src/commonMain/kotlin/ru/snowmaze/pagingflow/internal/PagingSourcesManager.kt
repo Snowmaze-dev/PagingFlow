@@ -1,14 +1,16 @@
 package ru.snowmaze.pagingflow.internal
 
+import androidx.collection.MutableObjectList
+import androidx.collection.ObjectList
 import ru.snowmaze.pagingflow.source.PagingSource
 import ru.snowmaze.pagingflow.PaginationDirection
-import ru.snowmaze.pagingflow.utils.fastIndexOfFirst
+import ru.snowmaze.pagingflow.utils.elementAtOrNull
 
 internal class PagingSourcesManager<Key : Any, Data : Any> {
 
-    private val _downPagingSources = mutableListOf<PagingSource<Key, Data>>()
-    val downPagingSources: List<PagingSource<Key, Data>> get() = _downPagingSources
-    private val _upPagingSources = mutableListOf<PagingSource<Key, Data>>()
+    private val _downPagingSources = MutableObjectList<PagingSource<Key, Data>>()
+    val downPagingSources: ObjectList<PagingSource<Key, Data>> get() = _downPagingSources
+    private val _upPagingSources = MutableObjectList<PagingSource<Key, Data>>()
     val upPagingSources = _upPagingSources
 
     fun replacePagingSources(pagingSourceList: List<PagingSource<Key, Data>>) {
@@ -36,15 +38,17 @@ internal class PagingSourcesManager<Key : Any, Data : Any> {
     }
 
     fun removePagingSource(dataSourceIndex: Int): Boolean {
-        _downPagingSources.getOrNull(dataSourceIndex) ?: return false
-        _downPagingSources.removeAt(dataSourceIndex)
-        return true
+        if (dataSourceIndex in 0 until _downPagingSources.size) {
+            _downPagingSources.removeAt(dataSourceIndex)
+            return true
+        }
+        return false
     }
 
     fun getSourceIndex(
         pagingSource: PagingSource<Key, Data>
-    ) = _upPagingSources.fastIndexOfFirst { it == pagingSource }.takeUnless { it == -1 }
-        ?: _downPagingSources.fastIndexOfFirst { it == pagingSource }
+    ) = _upPagingSources.indexOfFirst { it == pagingSource }.takeUnless { it == -1 }
+        ?: _downPagingSources.indexOfFirst { it == pagingSource }
 
     fun findNextPagingSource(
         currentPagingSource: Pair<PagingSource<Key, Data>, Int>?,
@@ -57,12 +61,12 @@ internal class PagingSourcesManager<Key : Any, Data : Any> {
         } else currentPagingSource.second
         val checkingIndex =
             sourceIndex + if (paginationDirection == PaginationDirection.DOWN) 1 else -1
-        return (if (checkingIndex >= 0) downPagingSources.getOrNull(checkingIndex)
-        else _upPagingSources.getOrNull(checkingIndex + 1))?.let { it to checkingIndex }
+        return (if (checkingIndex >= 0) downPagingSources.elementAtOrNull(checkingIndex)
+        else _upPagingSources.elementAtOrNull(checkingIndex + 1))?.let { it to checkingIndex }
     }
 
     fun movePagingSource(oldIndex: Int, newIndex: Int) {
-        val old = downPagingSources.getOrNull(oldIndex) ?: return
+        val old = downPagingSources.elementAtOrNull(oldIndex) ?: return
         _downPagingSources.removeAt(oldIndex)
         _downPagingSources.add(newIndex.coerceAtMost(downPagingSources.size), old)
     }

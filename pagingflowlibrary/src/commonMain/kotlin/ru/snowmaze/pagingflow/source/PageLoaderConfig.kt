@@ -11,11 +11,11 @@ class PageLoaderConfig<Key : Any>(
     val maxItemsConfiguration: MaxItemsConfiguration?,
 
     // defines should use zero-sized buffer to collect pages and await data set or not when collecting pages
-    val shouldCollectOnlyLatest: Boolean,
+    val collectOnlyLatest: Boolean,
 
     // defines should store page items inside PagingFlow or not.
     // if not it wouldn't be possible to subscribe to paging changes after first page loaded or before invalidate
-    val shouldStorePageItems: Boolean
+    val storePageItems: Boolean
 )
 
 data class MaxItemsConfiguration(

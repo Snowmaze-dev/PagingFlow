@@ -9,19 +9,16 @@ sealed class PagingStatus<Key: Any> {
     ) : PagingStatus<Key>()
 
     data class Success<Key: Any>(
-        override val hasNextPage: Boolean = true,
+        override val hasNextPage: Boolean,
         val currentKey: Key?
     ) : PagingStatus<Key>()
 
     data class Failure<Key: Any>(
-        val throwable: Throwable
-    ) : PagingStatus<Key>() {
+        val throwable: Throwable,
+        override val hasNextPage: Boolean
+    ) : PagingStatus<Key>()
 
-        override val hasNextPage = true
-    }
-
-    data object Loading : PagingStatus<Any>() {
-
-        override val hasNextPage = true
-    }
+    data class Loading<Key: Any>(
+        override val hasNextPage: Boolean
+    ) : PagingStatus<Key>()
 }

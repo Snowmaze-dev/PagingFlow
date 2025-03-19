@@ -31,11 +31,13 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
     private val pagesIndexes = mutableMapOf<Int, List<Data?>>()
     private var beforeInvalidateListSize = 0
     private var wasInvalidated = false
+    private var currentData = LatestData<Data>(emptyList(), emptyList())
 
     override suspend fun onItemsSet(
         events: List<DataChangedEvent<Any, Data>>,
-        previousData: LatestData<Data>
+        currentData: LatestData<Data>
     ) {
+        this.currentData = currentData
         coroutineScope.launch(mainDispatcher) {
             events.fastForEach { event ->
                 event.handle(
@@ -58,7 +60,8 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
                             list?.size ?: 0
                         )
                     },
-                    onInvalidate = {}
+                    onInvalidate = {},
+                    onElse = {}
                 )
             }
         }
@@ -89,18 +92,18 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
 
 
     override fun afterInvalidatedAction(
-        invalidateBehavior: InvalidateBehavior,
-        previousData: LatestData<Data>
+        invalidateBehavior: InvalidateBehavior
     ) {
         coroutineScope.launch(mainDispatcher) {
             pagesIndexes.clear()
-            val previousList = previousData.data
+            val previousList = currentData.data
             if (invalidateBehavior == InvalidateBehavior.INVALIDATE_IMMEDIATELY) {
                 listUpdateCallback.onRemoved(0, previousList.size)
             } else {
                 wasInvalidated = true
                 beforeInvalidateListSize = previousList.size
             }
+            currentData = LatestData(emptyList(), emptyList())
         }
     }
 

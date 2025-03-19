@@ -12,9 +12,9 @@ class MappingPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
     override val config: DataChangesMediumConfig = pagingDataChangesMedium.config,
     private val transformOtherEvents: (
-        (DataChangedEvent<Key, Data>) -> DataChangedEvent<Key, NewData>?
+        suspend (DataChangedEvent<Key, Data>) -> DataChangedEvent<Key, NewData>?
     )? = null,
-    private val transform: (PageChangedEvent<Key, Data>) -> List<NewData?>,
+    private val transform: suspend (PageChangedEvent<Key, Data>) -> List<NewData?>,
 ) : SubscribeForChangesDataChangesMedium<Key, Data, NewData>(pagingDataChangesMedium),
     DataChangedCallback<Key, Data> {
 
@@ -30,7 +30,7 @@ class MappingPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
 
     override fun getChangesCallback() = this
 
-    private fun handleEvent(
+    private suspend inline fun handleEvent(
         event: DataChangedEvent<Key, Data>
     ) = event.handle(
         onPageAdded = {
@@ -50,7 +50,8 @@ class MappingPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
                 pageIndex = it.pageIndex,
                 pageIndexInSource = it.pageIndexInSource,
                 items = transform(it),
-                params = it.params
+                params = it.params,
+                previousItemCount = it.previousItemCount
             )
         },
         onPageRemovedEvent = { it as PageRemovedEvent<Key, NewData> },

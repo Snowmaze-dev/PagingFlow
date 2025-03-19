@@ -2,8 +2,6 @@ package ru.snowmaze.pagingflow
 
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
-import ru.snowmaze.pagingflow.errorshandler.DefaultPagingUnhandledErrorsHandler
-import ru.snowmaze.pagingflow.errorshandler.PagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
@@ -12,7 +10,6 @@ import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.source.ConcatPagingSource
-import ru.snowmaze.pagingflow.source.PageLoaderConfig
 import ru.snowmaze.pagingflow.source.PagingSource
 import ru.snowmaze.pagingflow.utils.DiffOperation
 
@@ -25,22 +22,21 @@ import ru.snowmaze.pagingflow.utils.DiffOperation
  */
 class PagingFlow<Key : Any, Data : Any>(
     private val concatDataSource: ConcatPagingSource<Key, Data>,
-    val pagingFlowConfiguration: PagingFlowConfiguration<Key>
-) : PagingDataChangesMedium<Key, Data> {
+    override val pagingFlowConfiguration: PagingFlowConfiguration<Key>
+) : PagingDataChangesMedium<Key, Data>, PagingFlowLoader<Key> {
 
-    val upPagingStatus = concatDataSource.upPagingStatus
-    val downPagingStatus = concatDataSource.downPagingStatus
-    val isLoading get() = concatDataSource.isLoading
+    override val upPagingStatus = concatDataSource.upPagingStatus
+    override val downPagingStatus = concatDataSource.downPagingStatus
 
-    val currentPagesCount get() = concatDataSource.currentPagesCount
+    override val pagesCount get() = concatDataSource.pagesCount
 
     override val config = concatDataSource.config
+
+    override val notNullifiedPagesCount: Int get() = concatDataSource.notNullifiedPagesCount
 
     val firstPageInfo get() = concatDataSource.firstPageInfo
     val lastPageInfo get() = concatDataSource.lastPageInfo
     val pagesInfo get() = concatDataSource.pagesInfo
-
-    val pagesCount: Int get() = concatDataSource.pagesCount
 
     /**
      * @see [ConcatPagingSource.addDownPagingSource]
@@ -134,99 +130,11 @@ class PagingFlow<Key : Any, Data : Any>(
         }
     }
 
-    /**
-     * @see [ConcatPagingSource.invalidate]
-     */
-    suspend fun invalidate(
-        invalidateBehavior: InvalidateBehavior? = null, removeCachedData: Boolean = true
-    ) = concatDataSource.invalidate(invalidateBehavior, removeCachedData = removeCachedData)
-}
-
-/**
- * Creates paging flow
- *
- * Usage:
- * ```
- * buildPagingFlow(
- *   configuration = PagingFlowConfiguration(defaultParams = LoadParams(pageSize = 100, key = 0)),
- *   loadFirstPage = false,
- * ) {
- *     addDataSource(FirstDataSource())
- *     addDataSource(SecondDataSource())
- *     addDataSource(ThirdDataSource())
- * }
- * ```
- *
- * @param configuration configuration of PagingFlow
- * @param loadFirstPage should load first page just after creating PagingFlow
- * @param builder configures PagingFlow
- */
-fun <Key : Any, Data : Any> buildPagingFlow(
-    configuration: PagingFlowConfiguration<Key>,
-    pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler<Key, Data> = DefaultPagingUnhandledErrorsHandler(),
-    loadFirstPage: Boolean = false,
-    builder: PagingFlow<Key, Data>.() -> Unit = {}
-) = PagingFlow<Key, Data>(
-    ConcatPagingSource(
-        PageLoaderConfig(
-            defaultParamsProvider = configuration.defaultParamsProvider,
-            maxItemsConfiguration = configuration.maxItemsConfiguration,
-            processingDispatcher = configuration.processingDispatcher,
-            coroutineScope = configuration.coroutineScope,
-            shouldStorePageItems = configuration.shouldStorePageItems,
-            shouldCollectOnlyLatest = configuration.shouldCollectOnlyLatest
-        ),
-        pagingUnhandledErrorsHandler = pagingUnhandledErrorsHandler
-    ),
-    configuration,
-).apply {
-    apply(builder)
-    if (loadFirstPage) loadNextPage()
-}
-
-/**
- * Creates paging flow
- *
- * Usage:
- * ```
- * buildPagingFlow(
- *   configuration = PagingFlowConfiguration(defaultParams = LoadParams(pageSize = 100, key = 0)),
- *   loadFirstPage = false,
- *   FirstDataSource(),
- *   SecondDataSource(),
- *   ThirdDataSource(),
- *   ...
- * )
- * ```
- *
- * @param configuration configuration of PagingFlow
- * @param loadFirstPage should load first page just after creating PagingFlow
- * @param pagingSources paging sources list to be added to PagingFlow
- */
-fun <Key : Any, Data : Any> buildPagingFlow(
-    configuration: PagingFlowConfiguration<Key>,
-    loadFirstPage: Boolean,
-    vararg pagingSources: PagingSource<Key, out Data>,
-    pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler<Key, Data> = DefaultPagingUnhandledErrorsHandler(),
-) = buildPagingFlow(
-    configuration = configuration,
-    loadFirstPage = loadFirstPage,
-    pagingUnhandledErrorsHandler = pagingUnhandledErrorsHandler
-) {
-    for (pagingSource in pagingSources) {
-        addDownPagingSource(pagingSource)
-    }
-}
-
-fun <Key : Any, Data : Any> buildPagingFlow(
-    configuration: PagingFlowConfiguration<Key>,
-    vararg pagingSources: PagingSource<Key, out Data>,
-    pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler<Key, Data> = DefaultPagingUnhandledErrorsHandler(),
-) = buildPagingFlow(
-    configuration = configuration,
-    pagingUnhandledErrorsHandler = pagingUnhandledErrorsHandler
-) {
-    for (pagingSource in pagingSources) {
-        addDownPagingSource(pagingSource)
-    }
+    override suspend fun invalidate(
+        invalidateBehavior: InvalidateBehavior?,
+        removeCachedData: Boolean,
+    ) = concatDataSource.invalidate(
+        removeCachedData = removeCachedData,
+        invalidateBehavior = invalidateBehavior
+    )
 }

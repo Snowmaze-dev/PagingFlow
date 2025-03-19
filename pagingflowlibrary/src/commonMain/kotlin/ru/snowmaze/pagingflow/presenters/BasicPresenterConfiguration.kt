@@ -6,6 +6,7 @@ import ru.snowmaze.pagingflow.presenters.list.ListByPagesBuildStrategy
 
 /**
  * Configuration for [BasicBuildListPagingPresenter]
+ * @see InvalidateBehavior
  */
 class BasicPresenterConfiguration<Key : Any, Data : Any>(
     val listBuildStrategy: ListBuildStrategy<Key, Data> = ListByPagesBuildStrategy(),

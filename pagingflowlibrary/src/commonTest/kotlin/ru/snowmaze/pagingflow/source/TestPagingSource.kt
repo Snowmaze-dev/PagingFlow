@@ -8,7 +8,8 @@ import ru.snowmaze.pagingflow.result.result
 
 class TestPagingSource(
     override val totalCount: Int,
-    private val delayProvider: () -> Long = { 0L },
+    private val flowDelayProvider: () -> Long = { 0L },
+    private val loadDelay: () -> Long = { 0L},
     private val isReversed: Boolean = false,
     startFrom: Int = 0
 ) : SegmentedPagingSource<String>() {
@@ -33,7 +34,8 @@ class TestPagingSource(
     ): LoadResult<Int, String> {
         val exception = currentException
         if (exception != null) throw exception
-        val delay = delayProvider()
+        delay(loadDelay())
+        val delay = flowDelayProvider()
         val list = items.subList(startIndex, endIndex)
         val finalList = if (isReversed) list.asReversed() else list
         return if (delay == 0L) result(finalList) else result(dataFlow = flow {

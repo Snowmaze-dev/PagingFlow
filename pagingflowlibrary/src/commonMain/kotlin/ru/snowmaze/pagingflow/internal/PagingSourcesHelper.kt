@@ -24,7 +24,7 @@ internal class PagingSourcesHelper<Key : Any, Data : Any>(
         ) -> List<DiffOperation<PagingSource<Key, out Data>>>
     ) = loadDataMutex.withLock {
         val dataSources = pagingSourcesManager.downPagingSources
-        val operations = diff(dataSources, newPagingSourceList)
+        val operations = diff(dataSources.asList(), newPagingSourceList)
         if (operations.isEmpty()) return@withLock
         for (operation in operations) {
             when (operation) {

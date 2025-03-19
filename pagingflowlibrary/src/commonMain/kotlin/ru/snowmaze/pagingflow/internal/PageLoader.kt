@@ -1,10 +1,13 @@
 package ru.snowmaze.pagingflow.internal
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.PaginationDirection
@@ -19,9 +22,11 @@ import ru.snowmaze.pagingflow.params.SourceKeys.pageLoaderResult
 import ru.snowmaze.pagingflow.params.SourceKeys.sourceResultKey
 import ru.snowmaze.pagingflow.params.toMutableParams
 import ru.snowmaze.pagingflow.result.LoadResult
+import ru.snowmaze.pagingflow.result.mapParams
 import ru.snowmaze.pagingflow.source.PageLoaderConfig
 import ru.snowmaze.pagingflow.source.ConcatSourceData
 import ru.snowmaze.pagingflow.source.PagingSource
+import ru.snowmaze.pagingflow.utils.elementAtOrNull
 import ru.snowmaze.pagingflow.utils.fastFirstOrNull
 import ru.snowmaze.pagingflow.utils.fastIndexOfFirst
 import ru.snowmaze.pagingflow.utils.fastIndexOfLast
@@ -56,6 +61,74 @@ internal class PageLoader<Key : Any, Data : Any>(
         )
     }
 
+    suspend inline fun loadData(loadParams: LoadParams<Key>): LoadResult<Key, Data> {
+        val isPaginationDown = loadParams.paginationDirection == PaginationDirection.DOWN
+
+        val loadSeveralPages = loadParams.pagingParams
+            ?.getOrNull(PagingLibraryParamsKeys.LoadSeveralPages)
+
+        return if (loadSeveralPages != null) {
+            val sourceResultKey = sourceResultKey
+            var lastResult: LoadResult<Key, Data>? = null
+            var lastResultWithLoad: LoadResult<Key, Data>? = null
+            val resultPagingParams = mutableListOf<PagingParams?>()
+            val key = pageLoaderResultKey
+            val pagingStatus = if (isPaginationDown) downPagingStatus
+            else upPagingStatus
+            while (true) {
+                val currentResult = lastResult?.returnData?.getOrNull(sourceResultKey) ?: lastResult
+                val currentPagingParams = loadSeveralPages.getPagingParams(
+                    currentResult as? LoadResult<Any, Any>
+                ) ?: break
+                val defaultPagingParams =
+                    pageLoaderConfig.defaultParamsProvider().pagingParams?.toMutableParams()
+                defaultPagingParams?.put(currentPagingParams)
+                lastResult = loadData(
+                    loadParams = loadParams.copy(
+                        pagingParams = defaultPagingParams ?: currentPagingParams
+                    ),
+                    lastPageIndex = null,
+                    shouldReplaceOnConflict = true,
+                    shouldSetNewStatus = false
+                )
+                resultPagingParams += lastResult.returnData?.getOrNull(key)?.returnData
+                    ?: lastResult.returnData
+                val status = pagingStatus.value
+                if (lastResult is LoadResult.NothingToLoad && status is PagingStatus.Loading ||
+                    (status !is PagingStatus.Loading && !status.hasNextPage)
+                ) break
+                lastResultWithLoad = lastResult
+                if (lastResult is LoadResult.Failure) continue
+                loadSeveralPages.onSuccess?.invoke(
+                    lastResult.returnData?.get(sourceResultKey) as LoadResult.Success<Any, Any>
+                )
+            }
+            lastResult ?: throw IllegalArgumentException("Should load at least one pagination.")
+            lastResult.returnData?.get(statusKey)?.let {
+                (if (isPaginationDown) downPagingStatus
+                else upPagingStatus).value = it
+            }
+            val returnData = lastResult.returnData?.let {
+                MutablePagingParams(it)
+            } ?: MutablePagingParams()
+
+            lastResult = lastResult.mapParams(returnData)
+            returnData.getOrNull(key)?.returnData?.let { MutablePagingParams(it) }?.let {
+                returnData.put(key, returnData[key].copy(returnData = it))
+            }
+            (returnData.getOrNull(key)?.returnData ?: returnData).put(
+                ReturnPagingLibraryKeys.PagingParamsList,
+                resultPagingParams
+            )
+            lastResult
+        } else loadData(
+            loadParams = loadParams,
+            lastPageIndex = null,
+            shouldReplaceOnConflict = true,
+            shouldSetNewStatus = true
+        )
+    }
+
     suspend fun loadData(
         loadParams: LoadParams<Key>,
         lastPageIndex: Int?,
@@ -69,12 +142,15 @@ internal class PageLoader<Key : Any, Data : Any>(
             shouldSetNewStatus = shouldSetNewStatus,
             dataSourceIndex = null
         )
+
+        // in case when load returned nothing to load but there's also the next paging source available
+        // then we loading from next paging source right away
         if (loadResult is LoadResult.NothingToLoad) {
             val isLoadingDown = loadParams.paginationDirection == PaginationDirection.DOWN
             val status = if (isLoadingDown) downPagingStatus else upPagingStatus
             while (loadResult is LoadResult.NothingToLoad &&
                 status.value.hasNextPage &&
-                status.value !== PagingStatus.Loading
+                status.value !is PagingStatus.Loading
             ) {
                 loadResult = loadDataInternal(
                     loadParams = loadParams,
@@ -131,13 +207,13 @@ internal class PageLoader<Key : Any, Data : Any>(
                 return LoadResult.NothingToLoad()
             }
         } else {
-            val dataSource = pagingSourcesManager.downPagingSources.getOrNull(dataSourceIndex)
+            val dataSource = pagingSourcesManager.downPagingSources.elementAtOrNull(dataSourceIndex)
             if (dataSource == null) {
+                val value = currentStatusFlow.value
                 currentStatusFlow.value = PagingStatus.Success(
                     hasNextPage = false,
-                    currentKey = if (currentStatusFlow is PagingStatus.Success<*>) {
-                        currentStatusFlow.currentKey as? Key
-                    } else null
+                    currentKey = if (value is PagingStatus.Success<Key>) value.currentKey
+                    else null
                 )
                 currentStatusFlow.value = getSuccessStatus(
                     isLoadingPageInOrder = isLoadingPageInOrder,
@@ -156,9 +232,6 @@ internal class PageLoader<Key : Any, Data : Any>(
             if (isPaginationDown) lastDownDataSourceIndex = pagingSourceWithIndex.second
             else lastUpDataSourceIndex = pagingSourceWithIndex.second
         }
-
-        // setting status that we loading
-        currentStatusFlow.value = PagingStatus.Loading as PagingStatus<Key>
 
         // picking currentKey and getting cache in case it was saved earlier
         val pagingSource = pagingSourceWithIndex.first
@@ -191,10 +264,20 @@ internal class PageLoader<Key : Any, Data : Any>(
             ?: defaultLoadParams?.cachedResult,
             pagingParams = loadParams.pagingParams ?: defaultLoadParams?.pagingParams
         )
+        val lastStatus = currentStatusFlow.value
+        val hasNextNow = nextPageKey != null
 
         val result = try {
+
+            // setting status that we loading
+            currentStatusFlow.value = PagingStatus.Loading(hasNextPage = hasNextNow)
+
             pagingSource.load(nextLoadParams)
         } catch (e: Throwable) {
+            if (e is CancellationException) {
+                currentStatusFlow.value = lastStatus
+                throw e
+            }
             (pagingSource.pagingUnhandledErrorsHandler ?: pagingUnhandledErrorsHandler).handle(e)
         }
 
@@ -211,7 +294,8 @@ internal class PageLoader<Key : Any, Data : Any>(
             )
 
             is LoadResult.Failure -> PagingStatus.Failure(
-                throwable = result.throwable
+                throwable = result.throwable,
+                hasNextPage = hasNextNow
             )
 
             is LoadResult.NothingToLoad -> {
@@ -228,33 +312,13 @@ internal class PageLoader<Key : Any, Data : Any>(
         }
 
         if (result !is LoadResult.Success) {
-            currentStatusFlow.value = status
+            currentStatusFlow.tryEmit(status)
 
             return result
         }
 
-        if (shouldSetNewStatus) currentStatusFlow.value = status
-
-        // saving page to pages manager
-        val previousPageKey = if (isPaginationDown) lastPage?.currentPageKey else result.nextPageKey
-        val page = DataPage(
-            data = null,
-            itemCount = 0,
-            isCancelled = false,
-            nextPageKey = if (isPaginationDown) result.nextPageKey
-            else lastPage?.currentPageKey,
-            pagingSourceWithIndex = pagingSourceWithIndex,
-            previousPageKey = previousPageKey,
-            currentPageKey = currentKey,
-            listenJob = SupervisorJob(),
-            pageIndex = pageAbsoluteIndex,
-            dataSourceIndex = pagingSourceWithIndex.second,
-            pageIndexInPagingSource = pageIndexInDataSource
-        )
-
-        val newIndex = currentLastPageIndex + if (isPaginationDown) 1 else -1
-        val shouldReturnAwaitJob =
-            loadParams.pagingParams?.getOrNull(PagingLibraryParamsKeys.ReturnAwaitJob) == true
+        val shouldReturnAwaitJob = loadParams.pagingParams
+            ?.getOrNull(PagingLibraryParamsKeys.ReturnAwaitJob) == true
 
         val dataSetChannel = if (shouldReturnAwaitJob) Channel<Unit>(1) else null
         val job: Job? = if (shouldReturnAwaitJob) {
@@ -264,29 +328,53 @@ internal class PageLoader<Key : Any, Data : Any>(
                 }
             }
         } else null
+        withContext(NonCancellable) {
 
-        dataPagesManager.setupPage(
-            newIndex = newIndex,
-            result = result,
-            page = page,
-            loadParams = loadParams,
-            shouldReplaceOnConflict = shouldReplaceOnConflict,
-            onPageRemoved = onPageRemoved,
-            awaitDataSetChannel = dataSetChannel,
-            onLastPageNextKeyChanged = { newNextKey, isDown ->
+            if (shouldSetNewStatus) currentStatusFlow.value = status
+
+            // saving page to pages manager
+            val previousPageKey =
+                if (isPaginationDown) lastPage?.currentPageKey else result.nextPageKey
+            val page = DataPage(
+                data = null,
+                itemCount = 0,
+                isCancelled = false,
+                nextPageKey = if (isPaginationDown) result.nextPageKey
+                else lastPage?.currentPageKey,
+                pagingSourceWithIndex = pagingSourceWithIndex,
+                previousPageKey = previousPageKey,
+                currentPageKey = currentKey,
+                listenJob = SupervisorJob(),
+                pageIndex = pageAbsoluteIndex,
+                dataSourceIndex = pagingSourceWithIndex.second,
+                pageIndexInPagingSource = pageIndexInDataSource
+            )
+
+            val newIndex = currentLastPageIndex + if (isPaginationDown) 1 else -1
+
+            dataPagesManager.setupPage(
+                newIndex = newIndex,
+                result = result,
+                page = page,
+                loadParams = loadParams,
+                shouldReplaceOnConflict = shouldReplaceOnConflict,
+                onPageRemoved = onPageRemoved,
+                awaitDataSetChannel = dataSetChannel,
+            ) { newNextKey, isDown ->
                 changeHasNextStatus(
                     isPaginationDown = isDown,
                     hasNext = newNextKey != null || pagingSourcesManager.findNextPagingSource(
                         currentPagingSource = pagingSourceWithIndex,
                         isThereKey = false,
-                        paginationDirection = paginationDirection
+                        paginationDirection = if (isDown) PaginationDirection.DOWN
+                        else PaginationDirection.UP
                     ) != null
                 )
             }
-        )
 
-        // updating indexes in case when inserted new page in middle of other pages
-        if (!shouldReplaceOnConflict) dataPagesManager.updateIndexes()
+            // updating indexes in case when inserted new page in middle of other pages
+            if (!shouldReplaceOnConflict) dataPagesManager.updateIndexes()
+        }
 
         val resultData = result.returnData?.toMutableParams()
             ?: if (job != null) MutablePagingParams() else null

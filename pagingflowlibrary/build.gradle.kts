@@ -5,7 +5,7 @@ plugins {
 }
 
 kotlin {
-    jvmToolchain(11)
+    jvmToolchain(17)
     androidTarget {
         publishAllLibraryVariants()
     }
@@ -48,7 +48,7 @@ kotlin {
         commonMain.dependencies {
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
-            implementation(libs.difference)
+            implementation(libs.androidx.collection)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -63,7 +63,13 @@ kotlin {
             kotlin.srcDir("src/commonJvmMain/kotlin")
         }
         commonJvmMain.dependencies {
-            implementation(libs.androidx.collection.ktx)
+            implementation(libs.difference)
+        }
+        val commonJvmTest = getByName("commonJvmTest") {
+            kotlin.srcDir("src/commonJvmTest/kotlin")
+        }
+        commonJvmTest.dependencies {
+            implementation(libs.kotlin.test)
         }
         val nonJvmMain = getByName("nonJvmMain") {
             kotlin.srcDir("src/nonJvmMain/kotlin")
@@ -75,10 +81,9 @@ afterEvaluate {
     publishing {
         publications {
             withType<MavenPublication> {
-                version = "1.1.1-alpha"
+                version = "1.1.2"
                 group = "ru.snowmaze.pagingflow"
-                val postfix = if (name == "androidRelease") "android" else name
-                artifactId = "common-$postfix"
+                artifactId = if (name == "kotlinMultiplatform") "common" else name
             }
         }
     }
@@ -91,6 +96,6 @@ android {
         minSdk = 21
     }
     kotlin {
-        jvmToolchain(11)
+        jvmToolchain(17)
     }
 }

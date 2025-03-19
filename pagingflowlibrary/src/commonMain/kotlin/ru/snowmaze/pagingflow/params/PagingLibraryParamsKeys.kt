@@ -1,6 +1,5 @@
 package ru.snowmaze.pagingflow.params
 
-import ru.snowmaze.pagingflow.PagingFlow
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.source.ConcatPagingSource
 import ru.snowmaze.pagingflow.source.PagingSource
@@ -59,5 +58,5 @@ object PagingLibraryParamsKeys {
  */
 class LoadSeveralPagesData<Key : Any, Data : Any>(
     val onSuccess: ((LoadResult.Success<Key, Data>) -> Unit)? = null,
-    val getPagingParams: suspend (LoadResult<Key, Data>?) -> PagingParams?,
+    val getPagingParams: suspend (LoadResult<Key, Data>?) -> MutablePagingParams?,
 )

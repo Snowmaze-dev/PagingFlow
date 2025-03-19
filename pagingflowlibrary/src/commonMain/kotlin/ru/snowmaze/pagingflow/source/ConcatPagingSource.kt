@@ -9,24 +9,16 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import ru.snowmaze.pagingflow.LoadParams
-import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.PagingStatus
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 import ru.snowmaze.pagingflow.errorshandler.DefaultPagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.errorshandler.PagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.internal.DataPagesManager
+import ru.snowmaze.pagingflow.internal.PageLoader
 import ru.snowmaze.pagingflow.internal.PagingSourcesHelper
 import ru.snowmaze.pagingflow.internal.PagingSourcesManager
-import ru.snowmaze.pagingflow.internal.PageLoader
-import ru.snowmaze.pagingflow.params.MutablePagingParams
-import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
-import ru.snowmaze.pagingflow.params.PagingParams
-import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
-import ru.snowmaze.pagingflow.params.toMutableParams
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
-import ru.snowmaze.pagingflow.result.LoadResult
-import ru.snowmaze.pagingflow.result.mapParams
 import ru.snowmaze.pagingflow.utils.DiffOperation
 import ru.snowmaze.pagingflow.utils.fastFirstOrNull
 import ru.snowmaze.pagingflow.utils.mapHasNext
@@ -53,12 +45,9 @@ class ConcatPagingSource<Key : Any, Data : Any>(
     val lastPageInfo get() = dataPagesManager.dataPages.lastOrNull()?.toInfo()
     val pagesInfo get() = dataPagesManager.dataPages.map { it.toInfo() }
 
-    val pagesCount get() = dataPagesManager.dataPages.count { !it.isNullified }
+    val notNullifiedPagesCount get() = dataPagesManager.dataPages.count { !it.isNullified }
 
-    val currentPagesCount get() = dataPagesManager.currentPagesCount
-    val isLoading
-        get() = upPagingStatus.value is PagingStatus.Loading ||
-                downPagingStatus.value is PagingStatus.Loading
+    val pagesCount get() = dataPagesManager.pagesCount
 
     private val pageLoader = PageLoader(
         pagingSourcesManager = pagingSourcesManager,
@@ -153,72 +142,7 @@ class ConcatPagingSource<Key : Any, Data : Any>(
     @Suppress("UNCHECKED_CAST")
     override suspend fun load(
         loadParams: LoadParams<Key>,
-    ) = loadDataMutex.withLock {
-        val isPaginationDown = loadParams.paginationDirection == PaginationDirection.DOWN
-
-        val loadSeveralPages = loadParams.pagingParams
-            ?.getOrNull(PagingLibraryParamsKeys.LoadSeveralPages)
-
-        if (loadSeveralPages != null) {
-            val sourceResultKey = pageLoader.sourceResultKey
-            var lastResult: LoadResult<Key, Data>? = null
-            var lastResultWithLoad: LoadResult<Key, Data>? = null
-            val resultPagingParams = mutableListOf<PagingParams?>()
-            val key = pageLoader.pageLoaderResultKey
-            val pagingStatus = if (isPaginationDown) pageLoader.downPagingStatus
-            else pageLoader.upPagingStatus
-            while (true) {
-                val currentResult = lastResult?.returnData?.getOrNull(sourceResultKey) ?: lastResult
-                val currentPagingParams = loadSeveralPages.getPagingParams(
-                    currentResult as? LoadResult<Any, Any>
-                ) ?: break
-                val defaultPagingParams =
-                    concatDataSourceConfig.defaultParamsProvider().pagingParams?.toMutableParams()
-                defaultPagingParams?.put(currentPagingParams)
-                lastResult = pageLoader.loadData(
-                    loadParams = loadParams.copy(
-                        pagingParams = defaultPagingParams ?: currentPagingParams
-                    ),
-                    lastPageIndex = null,
-                    shouldReplaceOnConflict = true,
-                    shouldSetNewStatus = false
-                )
-                resultPagingParams += lastResult.returnData?.getOrNull(key)?.returnData
-                    ?: lastResult.returnData
-                if (lastResult is LoadResult.NothingToLoad &&
-                    pagingStatus.value is PagingStatus.Loading || !pagingStatus.value.hasNextPage
-                ) break
-                lastResultWithLoad = lastResult
-                if (lastResult is LoadResult.Failure) continue
-                loadSeveralPages.onSuccess?.invoke(
-                    lastResult.returnData?.get(sourceResultKey) as LoadResult.Success<Any, Any>
-                )
-            }
-            lastResult ?: throw IllegalArgumentException("Should load at least one pagination.")
-            lastResultWithLoad?.returnData?.get(pageLoader.statusKey)?.let {
-                (if (isPaginationDown) pageLoader.downPagingStatus
-                else pageLoader.upPagingStatus).value = it
-            }
-            val returnData = lastResult.returnData?.let {
-                MutablePagingParams(it)
-            } ?: MutablePagingParams()
-
-            lastResult = lastResult.mapParams(returnData)
-            returnData.getOrNull(key)?.returnData?.let { MutablePagingParams(it) }?.let {
-                returnData.put(key, returnData[key].copy(returnData = it))
-            }
-            (returnData.getOrNull(key)?.returnData ?: returnData).put(
-                ReturnPagingLibraryKeys.PagingParamsList,
-                resultPagingParams
-            )
-            return@withLock lastResult
-        } else pageLoader.loadData(
-            loadParams = loadParams,
-            lastPageIndex = null,
-            shouldReplaceOnConflict = true,
-            shouldSetNewStatus = true
-        )
-    }
+    ) = loadDataMutex.withLock { pageLoader.loadData(loadParams) }
 
     /**
      * Deletes all pages
@@ -227,12 +151,12 @@ class ConcatPagingSource<Key : Any, Data : Any>(
      */
     suspend fun invalidate(
         invalidateBehavior: InvalidateBehavior?,
-        removeCachedData: Boolean
+        removeCachedData: Boolean = false,
     ) = loadDataMutex.withLock {
         withContext(concatDataSourceConfig.processingDispatcher) {
             dataPagesManager.invalidate(
-                invalidateBehavior = invalidateBehavior,
                 removeCachedData = removeCachedData,
+                invalidateBehavior = invalidateBehavior,
             )
             pageLoader.downPagingStatus.value = PagingStatus.Initial(
                 hasNextPage = pagingSourcesManager.downPagingSources.isNotEmpty()

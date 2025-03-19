@@ -56,7 +56,7 @@ class LoadSeveralPagesTest {
             pages++
             PagingParams(0).takeUnless { pages > 2 }
         }
-        assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
+        assertIs<PagingStatus.Success<Int>>(pagingFlow.downPagingStatus.value)
         assertFalse(pagingFlow.upPagingStatus.value.hasNextPage)
         assertEquals(
             2,
@@ -67,7 +67,6 @@ class LoadSeveralPagesTest {
         presenter.dataFlow.firstWithTimeout { it.size == pageSize * 2 }
 
         pages = 0
-        assertIs<PagingStatus.Success<Int>>(pagingFlow.downPagingStatus.value)
         assertTrue(pagingFlow.downPagingStatus.value.hasNextPage)
         pagingFlow.loadSeveralPages {
             pages++

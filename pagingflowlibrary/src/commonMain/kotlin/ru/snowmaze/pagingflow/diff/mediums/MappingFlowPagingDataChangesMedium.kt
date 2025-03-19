@@ -1,5 +1,6 @@
 package ru.snowmaze.pagingflow.diff.mediums
 
+import androidx.collection.MutableScatterMap
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
@@ -11,7 +12,6 @@ import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
 import ru.snowmaze.pagingflow.diff.handle
-import ru.snowmaze.pagingflow.utils.platformMapOf
 
 class MappingFlowPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
@@ -22,9 +22,9 @@ class MappingFlowPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
     private val transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>,
 ) : SubscribeForChangesDataChangesMedium<Key, Data, NewData>(pagingDataChangesMedium) {
 
-    private val addedJobsMap = platformMapOf<Int, Job>()
-    private val jobsMap = platformMapOf<Int, Job>()
-    private val otherEventsListeners = platformMapOf<Long, Job>()
+    private val addedJobsMap = MutableScatterMap<Int, Job>()
+    private val jobsMap = MutableScatterMap<Int, Job>()
+    private val otherEventsListeners = MutableScatterMap<Long, Job>()
 
     private val callback = object : DataChangedCallback<Key, Data> {
 
@@ -53,7 +53,8 @@ class MappingFlowPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
                                         pageIndex = event.pageIndex,
                                         pageIndexInSource = event.pageIndexInSource,
                                         items = it as List<NewData>,
-                                        params = event.params
+                                        params = event.params,
+                                        previousItemCount = event.previousItemCount
                                     )
                                 }
                             )
@@ -73,7 +74,8 @@ class MappingFlowPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
                                     pageIndex = event.pageIndex,
                                     pageIndexInSource = event.pageIndexInSource,
                                     items = it as List<NewData>,
-                                    params = event.params
+                                    params = event.params,
+                                    previousItemCount = event.previousItemCount
                                 )
                             )
                         }

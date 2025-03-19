@@ -1,6 +1,7 @@
 package ru.snowmaze.pagingflow.diff
 
 import ru.snowmaze.pagingflow.PagingFlow
+import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import kotlin.contracts.ExperimentalContracts
@@ -32,10 +33,11 @@ open class PageChangedEvent<Key : Any, Data : Any>(
     override val sourceIndex: Int,
     override val pageIndex: Int,
     override val pageIndexInSource: Int,
+    val previousItemCount: Int,
     val previousList: List<Data?>? = null,
     val items: List<Data?>,
     val changeType: ChangeType = ChangeType.COMMON_CHANGE,
-    val params: PagingParams? = null,
+    val params: MutablePagingParams? = null,
 ) : DataChangedEvent<Key, Data>(), EventFromDataSource<Key, Data> {
 
     inline val notNullItems get() = items as List<Data>
@@ -57,6 +59,7 @@ open class PageChangedEvent<Key : Any, Data : Any>(
         pageIndex = pageIndex,
         pageIndexInSource = pageIndexInSource,
         previousList = previousList,
+        previousItemCount = previousItemCount,
         items = items,
         changeType = changeType,
         params = params,
@@ -69,7 +72,7 @@ class PageAddedEvent<Key : Any, Data : Any>(
     pageIndex: Int,
     pageIndexInSource: Int,
     items: List<Data?>,
-    params: PagingParams? = null,
+    params: MutablePagingParams? = null,
 ) : PageChangedEvent<Key, Data>(
     key = key,
     pageIndex = pageIndex,
@@ -77,7 +80,8 @@ class PageAddedEvent<Key : Any, Data : Any>(
     pageIndexInSource = pageIndexInSource,
     previousList = null,
     items = items,
-    params = params
+    params = params,
+    previousItemCount = 0
 ) {
 
     override fun copyWithNewPositionData(
@@ -136,14 +140,14 @@ inline fun <Key : Any, Data : Any, T : Any> DataChangedEvent<Key, Data>.handle(
     onPageChanged: (PageChangedEvent<Key, Data>) -> T?,
     onPageRemovedEvent: (PageRemovedEvent<Key, Data>) -> T?,
     onInvalidate: (InvalidateEvent<Key, Data>) -> T?,
-    onElse: ((DataChangedEvent<Key, Data>) -> T?) = { null }
+    onElse: ((DataChangedEvent<Key, Data>) -> T?)
 ): T? {
     contract {
-        callsInPlace(onPageAdded, InvocationKind.EXACTLY_ONCE)
-        callsInPlace(onPageChanged, InvocationKind.EXACTLY_ONCE)
-        callsInPlace(onPageRemovedEvent, InvocationKind.EXACTLY_ONCE)
-        callsInPlace(onInvalidate, InvocationKind.EXACTLY_ONCE)
-        callsInPlace(onElse, InvocationKind.EXACTLY_ONCE)
+        callsInPlace(onPageAdded, InvocationKind.AT_MOST_ONCE)
+        callsInPlace(onPageChanged, InvocationKind.AT_MOST_ONCE)
+        callsInPlace(onPageRemovedEvent, InvocationKind.AT_MOST_ONCE)
+        callsInPlace(onInvalidate, InvocationKind.AT_MOST_ONCE)
+        callsInPlace(onElse, InvocationKind.AT_MOST_ONCE)
     }
 
     return when (this) {

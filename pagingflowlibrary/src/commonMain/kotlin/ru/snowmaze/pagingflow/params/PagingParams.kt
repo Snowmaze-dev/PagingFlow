@@ -1,18 +1,22 @@
 package ru.snowmaze.pagingflow.params
 
+import androidx.collection.MutableScatterMap
+import androidx.collection.ScatterMap
+import androidx.collection.emptyScatterMap
+
 /**
  * Paging params where you can specify typesafe params for paging sources
  * @see PagingLibraryParamsKeys
  * @see DataKey
  */
 open class PagingParams internal constructor(
-    internalMap: Map<String, Any?>,
+    internalMap: ScatterMap<String, Any?>,
     reuseMap: Boolean = true
 ) {
 
     companion object {
 
-        val EMPTY = PagingParams(emptyMap())
+        val EMPTY = PagingParams(emptyScatterMap())
 
         operator fun invoke(
             capacity: Int = 5,
@@ -27,12 +31,16 @@ open class PagingParams internal constructor(
     constructor(pagingParams: PagingParams) : this(pagingParams.map, reuseMap = false)
 
     internal open val map = if (reuseMap) internalMap
-    else LinkedHashMap(internalMap)
+    else MutableScatterMap<String, Any?>(internalMap.size).apply {
+        putAll(internalMap)
+    }
 
-    val entries get() = map.entries
-    val keys get() = map.keys
+    private val mapInterface = map.asMap()
+
+    val entries get() = mapInterface.entries
+    val keys get() = mapInterface.keys
     val size get() = map.size
-    val values get() = map.values
+    val values get() = mapInterface.values
 
     operator fun <T> get(key: DataKey<T>): T = getOrNull(key)
         ?: throw IllegalArgumentException("You should specify ${key.key} key for that operation.")
@@ -47,7 +55,7 @@ open class PagingParams internal constructor(
 
     fun containsKey(key: DataKey<*>) = map.containsKey(key.key)
 
-    fun getStringKeysMap() = map.mapKeys { it.key }
+    fun getStringKeysMap() = mapInterface.mapKeys { it.key }
 
     override fun toString(): String {
         return getStringKeysMap().toString()
@@ -55,19 +63,23 @@ open class PagingParams internal constructor(
 }
 
 class MutablePagingParams(
-    map: Map<String, Any?>,
+    map: ScatterMap<String, Any?>,
     reuseMap: Boolean = true
 ) : PagingParams(map, reuseMap) {
 
-    constructor(): this(LinkedHashMap())
+    companion object {
+        fun noCapacity() = MutablePagingParams(0)
+    }
 
-    constructor(capacity: Int) : this(LinkedHashMap(capacity))
+    constructor(): this(MutableScatterMap())
+
+    constructor(capacity: Int) : this(MutableScatterMap(capacity))
 
     constructor(pagingParams: PagingParams) : this(
         pagingParams.map, reuseMap = false
     )
 
-    private val internalMap get() = map as MutableMap<String, Any?>
+    private val internalMap get() = map as MutableScatterMap<String, Any?>
 
     fun put(pagingParams: PagingParams) {
         internalMap.putAll(pagingParams.map)
@@ -88,7 +100,7 @@ fun <T : Any> pagingParamsOf(pair: Pair<DataKey<T>, T>) = PagingParams(1) {
 
 fun pagingParamsOf(
     vararg pairs: Pair<DataKey<out Any?>, Any?>
-) = MutablePagingParams(LinkedHashMap<String, Any?>(pairs.size).apply {
+) = MutablePagingParams(MutableScatterMap<String, Any?>(pairs.size).apply {
     putAll(pairs = pairs.map { it.first.key to it.second })
 })
 

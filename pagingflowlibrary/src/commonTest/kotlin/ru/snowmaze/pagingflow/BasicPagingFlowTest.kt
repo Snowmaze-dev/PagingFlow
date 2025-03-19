@@ -4,8 +4,10 @@ import kotlinx.coroutines.test.runTest
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
+import ru.snowmaze.pagingflow.presenters.StatePagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
+import ru.snowmaze.pagingflow.presenters.statePresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
@@ -36,7 +38,7 @@ class BasicPagingFlowTest {
             addDownPagingSource(testDataSource)
             assertTrue(downPagingStatus.value.hasNextPage)
         }
-        val presenter = pagingFlow.pagingDataPresenter()
+        val presenter = pagingFlow.pagingDataPresenter().statePresenter()
 
         pagingFlow.testLoadEverything(listOf(testDataSource), pagingPresenter = presenter)
         invalidateAndCheckLoadingRight(
@@ -76,7 +78,7 @@ class BasicPagingFlowTest {
         ) {
             addDownPagingSource(testDataSource)
         }
-        val presenter = pagingFlow.pagingDataPresenter()
+        val presenter = pagingFlow.pagingDataPresenter().statePresenter()
         pagingFlow.loadNextPageWithResult()
         pagingFlow.loadNextPageWithResult()
         pagingFlow.loadNextPageWithResult()
@@ -98,7 +100,7 @@ class BasicPagingFlowTest {
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
             addDownPagingSource(testDataSource)
         }
-        val presenter = pagingFlow.pagingDataPresenter()
+        val presenter = pagingFlow.pagingDataPresenter().statePresenter()
         testDataSource.currentException = IllegalArgumentException()
         val result = pagingFlow.loadNextPageWithResult()
         assertIs<LoadNextPageResult.Failure<Int>>(result)
@@ -124,7 +126,7 @@ class BasicPagingFlowTest {
         }
         val presenter = pagingFlow.pagingDataPresenter(
             BasicPresenterConfiguration(invalidateBehavior = invalidateBehavior)
-        )
+        ).statePresenter()
         var hasNext = true
         while (hasNext) {
             hasNext = pagingFlow.loadNextPageWithResult().asSuccess().hasNext
@@ -133,7 +135,7 @@ class BasicPagingFlowTest {
             firstTestDataSource.totalCount + secondTestDataSource.totalCount + thirdTestDataSource.totalCount,
             presenter.data.size
         )
-        pagingFlow.invalidate()
+        pagingFlow.invalidate(removeCachedData = true)
 
         pagingFlow.testLoadEverything(
             listOf(firstTestDataSource, secondTestDataSource, thirdTestDataSource),
@@ -151,10 +153,10 @@ class BasicPagingFlowTest {
     private suspend fun invalidateAndCheckLoadingRight(
         pagingFlow: PagingFlow<Int, String>,
         firstSource: TestPagingSource,
-        pagingDataPresenter: PagingDataPresenter<Int, String>,
+        pagingDataPresenter: StatePagingDataPresenter<Int, String>,
         invalidateBehavior: InvalidateBehavior
     ) {
-        pagingFlow.invalidate()
+        pagingFlow.invalidate(removeCachedData = true)
         if (invalidateBehavior == InvalidateBehavior.INVALIDATE_IMMEDIATELY) {
             assertEquals(0, pagingDataPresenter.data.size)
         } else assertNotEquals(0, pagingDataPresenter.data.size)

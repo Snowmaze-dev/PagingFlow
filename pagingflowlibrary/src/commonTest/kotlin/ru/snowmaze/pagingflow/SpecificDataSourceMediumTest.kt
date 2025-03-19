@@ -1,9 +1,12 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.map
 import ru.snowmaze.pagingflow.diff.mediums.DataSourceDataChangesMedium
 import ru.snowmaze.pagingflow.presenters.data
+import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
+import ru.snowmaze.pagingflow.presenters.statePresenter
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.test.Test
@@ -33,19 +36,19 @@ class SpecificDataSourceMediumTest {
         val presenterForFirst = DataSourceDataChangesMedium<Int, String, String>(
             pagingFlow,
             0
-        ).pagingDataPresenter()
+        ).pagingDataPresenter().statePresenter()
         val presenterForSecond = DataSourceDataChangesMedium<Int, String, String>(
             pagingFlow,
             1
-        ).pagingDataPresenter()
+        ).pagingDataPresenter().statePresenter()
         pagingFlow.loadNextPageWithResult()
+        presenterForSecond.dataFlow.firstEqualsWithTimeout(emptyList())
         assertEquals(testDataSource.getItems(20), presenterForFirst.data)
-        assertEquals(emptyList(), presenterForSecond.latestData.data)
         pagingFlow.loadNextPageWithResult()
-        assertEquals(testDataSource.getItems(40), presenterForFirst.data)
-        assertEquals(emptyList(), presenterForSecond.latestData.data)
+        presenterForFirst.dataFlow.firstEqualsWithTimeout(testDataSource.getItems(40))
+        presenterForSecond.dataFlow.firstEqualsWithTimeout(emptyList())
         pagingFlow.loadNextPageWithResult()
-        assertEquals(testDataSource.getItems(40).takeLast(20), presenterForFirst.data)
-        assertEquals(testDataSource.getItems(20), presenterForSecond.data)
+        presenterForFirst.dataFlow.firstEqualsWithTimeout(testDataSource.getItems(40).takeLast(20))
+        presenterForSecond.dataFlow.firstEqualsWithTimeout(testDataSource.getItems(20))
     }
 }
