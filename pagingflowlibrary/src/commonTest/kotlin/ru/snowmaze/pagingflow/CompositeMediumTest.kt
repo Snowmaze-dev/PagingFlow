@@ -9,7 +9,10 @@ import ru.snowmaze.pagingflow.diff.PageRemovedEvent
 import ru.snowmaze.pagingflow.diff.mediums.composite.CompositePagingDataChangesMediumBuilder
 import ru.snowmaze.pagingflow.diff.mediums.composite.section
 import ru.snowmaze.pagingflow.presenters.compositeDataPresenter
+import ru.snowmaze.pagingflow.presenters.data
+import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
+import ru.snowmaze.pagingflow.presenters.statePresenter
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.test.Test
@@ -39,9 +42,9 @@ class CompositeMediumTest {
         val data = listOf(123)
         val presenter = pagingFlow.compositeDataPresenter {
             section(data)
-        }
+        }.statePresenter()
         presenter.latestDataFlow.firstWithTimeout { it.data.size == 1 }
-        assertEquals(data, presenter.latestData.data)
+        assertEquals(data, presenter.data)
     }
 
     private fun mapToInts(data: List<String>) = data.map { it.drop(5).toInt() }
@@ -75,11 +78,11 @@ class CompositeMediumTest {
         }
         val latestEventsMedium = LatestEventsMedium(medium)
 
-        val presenter = medium.pagingDataPresenter()
+        val presenter = medium.pagingDataPresenter().statePresenter()
         firstFlow.emit(second)
-        presenter.latestDataFlow.firstWithTimeout { it.data.size == 2 }
+        presenter.latestDataFlow.firstWithTimeout(timeout = 2000) { it.data.size == 2 }
         val lastEvents = latestEventsMedium.eventsFlow.first()
-        assertEquals(startList + second, presenter.latestData.data)
+        assertEquals(startList + second, presenter.data)
         val mappedEvents = lastEvents.map {
             it::class.simpleName + " source " + (it as PageChangedEvent).sourceIndex
         }
@@ -92,7 +95,7 @@ class CompositeMediumTest {
         secondFlow.emit(third)
         presenter.latestDataFlow.firstWithTimeout { it.data.size == 3 }
         val lastEventsNew = latestEventsMedium.eventsFlow.first()
-        assertEquals(third + startList + second, presenter.latestData.data)
+        assertEquals(third + startList + second, presenter.data)
         assertEquals(3, lastEventsNew.size)
 
         assertIs<PageChangedEvent<*, *>>(lastEventsNew.first())
@@ -101,10 +104,10 @@ class CompositeMediumTest {
 
         thirdFlow.emit(fourth)
         presenter.latestDataFlow.firstWithTimeout { it.data.size == 4 }
-        assertEquals(fourth + third + startList + second, presenter.latestData.data)
+        assertEquals(fourth + third + startList + second, presenter.data)
         fourthFlow.emit(fifth)
         presenter.latestDataFlow.firstWithTimeout { it.data.size == 5 }
-        assertEquals(fourth + third + fifth + startList + second, presenter.latestData.data)
+        assertEquals(fourth + third + fifth + startList + second, presenter.data)
 
         pagingFlow.loadNextPageWithResult()
         presenter.latestDataFlow.firstWithTimeout { it.data.size == 25 }
@@ -112,14 +115,14 @@ class CompositeMediumTest {
             .map { it.drop(5).toInt() }
         assertEquals(
             sourceItems + fourth + third + fifth + startList + second,
-            presenter.latestData.data
+            presenter.data
         )
 
         thirdFlow.emit(emptyList())
 
         presenter.latestDataFlow.firstWithTimeout { it.data.size == 24 }
         val lastEventsWithRemove = latestEventsMedium.eventsFlow.first()
-        assertEquals(sourceItems + third + fifth + startList + second, presenter.latestData.data)
+        assertEquals(sourceItems + third + fifth + startList + second, presenter.data)
         assertIs<PageChangedEvent<*, *>>(lastEventsWithRemove.first())
         assertIs<PageChangedEvent<*, *>>(lastEventsWithRemove[1])
         assertIs<PageChangedEvent<*, *>>(lastEventsWithRemove[2])
@@ -130,7 +133,7 @@ class CompositeMediumTest {
 
         (sourceItems + third + fifth + startList).also { list ->
             presenter.latestDataFlow.firstWithTimeout { it.data.size == list.size }
-            assertEquals(list, presenter.latestData.data)
+            assertEquals(list, presenter.data)
         }
 
         // testing updateWhenDataUpdated = true
@@ -141,22 +144,20 @@ class CompositeMediumTest {
         assertEquals(
             testDataSource.getItems(pageSize * 2)
                 .map { it.drop(5).toInt() } + third + fifth + startList,
-            presenter.latestData.data)
+            presenter.data)
 
         pagingFlow.loadNextPageAndAwaitDataSet()
-        assertEquals(
+        presenter.dataFlow.firstEqualsWithTimeout(
             mapToInts(testDataSource.getItems(pageSize * 3).drop(pageSize))
-                    + third + fifth + startList,
-            presenter.latestData.data
+                    + third + fifth + startList
         )
 
         pagingFlow.loadNextPageAndAwaitDataSet()
-        assertEquals(
+        presenter.dataFlow.firstEqualsWithTimeout(
             mapToInts(
                 testDataSource1.getItems(pageSize) + testDataSource.getItems(pageSize * 3)
                     .drop(pageSize * 2)
-            ) + third + fifth + startList,
-            presenter.latestData.data
+            ) + third + fifth + startList
         )
     }
 }

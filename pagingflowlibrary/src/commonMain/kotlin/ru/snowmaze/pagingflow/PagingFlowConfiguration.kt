@@ -16,14 +16,23 @@ data class PagingFlowConfiguration<Key : Any>(
      */
     val defaultParamsProvider: () -> LoadParams<Key>,
 
+    /**
+     * @see MaxItemsConfiguration
+     */
     val maxItemsConfiguration: MaxItemsConfiguration? = null,
 
-    // defines should use stateIn to collect pages and await data set or not when collecting pages
-    val shouldCollectOnlyLatest: Boolean = false,
+    /**
+     * Defines should use stateIn to collect pages and await data set before collecting next value
+     * or not when collecting pages flows
+     */
+    val collectOnlyLatest: Boolean = false,
 
-    // Defines should store page items inside PagingFlow or not.
-    // If not it wouldn't be possible to subscribe to paging changes after first page loaded or before invalidate
-    val shouldStorePageItems: Boolean = true,
+    /**
+     * Defines should store page items inside PagingFlow or not.
+     * If not it wouldn't be possible to subscribe to paging changes after any pages loaded
+     * but you can invalidate paging flow to subscribe
+     */
+    val storePageItems: Boolean = true,
 
     val processingDispatcher: CoroutineDispatcher = Dispatchers.Default,
     val coroutineScope: CoroutineScope = CoroutineScope(processingDispatcher + SupervisorJob()),

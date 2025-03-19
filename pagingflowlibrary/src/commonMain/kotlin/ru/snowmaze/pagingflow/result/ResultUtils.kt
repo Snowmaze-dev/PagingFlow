@@ -58,7 +58,7 @@ inline fun <T : Any, Key : Any, Data : Any> Result<T>.toLoadResult(
 inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.result(
     data: List<Data?>,
     nextPageKey: Key? = null,
-    returnData: PagingParams? = null,
+    returnData: MutablePagingParams? = null,
     cachedResult: MutablePagingParams? = null,
 ): LoadResult.Success<Key, Data> {
     return LoadResult.Success.SimpleSuccess(
@@ -72,7 +72,7 @@ inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.result(
 inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.result(
     dataFlow: Flow<List<Data?>>,
     nextPageKey: Key? = null,
-    returnData: PagingParams? = null,
+    returnData: MutablePagingParams? = null,
     cachedResult: MutablePagingParams? = null,
 ) = updatableResult(
     dataFlow = dataFlow.map { UpdatableData(it, nextPageKey, returnData) },
@@ -99,11 +99,11 @@ inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.updatableResult(
 inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.resultWithSingleReturnData(
     dataFlow: Flow<List<Data?>>,
     nextPageKey: Key? = null,
-    returnData: PagingParams,
+    returnData: MutablePagingParams,
     cachedResult: MutablePagingParams? = null,
 ): LoadResult.Success<Key, Data> {
-    var currentReturnData: PagingParams? = returnData
-    return LoadResult.Success.FlowSuccess(
+    var currentReturnData: MutablePagingParams? = returnData
+    return updatableResult(
         dataFlow = dataFlow.map {
             val data = UpdatableData(it, nextPageKey, currentReturnData)
             currentReturnData = null
@@ -121,6 +121,17 @@ inline fun <Key : Any, Data : Any> PagingSource<Key, Data>.useLastPageResult(
     cachedResult: MutablePagingParams? = null,
 ) = LoadResult.Success.FlowSuccess<Key, Data>(
     dataFlow = null,
+    nextPageKey = nextPageKey,
+    returnData = returnData,
+    cachedResult = cachedResult
+)
+
+inline fun <Key : Any, Data : Any> Flow<UpdatableData<Key, Data>>.result(
+    nextPageKey: Key? = null,
+    returnData: PagingParams? = null,
+    cachedResult: MutablePagingParams? = null,
+) = LoadResult.Success.FlowSuccess(
+    dataFlow = this,
     nextPageKey = nextPageKey,
     returnData = returnData,
     cachedResult = cachedResult

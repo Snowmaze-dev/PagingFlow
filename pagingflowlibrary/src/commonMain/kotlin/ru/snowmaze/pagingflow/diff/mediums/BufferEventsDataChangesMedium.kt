@@ -1,11 +1,11 @@
 package ru.snowmaze.pagingflow.diff.mediums
 
+import androidx.collection.MutableScatterMap
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
-import ru.snowmaze.pagingflow.utils.platformMapOf
 
 /**
  * Buffers events if medium have no subscribers and then replies them when previous subscribers resubscribe
@@ -16,7 +16,7 @@ class BufferEventsDataChangesMedium<Key : Any, Data : Any>(
     override val config: DataChangesMediumConfig = dataChangesMedium.config
 ) : DefaultPagingDataChangesMedium<Key, Data>() {
 
-    private val cachedEvents = platformMapOf<DataChangedCallback<*, *>, MutableList<Any>>()
+    private val cachedEvents = MutableScatterMap<DataChangedCallback<*, *>, MutableList<Any>>()
     private val mutex = Mutex()
 
     init {
@@ -24,14 +24,14 @@ class BufferEventsDataChangesMedium<Key : Any, Data : Any>(
             override suspend fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
                 mutex.withLock {
                     notifyOnEvents(events)
-                    cachedEvents.forEach { it.value.addAll(events) }
+                    cachedEvents.forEachValue { value -> value.addAll(events) }
                 }
             }
 
             override suspend fun onEvent(event: DataChangedEvent<Key, Data>) {
                 mutex.withLock {
                     notifyOnEvent(event)
-                    cachedEvents.forEach { it.value.add(event) }
+                    cachedEvents.forEachValue { value -> value.add(event) }
                 }
             }
         })

@@ -2,13 +2,20 @@ package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
-import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
+import ru.snowmaze.pagingflow.presenters.StatePagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
+import ru.snowmaze.pagingflow.presenters.statePresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import ru.snowmaze.pagingflow.source.DefinedItemsTestPagingSource
 import ru.snowmaze.pagingflow.utils.setPagingSourcesWithDiff
+import kotlin.collections.flatten
+import kotlin.collections.map
+import kotlin.collections.plus
+import kotlin.collections.shuffled
+import kotlin.collections.slice
 import kotlin.random.Random
+import kotlin.ranges.until
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 
@@ -31,7 +38,7 @@ class SetDataSourcesTest {
             addDownPagingSource(fourthDataSource)
         }
 
-        val presenter = pagingFlow.pagingDataPresenter()
+        val presenter = pagingFlow.pagingDataPresenter().statePresenter()
         while ((pagingFlow.loadNextPageWithResult() as LoadNextPageResult.Success).hasNext) {
         }
         assertContentEquals(
@@ -108,7 +115,7 @@ class SetDataSourcesTest {
     }
 
     private suspend fun PagingFlow<Int, Int>.testSetSources(
-        presenter: PagingDataPresenter<Int, Int>,
+        presenter: StatePagingDataPresenter<Int, Int>,
         sources: List<DefinedItemsTestPagingSource<Int>>
     ) {
         setPagingSourcesWithDiff(sources)

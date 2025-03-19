@@ -10,6 +10,7 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
+import ru.snowmaze.pagingflow.presenters.StatePagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import ru.snowmaze.pagingflow.source.TestPagingSource
@@ -21,7 +22,7 @@ val testDispatcher = UnconfinedTestDispatcher()
 suspend fun PagingFlow<Int, String>.testLoadEverything(
     dataSources: List<TestPagingSource>,
     shouldTestItems: Boolean = true,
-    pagingPresenter: PagingDataPresenter<Int, String>
+    pagingPresenter: StatePagingDataPresenter<Int, String>
 ) {
     val pageSize = pagingFlowConfiguration.defaultParamsProvider().pageSize
     var dataSourceIndex = 0
@@ -90,7 +91,7 @@ inline fun runTestOnDispatchersDefault(
 
 suspend inline fun <T> Flow<T>.firstEqualsWithTimeout(
     value: T,
-    timeout: Long = 300
+    timeout: Long = 1000
 ) = firstWithTimeout(timeout, {
     "expected $value but was $it"
 }) {

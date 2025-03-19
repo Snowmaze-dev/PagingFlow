@@ -5,6 +5,7 @@ import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
+import ru.snowmaze.pagingflow.presenters.statePresenter
 import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.random.Random
 import kotlin.test.Test
@@ -26,7 +27,7 @@ class CommonPresentersTest {
         val pagingFlow = buildPagingFlow(
             basePagingFlowConfiguration.copy(
                 processingDispatcher = Dispatchers.Default,
-                shouldCollectOnlyLatest = true
+                collectOnlyLatest = true
             )
         ) {
             addDownPagingSource(testDataSource)
@@ -35,14 +36,14 @@ class CommonPresentersTest {
             configuration = BasicPresenterConfiguration(
                 invalidateBehavior = InvalidateBehavior.INVALIDATE_IMMEDIATELY
             )
-        )
+        ).statePresenter()
 
         pagingFlow.loadNextPageWithResult()
         assertEquals(
             pageSize,
             presenter.data.size
         )
-        pagingFlow.invalidate()
+        pagingFlow.invalidate(removeCachedData = true)
         assertEquals(
             0,
             presenter.data.size

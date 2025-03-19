@@ -1,5 +1,7 @@
 package ru.snowmaze.pagingflow.utils
 
+import androidx.collection.ObjectList
+import androidx.collection.contains
 import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.contract
 
@@ -54,4 +56,10 @@ internal inline fun <T> List<T>.fastIndexOfLast(predicate: (T) -> Boolean): Int 
 internal inline fun <T> List<T>.fastFirstOrNull(predicate: (T) -> Boolean): T? {
     fastForEach { element -> if (predicate(element)) return element }
     return null
+}
+
+
+inline fun <T> ObjectList<T>.elementAtOrNull(@androidx.annotation.IntRange(from = 0) index: Int): T? {
+    if (index !in 0 until size) return null
+    return get(index)
 }

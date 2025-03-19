@@ -32,11 +32,8 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
 
     protected val _dataFlow = presenterFlow()
 
-    @Volatile
-    private var _latestData = LatestData<Data>(emptyList())
     override val latestDataFlow = _dataFlow.asSharedFlow()
 
-    override val latestData get() = _latestData
     protected val processingDispatcher = processingDispatcher.limitedParallelismCompat(1)
 
     protected var lastInvalidateBehavior: InvalidateBehavior? = null
@@ -47,29 +44,26 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
 
     init {
         coroutineScope.launch {
-            _dataFlow.emit(latestData)
+            _dataFlow.emit(LatestData(emptyList()))
         }
     }
 
     protected fun onInvalidateInternal(
         specifiedInvalidateBehavior: InvalidateBehavior? = null,
     ) {
-        if (latestData.data.isEmpty() && latestData.loadData.isEmpty()) return
         val invalidateBehavior = specifiedInvalidateBehavior ?: invalidateBehavior
         listBuildStrategy.invalidate()
         onInvalidateAdditionalAction()
-        val previousData = latestData
         if (invalidateBehavior != INVALIDATE_IMMEDIATELY) {
             lastInvalidateBehavior = invalidateBehavior
         }
-        afterInvalidatedAction(invalidateBehavior, previousData)
+        afterInvalidatedAction(invalidateBehavior)
     }
 
     protected open fun onInvalidateAdditionalAction() {}
 
     protected open fun afterInvalidatedAction(
-        invalidateBehavior: InvalidateBehavior,
-        previousData: LatestData<Data>
+        invalidateBehavior: InvalidateBehavior
     ) {
     }
 
@@ -84,27 +78,26 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
                 return
             }
         }
-        val previousList = latestData
-        listBuildStrategy.buildList(events, onInvalidateAction)
+        val newList = listBuildStrategy.buildList(events, onInvalidateAction)
         _startIndex = listBuildStrategy.startPageIndex
         if (lastInvalidateBehavior == SEND_EMPTY_LIST_BEFORE_NEXT_VALUE_SET &&
-            listBuildStrategy.list.isNotEmpty()
+            newList.isNotEmpty()
         ) {
             _dataFlow.emit(LatestData(emptyList()))
         }
         this.lastInvalidateBehavior = null
-        _latestData = LatestData(
-            data = listBuildStrategy.list,
+        val latestData = LatestData(
+            data = newList,
             loadData = listBuildStrategy.recentLoadData
         )
-        _dataFlow.emit(_latestData)
-        onItemsSet(events, previousList)
+        _dataFlow.emit(latestData)
+        onItemsSet(events, latestData)
         events.fastForEach { if (it is AwaitDataSetEvent) it.callback() }
     }
 
     protected open suspend fun onItemsSet(
         events: List<DataChangedEvent<Key, Data>>,
-        previousData: LatestData<Data>
+        currentData: LatestData<Data>
     ) {
 
     }

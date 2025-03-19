@@ -7,6 +7,7 @@ import ru.snowmaze.pagingflow.diff.DataChangedCallback
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
 import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import ru.snowmaze.pagingflow.utils.SingleElementList
 
 /**
  * Basic implementation of list building presenter.
@@ -15,17 +16,19 @@ import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
 open class BasicBuildListPagingPresenter<Key : Any, Data : Any>(
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
     private val presenterConfiguration: BasicPresenterConfiguration<Key, Data>,
-    config: DataChangesMediumConfig = pagingDataChangesMedium.config
+    val config: DataChangesMediumConfig = pagingDataChangesMedium.config
 ) : BuildListPagingPresenter<Key, Data>(
     listBuildStrategy = presenterConfiguration.listBuildStrategy,
     invalidateBehavior = presenterConfiguration.invalidateBehavior,
     coroutineScope = config.coroutineScope,
     processingDispatcher = config.processingDispatcher,
     presenterFlow = presenterConfiguration.presenterFlow,
-) {
+), DataChangedCallback<Key, Data> {
+
+    private val singletonElementList = SingleElementList<DataChangedEvent<Key, Data>>()
 
     init {
-        val callback = getDataChangedCallback()
+        val callback = this
         pagingDataChangesMedium.addDataChangedCallback(callback)
         val shouldBeAlwaysSubscribed = presenterConfiguration.shouldBeAlwaysSubscribed
         if (!shouldBeAlwaysSubscribed) {
@@ -47,10 +50,18 @@ open class BasicBuildListPagingPresenter<Key : Any, Data : Any>(
         }
     }
 
-    protected open fun getDataChangedCallback() = object : DataChangedCallback<Key, Data> {
+    override suspend fun onEvent(event: DataChangedEvent<Key, Data>) {
+        withContext(processingDispatcher) {
+            singletonElementList.element = event
+            buildList(singletonElementList)
+            singletonElementList.element = null
+        }
+    }
 
-        override suspend fun onEvents(
-            events: List<DataChangedEvent<Key, Data>>
-        ) = withContext(processingDispatcher) { buildList(events) }
+    override suspend fun onEvents(
+        events: List<DataChangedEvent<Key, Data>>
+    ) {
+        if (events.isEmpty()) return
+        withContext(processingDispatcher) { buildList(events) }
     }
 }

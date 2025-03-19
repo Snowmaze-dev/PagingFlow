@@ -39,7 +39,7 @@ sealed class LoadResult<Key : Any, Data : Any> {
         data class SimpleSuccess<Key : Any, Data : Any>(
             val data: List<Data?>?,
             override val nextPageKey: Key? = null,
-            override val returnData: PagingParams? = null,
+            override val returnData: MutablePagingParams? = null,
             override val cachedResult: MutablePagingParams? = null,
         ) : Success<Key, Data>()
     }

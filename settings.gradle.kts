@@ -19,5 +19,5 @@ rootProject.name = "PagingFlow"
 include(":pagingflowlibrary")
 include(":samples:pagingflowexample:shared")
 include(":samples:pagingflowexample:android-recycler")
-include(":samples:pagingflowexample:android-compose")
+//include(":samples:pagingflowexample:android-compose")
 include(":paging-recycler")

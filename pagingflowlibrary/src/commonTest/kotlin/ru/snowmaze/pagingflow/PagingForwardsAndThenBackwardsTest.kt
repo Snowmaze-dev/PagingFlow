@@ -11,6 +11,7 @@ import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.list.DiffListBuildStrategy
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
+import ru.snowmaze.pagingflow.presenters.statePresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
@@ -21,9 +22,9 @@ import kotlin.test.assertTrue
 
 class PagingForwardsAndThenBackwardsTest {
 
-    val pageSize = 20
-    val removePagesOffset = 4
-    val totalCount = 10000
+    private val pageSize = 20
+    private val removePagesOffset = 4
+    private val totalCount = 10000
 
     private val basePagingFlowConfiguration = PagingFlowConfiguration(
         defaultParams = LoadParams(pageSize, 0),
@@ -39,10 +40,10 @@ class PagingForwardsAndThenBackwardsTest {
     }
 
     /**
-     * Tests library ability to work in multi thread environment
+     * Tests library ability to load data in both directions in multi thread environment
      */
     @Test
-    fun testAsyncLoad() = runTestOnDispatchersDefault {
+    fun testAsyncLoadBothDirections() = runTestOnDispatchersDefault {
         val totalCount = 1000
         val testDataSource = TestPagingSource(totalCount, randomDelay)
         val pagingFlow = buildPagingFlow(
@@ -52,8 +53,8 @@ class PagingForwardsAndThenBackwardsTest {
                     maxItemsCount = pageSize * 4,
                     enableDroppedPagesNullPlaceholders = false
                 ),
-                shouldCollectOnlyLatest = true,
-                shouldStorePageItems = false
+                collectOnlyLatest = true,
+                storePageItems = false
             )
         ) {
             addDownPagingSource(TestPagingSource(totalCount, randomDelay))
@@ -106,13 +107,13 @@ class PagingForwardsAndThenBackwardsTest {
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
             addDownPagingSource(testDataSource)
         }
-        val presenter = pagingFlow.pagingDataPresenter()
+        val presenter = pagingFlow.pagingDataPresenter().statePresenter()
         pagingFlow.testLoadEverything(
             listOf(testDataSource),
             pagingPresenter = presenter
         )
 
-        assertEquals(removePagesOffset, pagingFlow.currentPagesCount)
+        assertEquals(removePagesOffset, pagingFlow.pagesCount)
         var loadedData = presenter.data
         val allItems = testDataSource.getItems(totalCount)
         assertEquals(
@@ -158,13 +159,13 @@ class PagingForwardsAndThenBackwardsTest {
         ) {
             addDownPagingSource(testDataSource)
         }
-        val presenter = pagingFlow.pagingDataPresenter()
+        val presenter = pagingFlow.pagingDataPresenter().statePresenter()
         pagingFlow.testLoadEverything(
             listOf(testDataSource),
             pagingPresenter = presenter
         )
 
-        assertEquals(totalCount / pageSize, pagingFlow.currentPagesCount)
+        assertEquals(totalCount / pageSize, pagingFlow.pagesCount)
         val loadedData = presenter.data
         assertEquals(
             buildListOfNulls(totalCount - (pageSize * removePagesOffset)) +
@@ -198,7 +199,7 @@ class PagingForwardsAndThenBackwardsTest {
         ) {
             addDownPagingSource(testDataSource)
         }
-        val presenter = pagingFlow.pagingDataPresenter()
+        val presenter = pagingFlow.pagingDataPresenter().statePresenter()
         pagingFlow.loadNextPageWithResult()
         assertEquals(testDataSource.getItems(2), presenter.data)
         pagingFlow.loadNextPageWithResult()

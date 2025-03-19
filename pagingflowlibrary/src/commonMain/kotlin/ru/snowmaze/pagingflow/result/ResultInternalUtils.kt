@@ -1,9 +1,9 @@
 package ru.snowmaze.pagingflow.result
 
-import ru.snowmaze.pagingflow.params.PagingParams
+import ru.snowmaze.pagingflow.params.MutablePagingParams
 
-internal fun <Key: Any, Data: Any> LoadResult<Key, Data>.mapParams(
-    params: PagingParams?
+internal inline fun <Key: Any, Data: Any> LoadResult<Key, Data>.mapParams(
+    params: MutablePagingParams?
 ) = when (this) {
     is LoadResult.Success.FlowSuccess -> LoadResult.Success.FlowSuccess(
         dataFlow = dataFlow,

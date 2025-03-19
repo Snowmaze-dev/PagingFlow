@@ -13,7 +13,7 @@ class PageInfo<Key : Any, Data : Any>(
     val data: UpdatableData<Key, Data>?
 )
 
-internal fun <Key: Any, Data: Any> DataPage<Key, Data>.toInfo() = PageInfo(
+internal inline fun <Key: Any, Data: Any> DataPage<Key, Data>.toInfo() = PageInfo(
     index = pageIndex,
     pageKey = currentPageKey,
     nextPageKey = nextPageKey,
