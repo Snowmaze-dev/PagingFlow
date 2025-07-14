@@ -374,14 +374,29 @@ internal class DataPagesManager<Key : Any, Data : Any>(
             else dataPages.fastIndexOfLast(isNotNullified)
             val page = dataPages.getOrNull(pageIndex) ?: return null
 
-            // TODO поменять расчёт индекса для удаления кэша
             val maxCachedResultPagesCount = trimConfig.maxCachedResultPagesCount
-            if (maxCachedResultPagesCount != null) {
-                val removeCacheIndex = page.pageIndex + if (
-                    isPaginationDown
-                ) -maxCachedResultPagesCount
-                else maxCachedResultPagesCount
-                cachedData.remove(removeCacheIndex)
+            if (maxCachedResultPagesCount != null && cachedData.size > maxCachedResultPagesCount) {
+                var maxKey = Int.MIN_VALUE
+                var minKey = Int.MAX_VALUE
+                cachedData.forEachKey {
+                    if (it > maxKey) maxKey = it
+                    if (minKey > it) minKey = it
+                }
+
+                val removeCacheIndex = if (isPaginationDown) {
+                    maxKey - maxCachedResultPagesCount
+                } else {
+                    minKey + maxCachedResultPagesCount
+                }
+                if (isPaginationDown) {
+                    for (i in minKey..removeCacheIndex) {
+                        cachedData.remove(i)
+                    }
+                } else {
+                    for (i in removeCacheIndex..maxKey) {
+                        cachedData.remove(i)
+                    }
+                }
             }
 
             val trimEvent = if (trimConfig.enableDroppedPagesNullPlaceholders &&

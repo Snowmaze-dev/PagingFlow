@@ -11,7 +11,7 @@ import ru.snowmaze.pagingflow.utils.SingleElementList
 
 /**
  * Basic implementation of list building presenter.
- * It collects events and sets it to map of pages which will be later used to build list in [buildListInternal] implementation
+ * It collects events and sets it to map of pages which will be later used to build list in [BuildListPagingPresenter.buildList]
  */
 open class BasicBuildListPagingPresenter<Key : Any, Data : Any>(
     pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,

@@ -70,7 +70,6 @@ internal class PageLoader<Key : Any, Data : Any>(
         return if (loadSeveralPages != null) {
             val sourceResultKey = sourceResultKey
             var lastResult: LoadResult<Key, Data>? = null
-            var lastResultWithLoad: LoadResult<Key, Data>? = null
             val resultPagingParams = mutableListOf<PagingParams?>()
             val key = pageLoaderResultKey
             val pagingStatus = if (isPaginationDown) downPagingStatus
@@ -97,7 +96,6 @@ internal class PageLoader<Key : Any, Data : Any>(
                 if (lastResult is LoadResult.NothingToLoad && status is PagingStatus.Loading ||
                     (status !is PagingStatus.Loading && !status.hasNextPage)
                 ) break
-                lastResultWithLoad = lastResult
                 if (lastResult is LoadResult.Failure) continue
                 loadSeveralPages.onSuccess?.invoke(
                     lastResult.returnData?.get(sourceResultKey) as LoadResult.Success<Any, Any>

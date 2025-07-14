@@ -1,6 +1,7 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeout
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
@@ -107,7 +108,7 @@ class PagingForwardsAndThenBackwardsTest {
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
             addDownPagingSource(testDataSource)
         }
-        val presenter = pagingFlow.pagingDataPresenter().statePresenter()
+        val presenter = pagingFlow.statePresenter(sharingStarted = SharingStarted.Eagerly)
         pagingFlow.testLoadEverything(
             listOf(testDataSource),
             pagingPresenter = presenter
@@ -159,7 +160,9 @@ class PagingForwardsAndThenBackwardsTest {
         ) {
             addDownPagingSource(testDataSource)
         }
-        val presenter = pagingFlow.pagingDataPresenter().statePresenter()
+        val presenter = pagingFlow.pagingDataPresenter().statePresenter(
+            sharingStarted = SharingStarted.Eagerly
+        )
         pagingFlow.testLoadEverything(
             listOf(testDataSource),
             pagingPresenter = presenter
@@ -199,7 +202,9 @@ class PagingForwardsAndThenBackwardsTest {
         ) {
             addDownPagingSource(testDataSource)
         }
-        val presenter = pagingFlow.pagingDataPresenter().statePresenter()
+        val presenter = pagingFlow.pagingDataPresenter().statePresenter(
+            sharingStarted = SharingStarted.Eagerly
+        )
         pagingFlow.loadNextPageWithResult()
         assertEquals(testDataSource.getItems(2), presenter.data)
         pagingFlow.loadNextPageWithResult()

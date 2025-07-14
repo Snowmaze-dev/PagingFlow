@@ -1,8 +1,9 @@
 package ru.snowmaze.pagingflow.utils
 
-internal class SingleElementList<T : Any> : List<T> {
+internal class SingleElementList<T : Any> : List<T>, Iterator<T> {
 
     var element: T? = null
+    private var iterated = false
 
     override val size = 1
 
@@ -20,16 +21,9 @@ internal class SingleElementList<T : Any> : List<T> {
 
     override fun isEmpty() = false
 
-    override fun iterator() = object : Iterator<T> {
-
-        private var iterated = false
-
-        override fun hasNext() = !iterated
-
-        override fun next() = if (iterated) throw IllegalStateException() else {
-            iterated = true
-            element!!
-        }
+    override fun iterator(): Iterator<T> {
+        iterated = false
+        return this
     }
 
     override fun lastIndexOf(element: T) = if (this.element === element) 0 else -1
@@ -40,4 +34,11 @@ internal class SingleElementList<T : Any> : List<T> {
 
     override fun subList(fromIndex: Int, toIndex: Int) =
         listOf(element!!).subList(fromIndex, toIndex)
+
+    override fun hasNext() = !iterated
+
+    override fun next() = if (iterated) throw IllegalStateException() else {
+        iterated = true
+        element!!
+    }
 }

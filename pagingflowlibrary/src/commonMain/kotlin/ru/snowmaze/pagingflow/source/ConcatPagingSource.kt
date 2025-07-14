@@ -24,7 +24,7 @@ import ru.snowmaze.pagingflow.utils.fastFirstOrNull
 import ru.snowmaze.pagingflow.utils.mapHasNext
 import ru.snowmaze.pagingflow.utils.toInfo
 
-class ConcatPagingSource<Key : Any, Data : Any>(
+open class ConcatPagingSource<Key : Any, Data : Any>(
     private val concatDataSourceConfig: PageLoaderConfig<Key>,
     override val pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler<Key, Data> =
         DefaultPagingUnhandledErrorsHandler()

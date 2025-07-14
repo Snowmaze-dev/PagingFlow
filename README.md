@@ -10,9 +10,9 @@ Its also provides the capabilities for custom argument passing and setting custo
 class ExamplePagingSource(
     private val networkSource: NetworkSource,
     private val databaseSource: DatabaseSource
-) : PagingSource<Int, String, Any> {
+) : PagingSource<Int, String> {
 
-    override suspend fun load(loadParams: LoadParams<Int>): LoadResult<Int, String, Any> {
+    override suspend fun load(loadParams: LoadParams<Int>): LoadResult<Int, String> {
         val offset = loadParams.key ?: 0
         val response = try {
             networkSource.getData(offset)

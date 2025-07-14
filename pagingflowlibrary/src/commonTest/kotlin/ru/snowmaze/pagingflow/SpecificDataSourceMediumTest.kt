@@ -1,7 +1,7 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.SharingStarted
 import ru.snowmaze.pagingflow.diff.mediums.DataSourceDataChangesMedium
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.dataFlow
@@ -36,11 +36,11 @@ class SpecificDataSourceMediumTest {
         val presenterForFirst = DataSourceDataChangesMedium<Int, String, String>(
             pagingFlow,
             0
-        ).pagingDataPresenter().statePresenter()
+        ).pagingDataPresenter().statePresenter(sharingStarted = SharingStarted.Eagerly)
         val presenterForSecond = DataSourceDataChangesMedium<Int, String, String>(
             pagingFlow,
             1
-        ).pagingDataPresenter().statePresenter()
+        ).pagingDataPresenter().statePresenter(sharingStarted = SharingStarted.Eagerly)
         pagingFlow.loadNextPageWithResult()
         presenterForSecond.dataFlow.firstEqualsWithTimeout(emptyList())
         assertEquals(testDataSource.getItems(20), presenterForFirst.data)

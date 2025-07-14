@@ -2,6 +2,7 @@ package ru.snowmaze.pagingflow.presenters
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import ru.snowmaze.pagingflow.diff.DataChangedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.batchEventsMedium
@@ -26,10 +27,20 @@ fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresent
 
 inline fun <Key : Any, Data : Any> PagingDataPresenter<Key, Data>.statePresenter(
     coroutineScope: CoroutineScope = if (this is BasicBuildListPagingPresenter<*, *>) config.coroutineScope
-    else throw IllegalArgumentException("No coroutine scope provided.")
+    else throw IllegalArgumentException("No coroutine scope provided."),
+    sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(5000)
 ): StatePagingDataPresenter<Key, Data> = BasicStatePagingDataPresenter(
     presenter = this,
-    coroutineScope = coroutineScope
+    coroutineScope = coroutineScope,
+    sharingStarted = sharingStarted
+)
+
+inline fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.statePresenter(
+    configuration: BasicPresenterConfiguration<Key, Data> = BasicPresenterConfiguration(),
+    sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(5000)
+) = pagingDataPresenter(configuration).statePresenter(
+    coroutineScope = config.coroutineScope,
+    sharingStarted = sharingStarted
 )
 
 /**

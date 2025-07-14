@@ -1,5 +1,6 @@
 package ru.snowmaze.pagingflow
 
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.test.runTest
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
@@ -38,7 +39,9 @@ class BasicPagingFlowTest {
             addDownPagingSource(testDataSource)
             assertTrue(downPagingStatus.value.hasNextPage)
         }
-        val presenter = pagingFlow.pagingDataPresenter().statePresenter()
+        val presenter = pagingFlow.pagingDataPresenter().statePresenter(
+            sharingStarted = SharingStarted.Eagerly
+        )
 
         pagingFlow.testLoadEverything(listOf(testDataSource), pagingPresenter = presenter)
         invalidateAndCheckLoadingRight(
@@ -78,7 +81,9 @@ class BasicPagingFlowTest {
         ) {
             addDownPagingSource(testDataSource)
         }
-        val presenter = pagingFlow.pagingDataPresenter().statePresenter()
+        val presenter = pagingFlow.pagingDataPresenter().statePresenter(
+            sharingStarted = SharingStarted.Eagerly
+        )
         pagingFlow.loadNextPageWithResult()
         pagingFlow.loadNextPageWithResult()
         pagingFlow.loadNextPageWithResult()
@@ -100,7 +105,9 @@ class BasicPagingFlowTest {
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
             addDownPagingSource(testDataSource)
         }
-        val presenter = pagingFlow.pagingDataPresenter().statePresenter()
+        val presenter = pagingFlow.pagingDataPresenter().statePresenter(
+            sharingStarted = SharingStarted.Eagerly
+        )
         testDataSource.currentException = IllegalArgumentException()
         val result = pagingFlow.loadNextPageWithResult()
         assertIs<LoadNextPageResult.Failure<Int>>(result)
@@ -126,7 +133,7 @@ class BasicPagingFlowTest {
         }
         val presenter = pagingFlow.pagingDataPresenter(
             BasicPresenterConfiguration(invalidateBehavior = invalidateBehavior)
-        ).statePresenter()
+        ).statePresenter(sharingStarted = SharingStarted.Eagerly)
         var hasNext = true
         while (hasNext) {
             hasNext = pagingFlow.loadNextPageWithResult().asSuccess().hasNext

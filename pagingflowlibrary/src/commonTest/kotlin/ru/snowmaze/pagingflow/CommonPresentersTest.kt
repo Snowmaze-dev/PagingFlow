@@ -1,6 +1,7 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.SharingStarted
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.data
@@ -36,7 +37,7 @@ class CommonPresentersTest {
             configuration = BasicPresenterConfiguration(
                 invalidateBehavior = InvalidateBehavior.INVALIDATE_IMMEDIATELY
             )
-        ).statePresenter()
+        ).statePresenter(sharingStarted = SharingStarted.Eagerly)
 
         pagingFlow.loadNextPageWithResult()
         assertEquals(

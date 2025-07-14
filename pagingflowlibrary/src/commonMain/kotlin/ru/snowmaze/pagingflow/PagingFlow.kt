@@ -20,7 +20,7 @@ import ru.snowmaze.pagingflow.utils.DiffOperation
  * You can use extension [pagingDataPresenter] on paging flow to get simply presenter
  * You can also create mapping presenter with [mapDataPresenter]
  */
-class PagingFlow<Key : Any, Data : Any>(
+open class PagingFlow<Key : Any, Data : Any>(
     private val concatDataSource: ConcatPagingSource<Key, Data>,
     override val pagingFlowConfiguration: PagingFlowConfiguration<Key>
 ) : PagingDataChangesMedium<Key, Data>, PagingFlowLoader<Key> {
