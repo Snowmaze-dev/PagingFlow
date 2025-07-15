@@ -58,7 +58,7 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
 
     override fun getChangesCallback() = object : PagingEventsListener<Key, Data> {
 
-        private inline fun mapEvent(
+        private fun mapEvent(
             event: PagingEvent<Key, Data>
         ): Any? {
             return event.handle(
@@ -79,17 +79,20 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
                         pageIndex = section.firstPageIndex + it.pageIndexInSource,
                         sourceIndex = section.sourceIndex,
                         pageIndexInSource = it.pageIndexInSource,
-                        previousList = section.pages[it.pageIndexInSource].items,
-                        previousItemCount = section.pages[it.pageIndexInSource].items.size,
+                        previousList = section.pages.getOrNull(it.pageIndexInSource)?.items,
+                        previousItemCount = section.pages.getOrNull(
+                            it.pageIndexInSource
+                        )?.items?.size ?: 0, // TODO
                         items = if (it.changeType == ChangeType.CHANGE_TO_NULLS) {
-                            it as List<NewData>
+                            it.items as List<NewData>
                         } else section.mapData(it.items as List<Data>),
-                        params = it.params
+                        params = it.params,
+                        changeType = it.changeType
                     )
                 },
                 onPageRemovedEvent = {
                     val section = dataSourcesSections[it.sourceIndex] ?: return@handle null
-                    onRemovePage(section, it.pageIndexInSource)
+                    onRemovePage(section, it.pageIndexInSource, pageRemovedEvent = it)
                 },
                 onInvalidate = {
                     onInvalidate()
@@ -187,7 +190,7 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
             addIndex = 0
         )
 
-        data.isEmpty() -> onRemovePage(section, 0)
+        data.isEmpty() -> onRemovePage(section, 0, null)
         data == section.pages[0].items -> null
 
         else -> {
@@ -285,7 +288,8 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
 
     private fun onRemovePage(
         section: CompositePresenterSection<Key, Data, NewData>,
-        indexInSource: Int
+        indexInSource: Int,
+        pageRemovedEvent: PageRemovedEvent<Key, Data>?
     ): List<PagingEvent<Key, NewData>> = buildList {
         val indexShift = if (section is CompositePresenterSection.DataSourceSection) {
             val result = section.removedPagesNumbers.size
@@ -297,7 +301,8 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
         val pickedIndexInSource = indexInSource - indexShift
         var currentSectionIndex = section.sourceIndex
         val pagesSize = sections.fastSumOf { it.pages.size }
-        val removedEvent = section.pages.removeAt(pickedIndexInSource)
+        val removedEvent = if (pickedIndexInSource >= section.pages.size) null
+        else section.pages.removeAt(pickedIndexInSource)
         var index = section.firstPageIndex + pickedIndexInSource
         var previousEvent = removedEvent
         while (pagesSize > index) {
@@ -339,7 +344,7 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
                 pageIndex = currentEvent.pageIndex - 1,
                 pageIndexInSource = (currentEvent.pageIndexInSource + if (isRemoveSection) -1 else 0)
                     .coerceAtLeast(0),
-                previousList = previousEvent.items,
+                previousList = previousEvent?.items,
                 previousItemCount = nextEvent?.items?.size ?: 0,
                 items = currentEvent.items,
                 changeType = ChangeType.COMMON_CHANGE,
@@ -352,17 +357,17 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
         }
         add(
             if (isEmpty()) PageRemovedEvent(
-                key = removedEvent.key,
-                sourceIndex = removedEvent.sourceIndex,
-                pageIndex = removedEvent.pageIndex,
-                pageIndexInSource = removedEvent.pageIndexInSource,
-                itemsCount = removedEvent.items.size,
+                key = removedEvent?.key ?: pageRemovedEvent?.key,
+                sourceIndex = removedEvent?.sourceIndex ?: pageRemovedEvent?.sourceIndex ?: throw IllegalStateException(),
+                pageIndex = removedEvent?.pageIndex ?: pageRemovedEvent?.pageIndex ?: throw IllegalStateException(),
+                pageIndexInSource = removedEvent?.pageIndexInSource ?: pageRemovedEvent?.pageIndexInSource ?: throw IllegalStateException(),
+                itemsCount = removedEvent?.items?.size ?: pageRemovedEvent?.itemsCount ?: throw IllegalStateException(),
             ) else PageRemovedEvent(
-                key = previousEvent.key,
-                sourceIndex = previousEvent.sourceIndex,
-                pageIndex = previousEvent.pageIndex,
-                pageIndexInSource = previousEvent.pageIndexInSource,
-                itemsCount = previousEvent.items.size,
+                key = previousEvent?.key ?: pageRemovedEvent?.key,
+                sourceIndex = previousEvent?.sourceIndex ?: pageRemovedEvent?.sourceIndex ?: throw IllegalStateException(),
+                pageIndex = previousEvent?.pageIndex ?: pageRemovedEvent?.pageIndex ?: throw IllegalStateException(),
+                pageIndexInSource = previousEvent?.pageIndexInSource ?: pageRemovedEvent?.pageIndexInSource ?: throw IllegalStateException(),
+                itemsCount = previousEvent?.items?.size ?: pageRemovedEvent?.itemsCount ?: throw IllegalStateException(),
             )
         )
         updateFirstIndexes()

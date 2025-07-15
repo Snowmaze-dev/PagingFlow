@@ -51,7 +51,8 @@ class MappingPagingEventsMedium<Key : Any, Data : Any, NewData : Any>(
                 pageIndexInSource = it.pageIndexInSource,
                 items = transform(it),
                 params = it.params,
-                previousItemCount = it.previousItemCount
+                previousItemCount = it.previousItemCount,
+                changeType = it.changeType
             )
         },
         onPageRemovedEvent = { it as PageRemovedEvent<Key, NewData> },

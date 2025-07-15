@@ -30,7 +30,7 @@ abstract class PagingFlowAdapter<Data : Any, VH : ViewHolder>(
 ) : RecyclerView.Adapter<VH>() {
 
     @Suppress("LeakingThis")
-    private val dispatchUpdatesToCallbackPresenter = DispatchUpdatesToCallbackPresenter(
+    protected val dispatchUpdatesToCallbackPresenter = DispatchUpdatesToCallbackPresenter(
         listUpdateCallback = AdapterListUpdateCallback(this),
         offsetListUpdateCallbackProvider = { offset: Int ->
             OffsetListUpdateCallback(this, offset)
@@ -38,15 +38,13 @@ abstract class PagingFlowAdapter<Data : Any, VH : ViewHolder>(
         pagingMedium = pagingEventsMedium,
         itemCallback = itemCallback,
         invalidateBehavior = invalidateBehavior
-    )
+    ) {
+        items = it
+    }
     private var items = emptyList<Data?>()
+    val startIndex get() = dispatchUpdatesToCallbackPresenter.startIndex
 
     init {
-        pagingEventsMedium.config.coroutineScope.launch(mainDispatcher) {
-            dispatchUpdatesToCallbackPresenter.dataFlow.collect {
-                items = it
-            }
-        }
         pagingTrigger.currentStartIndexProvider = { dispatchUpdatesToCallbackPresenter.startIndex }
         pagingTrigger.itemCount = { itemCount }
         pagingTrigger.currentTimeMillisProvider = { System.currentTimeMillis() }
@@ -60,5 +58,7 @@ abstract class PagingFlowAdapter<Data : Any, VH : ViewHolder>(
 
     override fun getItemCount() = items.size
 
-    fun getItem(index: Int) = items[index]
+    fun getItemNullable(index: Int) = items[index]
+
+    operator fun get(index: Int) = items[index] as Data
 }

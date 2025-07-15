@@ -112,26 +112,3 @@ fun <Key : Any, Data : Any> PagingEventsMedium<Key, Data>.pagingDataPresenter(
     eventsBatchingDurationMsProvider = eventsBatchingDurationMsProvider,
     shouldBatchAddPagesEvents = shouldBatchAddPagesEvents
 ).pagingDataPresenter(configuration)
-
-fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.compositeDataPresenter(
-    configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
-    shouldBufferEvents: Boolean = false,
-    builder: CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.() -> Unit
-) = CompositePagingDataChangesMediumBuilder.build(
-    if (shouldBufferEvents) BufferEventsEventsMedium(this) else this,
-    builder = builder
-).pagingDataPresenter(configuration)
-
-fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.compositeDataPresenter(
-    configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
-    eventsBatchingDurationMsProvider: (List<PagingEvent<Key, Data>>) -> Long = { 0 },
-    shouldBatchAddPagesEvents: Boolean = false,
-    shouldBufferEvents: Boolean = false,
-    builder: CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.() -> Unit
-) = CompositePagingDataChangesMediumBuilder.build(
-    BatchingPagingEventsMedium(
-        if (shouldBufferEvents) BufferEventsEventsMedium(this) else this,
-        eventsBatchingDurationMsProvider = eventsBatchingDurationMsProvider,
-        shouldBatchAddPagesEvents = shouldBatchAddPagesEvents
-    ), builder = builder
-).pagingDataPresenter(configuration)

@@ -1,8 +1,8 @@
 package ru.snowmaze.pagingflow.diff.mediums.composite
 
+import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.FlowCollector
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.callbackFlow
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMediumConfig
 
@@ -42,7 +42,7 @@ class CompositePagingDataChangesMediumBuilder<Key : Any, Data : Any, NewData : A
     }
 
     fun dataSourceSection(
-        dataSourceIndex: Int, mapper: (List<Data>) -> List<NewData>
+        dataSourceIndex: Int, mapper: (List<Data>) -> List<NewData> = { it as List<NewData> }
     ) {
         sections.add(CompositePresenterSection.DataSourceSection(dataSourceIndex, mapper))
     }
@@ -55,8 +55,8 @@ class CompositePagingDataChangesMediumBuilder<Key : Any, Data : Any, NewData : A
 }
 
 fun <Key : Any, Data : Any, NewData : Any> CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.flowSection(
-    flowCollector: FlowCollector<List<NewData>>.() -> Unit
-) = flowSection(flow(flowCollector))
+    flowCollector: suspend ProducerScope<List<NewData>>.() -> Unit
+) = flowSection(callbackFlow(flowCollector))
 
 fun <Key : Any, Data : Any, NewData : Any> CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.dataSourceSectionMapped(
     dataSourceIndex: Int

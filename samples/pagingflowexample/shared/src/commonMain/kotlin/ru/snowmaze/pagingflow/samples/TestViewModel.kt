@@ -4,6 +4,7 @@ import dev.icerock.moko.mvvm.viewmodel.ViewModel
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.PagingFlowConfiguration
 import ru.snowmaze.pagingflow.buildPagingFlow
+import ru.snowmaze.pagingflow.diff.mapDataMedium
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 
@@ -28,5 +29,30 @@ class TestViewModel : ViewModel() {
         loadFirstPage = true,
         TestPagingSource(totalItemsCount, true)
     )
-    val pagingEventsMedium: PagingEventsMedium<Int, String> = pagingFlow
+    val pagingEventsMedium: PagingEventsMedium<Int, TestItem> = pagingFlow.mapDataMedium {
+        it.items.map {
+            it?.let { TestItem.Item(it) }
+        }
+    }
+//        .compositeDataMedium {
+//        flowSection {
+//            pagingFlow.upPagingStatus.collectLatest {
+//                if (it.hasNextPage) {
+//                    send(listOf(TestItem.Loader(isDown = false)))
+//                }
+//            }
+//        }
+//        dataSourceSection(0) {
+//            it.map { item ->
+//                TestItem.Item(item)
+//            }
+//        }
+//        flowSection {
+//            pagingFlow.downPagingStatus.collectLatest {
+//                if (it.hasNextPage) {
+//                    send(listOf(TestItem.Loader(isDown = true)))
+//                }
+//            }
+//        }
+//    }
 }

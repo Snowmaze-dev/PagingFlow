@@ -6,9 +6,9 @@ import kotlinx.coroutines.flow.first
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
+import ru.snowmaze.pagingflow.diff.compositeDataMedium
 import ru.snowmaze.pagingflow.diff.mediums.composite.CompositePagingDataChangesMediumBuilder
 import ru.snowmaze.pagingflow.diff.mediums.composite.section
-import ru.snowmaze.pagingflow.presenters.compositeDataPresenter
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
@@ -40,7 +40,7 @@ class CompositeMediumTest {
             addDownPagingSource(testDataSource)
         }
         val data = listOf(123)
-        val presenter = pagingFlow.compositeDataPresenter {
+        val presenter = pagingFlow.compositeDataMedium {
             section(data)
         }.statePresenter()
         presenter.latestDataFlow.firstWithTimeout { it.data.size == 1 }

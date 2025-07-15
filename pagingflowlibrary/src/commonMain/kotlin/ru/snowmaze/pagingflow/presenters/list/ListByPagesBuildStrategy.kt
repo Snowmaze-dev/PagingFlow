@@ -51,7 +51,6 @@ class ListByPagesBuildStrategy<Key : Any, Data : Any> : ListBuildStrategy<Key, D
         for (pageIndex in indexes) {
             listSize += indexedPages[pageIndex]?.items?.size ?: 0
         }
-        startPageIndex = newStartIndex
         recentLoadData = newRecentLoadData
         return buildList(listSize) {
             for (pageIndex in indexes) {
@@ -61,6 +60,7 @@ class ListByPagesBuildStrategy<Key : Any, Data : Any> : ListBuildStrategy<Key, D
                 }
                 addAll(page.items)
             }
+            startPageIndex = newStartIndex
         }
     }
 

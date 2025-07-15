@@ -2,7 +2,7 @@ package ru.snowmaze.pagingflow.samples
 
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.result.LoadResult
-import ru.snowmaze.pagingflow.result.simpleResult
+import ru.snowmaze.pagingflow.result.result
 import ru.snowmaze.pagingflow.source.SegmentedPagingSource
 
 class TestPagingSource(
@@ -21,7 +21,7 @@ class TestPagingSource(
         startIndex: Int,
         endIndex: Int
     ): LoadResult.Success<Int, String> {
-        return simpleResult(items.subList(startIndex, endIndex))
+        return result(items.subList(startIndex, endIndex))
     }
 
 //    override suspend fun loadData(

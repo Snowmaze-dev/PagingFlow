@@ -24,7 +24,7 @@ espressoCore = "3.6.1"
 activityCompose = "1.8.2"
 composeBom = "2024.10.00"
 lifecycleViewmodelCompose = "2.8.6"
-recyclerview = "1.4.0"
+recyclerview = "1.3.2"
 
 [libraries]
 

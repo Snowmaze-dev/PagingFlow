@@ -22,7 +22,8 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
     private val pagingMedium: PagingEventsMedium<out Any, Data>,
     private val itemCallback: DiffUtil.ItemCallback<Data>,
     invalidateBehavior: InvalidateBehavior,
-    private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main
+    private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
+    private val setNewItems: (List<Data?>) -> Unit
 ) : BasicBuildListPagingPresenter<Any, Data>(
     pagingEventsMedium = pagingMedium as PagingEventsMedium<Any, Data>,
     presenterConfiguration = BasicPresenterConfiguration(invalidateBehavior = invalidateBehavior)
@@ -33,12 +34,19 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
     private var wasInvalidated = false
     private var currentData = LatestData<Data>(emptyList(), emptyList())
 
+    override suspend fun onEvent(event: PagingEvent<Any, Data>) {
+        withContext(processingDispatcher) {
+            buildList(listOf(event))
+        }
+    }
+
     override suspend fun onItemsSet(
         events: List<PagingEvent<Any, Data>>,
         currentData: LatestData<Data>
     ) {
         this.currentData = currentData
         coroutineScope.launch(mainDispatcher) {
+            setNewItems(currentData.data)
             events.fastForEach { event ->
                 event.handle(
                     onPageAdded = {
@@ -72,17 +80,13 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
             calculatePageStartItemIndex(event.pageIndex)
         )
         when (event.changeType) {
-            PageChangedEvent.ChangeType.COMMON_CHANGE -> coroutineScope.launch(
-                pagingMedium.config.processingDispatcher
-            ) {
+            PageChangedEvent.ChangeType.COMMON_CHANGE -> {
                 val diffResult = PagingDiffUtil.calculateDiff(
-                    oldList = pagesIndexes.getValue(event.pageIndex) as List<Data>,
+                    oldList = pagesIndexes.get(event.pageIndex) as? List<Data> ?: return,
                     newList = event.items as List<Data>,
                     diffCallback = itemCallback,
                 )
-                withContext(mainDispatcher) {
-                    diffResult.dispatchUpdatesTo(offsetListUpdateCallback)
-                }
+                diffResult.dispatchUpdatesTo(offsetListUpdateCallback)
             }
 
             else -> offsetListUpdateCallback.onChanged(0, event.items.size, null)
