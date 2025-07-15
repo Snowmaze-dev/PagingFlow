@@ -2,7 +2,7 @@ package ru.snowmaze.pagingflow.presenters.list
 
 import androidx.collection.MutableIntIntMap
 import androidx.collection.MutableObjectList
-import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent.ChangeType
 import ru.snowmaze.pagingflow.diff.handle
@@ -29,7 +29,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
     private var isBuildingList = false
 
     override fun buildList(
-        events: List<DataChangedEvent<Key, Data>>,
+        events: List<PagingEvent<Key, Data>>,
         onInvalidate: (InvalidateBehavior?) -> Unit
     ): List<Data?> {
         val newRecentLoadData = ArrayList<MutablePagingParams>(
@@ -48,7 +48,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
     }
 
     private inline fun buildListInternal(
-        events: List<DataChangedEvent<Key, Data>>,
+        events: List<PagingEvent<Key, Data>>,
         onInvalidate: (InvalidateBehavior?) -> Unit
     ) = events.fastForEach { event ->
         event.handle(

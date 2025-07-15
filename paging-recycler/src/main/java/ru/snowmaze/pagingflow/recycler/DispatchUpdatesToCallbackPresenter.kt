@@ -6,10 +6,10 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.handle
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.LatestData
 import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
@@ -19,12 +19,12 @@ import ru.snowmaze.pagingflow.utils.fastForEach
 class DispatchUpdatesToCallbackPresenter<Data : Any>(
     private val listUpdateCallback: ListUpdateCallback,
     private val offsetListUpdateCallbackProvider: (Int) -> OffsetListUpdateCallback,
-    private val pagingMedium: PagingDataChangesMedium<out Any, Data>,
+    private val pagingMedium: PagingEventsMedium<out Any, Data>,
     private val itemCallback: DiffUtil.ItemCallback<Data>,
     invalidateBehavior: InvalidateBehavior,
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main
 ) : BasicBuildListPagingPresenter<Any, Data>(
-    pagingDataChangesMedium = pagingMedium as PagingDataChangesMedium<Any, Data>,
+    pagingEventsMedium = pagingMedium as PagingEventsMedium<Any, Data>,
     presenterConfiguration = BasicPresenterConfiguration(invalidateBehavior = invalidateBehavior)
 ) {
 
@@ -34,7 +34,7 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
     private var currentData = LatestData<Data>(emptyList(), emptyList())
 
     override suspend fun onItemsSet(
-        events: List<DataChangedEvent<Any, Data>>,
+        events: List<PagingEvent<Any, Data>>,
         currentData: LatestData<Data>
     ) {
         this.currentData = currentData

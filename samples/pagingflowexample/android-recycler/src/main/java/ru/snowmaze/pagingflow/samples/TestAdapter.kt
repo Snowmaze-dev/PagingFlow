@@ -6,16 +6,16 @@ import android.widget.TextView
 import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.updatePadding
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.recycler.PagingFlowAdapter
 import ru.snowmaze.pagingflow.utils.PagingTrigger
 
 class TestAdapter(
     pagingTrigger: PagingTrigger,
-    pagingDataChangesMedium: PagingDataChangesMedium<Int, String>,
+    pagingEventsMedium: PagingEventsMedium<Int, String>,
 ) : PagingFlowAdapter<String, TestAdapter.TestViewHolder>(
     itemCallback = StringItemCallback(),
-    pagingDataChangesMedium = pagingDataChangesMedium,
+    pagingEventsMedium = pagingEventsMedium,
     pagingTrigger = pagingTrigger
 ) {
 

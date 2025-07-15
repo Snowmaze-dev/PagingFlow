@@ -1,37 +1,37 @@
 package ru.snowmaze.pagingflow.diff.mediums
 
-import ru.snowmaze.pagingflow.diff.DataChangedCallback
-import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.diff.PagingEventsListener
+import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
 import ru.snowmaze.pagingflow.diff.handle
 
-class MappingPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
-    pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
-    override val config: DataChangesMediumConfig = pagingDataChangesMedium.config,
+class MappingPagingEventsMedium<Key : Any, Data : Any, NewData : Any>(
+    pagingEventsMedium: PagingEventsMedium<Key, Data>,
+    override val config: PagingEventsMediumConfig = pagingEventsMedium.config,
     private val transformOtherEvents: (
-        suspend (DataChangedEvent<Key, Data>) -> DataChangedEvent<Key, NewData>?
+        suspend (PagingEvent<Key, Data>) -> PagingEvent<Key, NewData>?
     )? = null,
     private val transform: suspend (PageChangedEvent<Key, Data>) -> List<NewData?>,
-) : SubscribeForChangesDataChangesMedium<Key, Data, NewData>(pagingDataChangesMedium),
-    DataChangedCallback<Key, Data> {
+) : SubscribeForChangesEventsMedium<Key, Data, NewData>(pagingEventsMedium),
+    PagingEventsListener<Key, Data> {
 
-    override suspend fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
+    override suspend fun onEvents(events: List<PagingEvent<Key, Data>>) {
         notifyOnEvents(
             events.mapNotNullTo(ArrayList(events.size)) { handleEvent(it) }
         )
     }
 
-    override suspend fun onEvent(event: DataChangedEvent<Key, Data>) {
+    override suspend fun onEvent(event: PagingEvent<Key, Data>) {
         notifyOnEvent(handleEvent(event) ?: return)
     }
 
     override fun getChangesCallback() = this
 
     private suspend inline fun handleEvent(
-        event: DataChangedEvent<Key, Data>
+        event: PagingEvent<Key, Data>
     ) = event.handle(
         onPageAdded = {
             PageAddedEvent(

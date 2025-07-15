@@ -9,7 +9,7 @@ import androidx.recyclerview.widget.RecyclerView.ViewHolder
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.utils.PagingTrigger
@@ -18,12 +18,12 @@ import ru.snowmaze.pagingflow.utils.PagingTrigger
  * RecyclerView.Adapter base class which can listen paging data changes callback, calculate diffs on background thread and notify adapter of changes
  * This class wraps [DispatchUpdatesToCallbackPresenter] which listens events and dispatches updates to adapter through [ListUpdateCallback]
  * @see PagingTrigger
- * @see PagingDataChangesMedium
+ * @see PagingEventsMedium
  * @see InvalidateBehavior
  */
 abstract class PagingFlowAdapter<Data : Any, VH : ViewHolder>(
     itemCallback: DiffUtil.ItemCallback<Data>,
-    pagingDataChangesMedium: PagingDataChangesMedium<out Any, Data>,
+    pagingEventsMedium: PagingEventsMedium<out Any, Data>,
     private val pagingTrigger: PagingTrigger,
     invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
     mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
@@ -35,14 +35,14 @@ abstract class PagingFlowAdapter<Data : Any, VH : ViewHolder>(
         offsetListUpdateCallbackProvider = { offset: Int ->
             OffsetListUpdateCallback(this, offset)
         },
-        pagingMedium = pagingDataChangesMedium,
+        pagingMedium = pagingEventsMedium,
         itemCallback = itemCallback,
         invalidateBehavior = invalidateBehavior
     )
     private var items = emptyList<Data?>()
 
     init {
-        pagingDataChangesMedium.config.coroutineScope.launch(mainDispatcher) {
+        pagingEventsMedium.config.coroutineScope.launch(mainDispatcher) {
             dispatchUpdatesToCallbackPresenter.dataFlow.collect {
                 items = it
             }

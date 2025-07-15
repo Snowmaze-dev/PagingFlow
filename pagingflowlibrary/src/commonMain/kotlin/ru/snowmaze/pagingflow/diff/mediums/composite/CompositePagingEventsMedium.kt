@@ -4,26 +4,26 @@ import androidx.collection.MutableScatterMap
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import ru.snowmaze.pagingflow.diff.DataChangedCallback
-import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.diff.PagingEventsListener
+import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent.ChangeType
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
 import ru.snowmaze.pagingflow.diff.handle
-import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
-import ru.snowmaze.pagingflow.diff.mediums.SubscribeForChangesDataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMediumConfig
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
+import ru.snowmaze.pagingflow.diff.mediums.SubscribeForChangesEventsMedium
 import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.utils.fastSumOf
 import ru.snowmaze.pagingflow.utils.flattenWithSize
 
-open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any> internal constructor(
-    pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
+open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> internal constructor(
+    pagingEventsMedium: PagingEventsMedium<Key, Data>,
     private val sections: List<CompositePresenterSection<Key, Data, NewData>>,
-    final override val config: DataChangesMediumConfig = pagingDataChangesMedium.config
-) : SubscribeForChangesDataChangesMedium<Key, Data, NewData>(pagingDataChangesMedium) {
+    final override val config: PagingEventsMediumConfig = pagingEventsMedium.config
+) : SubscribeForChangesEventsMedium<Key, Data, NewData>(pagingEventsMedium) {
 
     private val dataSourcesSections =
         MutableScatterMap<Int, CompositePresenterSection.DataSourceSection<Key, Data, NewData>>()
@@ -56,10 +56,10 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
         updateSectionsData()
     }
 
-    override fun getChangesCallback() = object : DataChangedCallback<Key, Data> {
+    override fun getChangesCallback() = object : PagingEventsListener<Key, Data> {
 
         private inline fun mapEvent(
-            event: DataChangedEvent<Key, Data>
+            event: PagingEvent<Key, Data>
         ): Any? {
             return event.handle(
                 onPageAdded = {
@@ -95,12 +95,12 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
                     onInvalidate()
                     it as InvalidateEvent<Key, NewData>
                 },
-                onElse = { it as DataChangedEvent<Key, NewData> }
+                onElse = { it as PagingEvent<Key, NewData> }
             )
         }
 
         override suspend fun onEvents(
-            events: List<DataChangedEvent<Key, Data>>
+            events: List<PagingEvent<Key, Data>>
         ): Unit = mutex.withLock {
             notifyOnEvents(buildList {
                 for (event in events) {
@@ -111,7 +111,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
         }
 
         override suspend fun onEvent(
-            event: DataChangedEvent<Key, Data>
+            event: PagingEvent<Key, Data>
         ): Unit = mutex.withLock {
             mapEvent(event)?.let { mappedEvents ->
                 val additionalEvents = ArrayList<Any>()
@@ -120,7 +120,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
                     if (additionalEvents.isEmpty()) mappedEvents
                     else {
                         additionalEvents.add(0, mappedEvents)
-                        additionalEvents.flattenWithSize<Any, DataChangedEvent<Key, NewData>>()
+                        additionalEvents.flattenWithSize<Any, PagingEvent<Key, NewData>>()
                     }
                 )
             }
@@ -143,11 +143,11 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
         }
     }
 
-    override fun addDataChangedCallback(callback: DataChangedCallback<Key, NewData>) {
-        super.addDataChangedCallback(callback)
+    override fun addPagingEventsListener(listener: PagingEventsListener<Key, NewData>) {
+        super.addPagingEventsListener(listener)
         config.coroutineScope.launch {
             mutex.withLock {
-                callback.onEvents(sections.flatMap { it.pages })
+                listener.onEvents(sections.flatMap { it.pages })
             }
         }
     }
@@ -212,7 +212,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
         data: List<NewData>,
         pagingParams: MutablePagingParams?,
         addIndex: Int
-    ): List<DataChangedEvent<Key, NewData>> = buildList {
+    ): List<PagingEvent<Key, NewData>> = buildList {
         var currentSectionIndex = section.sourceIndex
         val indexShift = if (section is CompositePresenterSection.DataSourceSection) {
             val result = section.removedPagesNumbers.size
@@ -286,7 +286,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
     private fun onRemovePage(
         section: CompositePresenterSection<Key, Data, NewData>,
         indexInSource: Int
-    ): List<DataChangedEvent<Key, NewData>> = buildList {
+    ): List<PagingEvent<Key, NewData>> = buildList {
         val indexShift = if (section is CompositePresenterSection.DataSourceSection) {
             val result = section.removedPagesNumbers.size
             if (indexInSource < section.pages.maxOf { it.pageIndexInSource }) {
@@ -375,7 +375,7 @@ open class CompositePagingDataChangesMedium<Key : Any, Data : Any, NewData : Any
     }
 
     private suspend inline fun notifyOnEventsInternal(events: Any) {
-        if (events is List<*>) notifyOnEvents(events as List<DataChangedEvent<Key, NewData>>)
-        else notifyOnEvent(events as DataChangedEvent<Key, NewData>)
+        if (events is List<*>) notifyOnEvents(events as List<PagingEvent<Key, NewData>>)
+        else notifyOnEvent(events as PagingEvent<Key, NewData>)
     }
 }

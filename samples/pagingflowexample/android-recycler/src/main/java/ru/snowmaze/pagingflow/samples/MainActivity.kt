@@ -26,7 +26,7 @@ class MainActivity : AppCompatActivity() {
                 prefetchDownDistance = PREFETCH_DISTANCE,
                 coroutineScope = lifecycleScope
             ),
-            pagingDataChangesMedium = viewModel.pagingDataChangesMedium
+            pagingEventsMedium = viewModel.pagingEventsMedium
         )
     }
 

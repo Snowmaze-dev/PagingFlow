@@ -1,29 +1,29 @@
 package ru.snowmaze.pagingflow.diff
 
 import kotlinx.coroutines.flow.Flow
-import ru.snowmaze.pagingflow.diff.mediums.BatchingPagingDataChangesMedium
-import ru.snowmaze.pagingflow.diff.mediums.BufferEventsDataChangesMedium
-import ru.snowmaze.pagingflow.diff.mediums.MappingFlowPagingDataChangesMedium
-import ru.snowmaze.pagingflow.diff.mediums.MappingPagingDataChangesMedium
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.BatchingPagingEventsMedium
+import ru.snowmaze.pagingflow.diff.mediums.BufferEventsEventsMedium
+import ru.snowmaze.pagingflow.diff.mediums.MappingFlowPagingEventsMedium
+import ru.snowmaze.pagingflow.diff.mediums.MappingPagingEventsMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 
 /**
- * @see BufferEventsDataChangesMedium
+ * @see BufferEventsEventsMedium
  */
-inline fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.bufferEvents(
-) = BufferEventsDataChangesMedium(this)
+inline fun <Key : Any, Data : Any> PagingEventsMedium<Key, Data>.bufferEvents(
+) = BufferEventsEventsMedium(this)
 
-inline fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mapDataMedium(
+inline fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapDataMedium(
     noinline transform: suspend (PageChangedEvent<Key, Data>) -> List<NewData?>
-) = MappingPagingDataChangesMedium(
-    pagingDataChangesMedium = this,
+) = MappingPagingEventsMedium(
+    pagingEventsMedium = this,
     transform = transform
 )
 
-inline fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mapDataToFlowMedium(
+inline fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapDataToFlowMedium(
     noinline transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>
-) = MappingFlowPagingDataChangesMedium(
-    pagingDataChangesMedium = this,
+) = MappingFlowPagingEventsMedium(
+    pagingEventsMedium = this,
     transform = transform
 )
 
@@ -34,11 +34,11 @@ inline fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, D
  * speeds up adding new ages if enabled
  *
  */
-inline fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.batchEventsMedium(
-    noinline eventsBatchingDurationMsProvider: (List<DataChangedEvent<Key, Data>>) -> Long = { 0 },
+inline fun <Key : Any, Data : Any> PagingEventsMedium<Key, Data>.batchEventsMedium(
+    noinline eventsBatchingDurationMsProvider: (List<PagingEvent<Key, Data>>) -> Long = { 0 },
     shouldBatchAddPagesEvents: Boolean = false,
-) = BatchingPagingDataChangesMedium(
-    pagingDataChangesMedium = this,
+) = BatchingPagingEventsMedium(
+    pagingEventsMedium = this,
     eventsBatchingDurationMsProvider = eventsBatchingDurationMsProvider,
     shouldBatchAddPagesEvents = shouldBatchAddPagesEvents
 )

@@ -13,16 +13,16 @@ import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.UpdatableData
 import ru.snowmaze.pagingflow.diff.AwaitDataSetEvent
-import ru.snowmaze.pagingflow.diff.DataChangedCallback
-import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.diff.PagingEventsListener
+import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.EventFromDataSource
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.OnDataLoaded
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
-import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
-import ru.snowmaze.pagingflow.diff.mediums.DefaultPagingDataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMediumConfig
+import ru.snowmaze.pagingflow.diff.mediums.DefaultPagingEventsMedium
 import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
@@ -41,7 +41,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
     private val pageLoaderConfig: PageLoaderConfig<Key>,
     private val setDataMutex: Mutex,
     private val pagingSourcesManager: PagingSourcesManager<Key, Data>
-) : DefaultPagingDataChangesMedium<Key, Data>() {
+) : DefaultPagingEventsMedium<Key, Data>() {
 
     private val _dataPages = mutableListOf<DataPage<Key, Data>>()
     val dataPages get() = _dataPages
@@ -55,20 +55,24 @@ internal class DataPagesManager<Key : Any, Data : Any>(
     @Volatile
     private var isAnyDataChanged = false
 
-    override val config = DataChangesMediumConfig(
+    override val config = PagingEventsMediumConfig(
         pageLoaderConfig.coroutineScope, pageLoaderConfig.processingDispatcher
     )
 
-    override fun addDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
+    override fun addPagingEventsListener(listener: PagingEventsListener<Key, Data>) {
         if (!pageLoaderConfig.storePageItems && isAnyDataChanged) {
             throw IllegalStateException("Can't subscribe after data is loaded because shouldStorePageItems = false.")
         }
-        super.addDataChangedCallback(callback)
+        super.addPagingEventsListener(listener)
         if (isAnyDataChanged) config.coroutineScope.launch {
             setDataMutex.withLock {
-                resendAllPages(listOf(callback))
+                resendAllPages(listOf(listener))
             }
         }
+    }
+
+    override fun removePagingEventsListener(listener: PagingEventsListener<Key, Data>): Boolean {
+        return super.removePagingEventsListener(listener) // TODO cancel flow collectors when no listeners
     }
 
     fun notifyIfNeeded(pagingParams: PagingParams?) {
@@ -90,11 +94,23 @@ internal class DataPagesManager<Key : Any, Data : Any>(
             page.listenJob.cancel()
             page.data = null
         }
+        isAnyDataChanged = false
+        if (dataPages.isNotEmpty()) {
+            val invalidateChannel = Channel<Unit>(1)
+            notifyOnEvents(
+                listOf(
+                    AwaitDataSetEvent { invalidateChannel.send(Unit) },
+                    InvalidateEvent(invalidateBehavior)
+                )
+            )
+            invalidateChannel.receive()
+        } else {
+            notifyOnEvent(InvalidateEvent(invalidateBehavior))
+        }
+
         dataPages.clear()
         skipPage?.let { dataPages.add(it) }
         if (removeCachedData) cachedData.clear()
-        isAnyDataChanged = false
-        notifyOnEvent(InvalidateEvent(invalidateBehavior))
     }
 
     fun removePagingSourcePages(dataSourceIndex: Int) {
@@ -145,7 +161,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
     }
 
     suspend fun resendAllPages(
-        toCallbacks: List<DataChangedCallback<Key, Data>> = dataChangedCallbacks
+        toCallbacks: Collection<PagingEventsListener<Key, Data>> = pagingEventsListeners
     ) {
         val events = buildList(1 + dataPages.size) {
             for (page in dataPages) {
@@ -165,7 +181,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                 else InvalidateEvent(null)
             )
         }
-        toCallbacks.fastForEach { it.onEvents(events) }
+        toCallbacks.forEach { it.onEvents(events) }
     }
 
     fun getCachedData(index: Int) = cachedData[index]
@@ -326,7 +342,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
             } else null
             val notified = if (trimEvents.isNullOrEmpty()) {
                 if (awaitEvent != null) {
-                    notifyOnEvents(ArrayList<DataChangedEvent<Key, Data>>(2).also {
+                    notifyOnEvents(ArrayList<PagingEvent<Key, Data>>(2).also {
                         it.add(awaitEvent)
                         it.add(event)
                     })
@@ -339,12 +355,12 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                     if (trimEvent.pageIndex == page.pageIndex) shouldSendEvent = false
                 }
 
-                val events = ArrayList<DataChangedEvent<Key, Data>>(
+                val events = ArrayList<PagingEvent<Key, Data>>(
                     trimEvents.size + if (shouldSendEvent) 1 else 0 + if (awaitEvent == null) 0 else 1
                 )
                 if (awaitEvent != null) events.add(awaitEvent)
                 if (shouldSendEvent) events.add(event)
-                events.addAll(trimEvents as List<DataChangedEvent<Key, Data>>)
+                events.addAll(trimEvents as List<PagingEvent<Key, Data>>)
                 notifyOnEvents(events)
             }
             if (!notified) {

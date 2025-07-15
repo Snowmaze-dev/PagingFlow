@@ -5,20 +5,20 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import ru.snowmaze.pagingflow.diff.DataChangedCallback
-import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.diff.PagingEventsListener
+import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.utils.fastIndexOfLast
 
-class BatchingPagingDataChangesMedium<Key : Any, Data : Any>(
-    private val pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
-    private val eventsBatchingDurationMsProvider: (List<DataChangedEvent<Key, Data>>) -> Long,
+class BatchingPagingEventsMedium<Key : Any, Data : Any>(
+    private val pagingEventsMedium: PagingEventsMedium<Key, Data>,
+    private val eventsBatchingDurationMsProvider: (List<PagingEvent<Key, Data>>) -> Long,
     private val shouldBatchAddPagesEvents: Boolean = false,
-    override val config: DataChangesMediumConfig = pagingDataChangesMedium.config,
-) : SubscribeForChangesDataChangesMedium<Key, Data, Data>(pagingDataChangesMedium),
-    DataChangedCallback<Key, Data> {
+    override val config: PagingEventsMediumConfig = pagingEventsMedium.config,
+) : SubscribeForChangesEventsMedium<Key, Data, Data>(pagingEventsMedium),
+    PagingEventsListener<Key, Data> {
 
-    private val savedEvents = mutableListOf<DataChangedEvent<Key, Data>>()
+    private val savedEvents = mutableListOf<PagingEvent<Key, Data>>()
     private var job: Job? = null
     private val coroutineScope = config.coroutineScope
     private val mutex = Mutex()
@@ -26,7 +26,7 @@ class BatchingPagingDataChangesMedium<Key : Any, Data : Any>(
     override fun getChangesCallback() = this
 
     override suspend fun onEvents(
-        events: List<DataChangedEvent<Key, Data>>
+        events: List<PagingEvent<Key, Data>>
     ): Unit = mutex.withLock {
         var newEvents = events
         var batchingTime: Long? = null
@@ -53,7 +53,7 @@ class BatchingPagingDataChangesMedium<Key : Any, Data : Any>(
     }
 
     override suspend fun onEvent(
-        event: DataChangedEvent<Key, Data>
+        event: PagingEvent<Key, Data>
     ): Unit = mutex.withLock {
         if (event is PageAddedEvent && !shouldBatchAddPagesEvents) {
             if (savedEvents.isEmpty()) notifyOnEvent(event)

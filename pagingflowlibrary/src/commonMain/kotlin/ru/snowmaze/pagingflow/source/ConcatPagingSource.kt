@@ -10,8 +10,8 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.PagingStatus
-import ru.snowmaze.pagingflow.diff.DataChangedCallback
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import ru.snowmaze.pagingflow.diff.PagingEventsListener
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.errorshandler.DefaultPagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.errorshandler.PagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.internal.DataPagesManager
@@ -28,7 +28,7 @@ open class ConcatPagingSource<Key : Any, Data : Any>(
     private val concatDataSourceConfig: PageLoaderConfig<Key>,
     override val pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler<Key, Data> =
         DefaultPagingUnhandledErrorsHandler()
-) : PagingSource<Key, Data>, PagingDataChangesMedium<Key, Data> {
+) : PagingSource<Key, Data>, PagingEventsMedium<Key, Data> {
 
     private val loadDataMutex = Mutex()
 
@@ -86,12 +86,12 @@ open class ConcatPagingSource<Key : Any, Data : Any>(
         }
     }
 
-    override fun addDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
-        dataPagesManager.addDataChangedCallback(callback)
+    override fun addPagingEventsListener(listener: PagingEventsListener<Key, Data>) {
+        dataPagesManager.addPagingEventsListener(listener)
     }
 
-    override fun removeDataChangedCallback(callback: DataChangedCallback<Key, Data>): Boolean {
-        return dataPagesManager.removeDataChangedCallback(callback)
+    override fun removePagingEventsListener(listener: PagingEventsListener<Key, Data>): Boolean {
+        return dataPagesManager.removePagingEventsListener(listener)
     }
 
     fun addDownPagingSource(pagingSource: PagingSource<Key, out Data>) {

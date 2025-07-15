@@ -3,10 +3,10 @@ package ru.snowmaze.pagingflow.presenters
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import ru.snowmaze.pagingflow.diff.DataChangedCallback
-import ru.snowmaze.pagingflow.diff.DataChangedEvent
-import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import ru.snowmaze.pagingflow.diff.PagingEventsListener
+import ru.snowmaze.pagingflow.diff.PagingEvent
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMediumConfig
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.utils.SingleElementList
 
 /**
@@ -14,22 +14,22 @@ import ru.snowmaze.pagingflow.utils.SingleElementList
  * It collects events and sets it to map of pages which will be later used to build list in [BuildListPagingPresenter.buildList]
  */
 open class BasicBuildListPagingPresenter<Key : Any, Data : Any>(
-    pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
+    pagingEventsMedium: PagingEventsMedium<Key, Data>,
     private val presenterConfiguration: BasicPresenterConfiguration<Key, Data>,
-    val config: DataChangesMediumConfig = pagingDataChangesMedium.config
+    val config: PagingEventsMediumConfig = pagingEventsMedium.config
 ) : BuildListPagingPresenter<Key, Data>(
     listBuildStrategy = presenterConfiguration.listBuildStrategy,
     invalidateBehavior = presenterConfiguration.invalidateBehavior,
     coroutineScope = config.coroutineScope,
     processingDispatcher = config.processingDispatcher,
     presenterFlow = presenterConfiguration.presenterFlow,
-), DataChangedCallback<Key, Data> {
+), PagingEventsListener<Key, Data> {
 
-    private val singletonElementList = SingleElementList<DataChangedEvent<Key, Data>>()
+    private val singletonElementList = SingleElementList<PagingEvent<Key, Data>>()
 
     init {
         val callback = this
-        pagingDataChangesMedium.addDataChangedCallback(callback)
+        pagingEventsMedium.addPagingEventsListener(callback)
         val shouldBeAlwaysSubscribed = presenterConfiguration.shouldBeAlwaysSubscribed
         if (!shouldBeAlwaysSubscribed) {
             var firstCall = true
@@ -39,10 +39,10 @@ open class BasicBuildListPagingPresenter<Key : Any, Data : Any>(
                     if (subscriptionCount == 0 && !firstCall) {
                         delay(presenterConfiguration.unsubscribeDelayWhenNoSubscribers)
                         isSubscribedAlready = false
-                        pagingDataChangesMedium.removeDataChangedCallback(callback)
+                        pagingEventsMedium.removePagingEventsListener(callback)
                     } else if (subscriptionCount == 1 && !isSubscribedAlready) {
                         isSubscribedAlready = true
-                        pagingDataChangesMedium.addDataChangedCallback(callback)
+                        pagingEventsMedium.addPagingEventsListener(callback)
                     }
                     firstCall = false
                 }
@@ -50,7 +50,7 @@ open class BasicBuildListPagingPresenter<Key : Any, Data : Any>(
         }
     }
 
-    override suspend fun onEvent(event: DataChangedEvent<Key, Data>) {
+    override suspend fun onEvent(event: PagingEvent<Key, Data>) {
         withContext(processingDispatcher) {
             singletonElementList.element = event
             buildList(singletonElementList)
@@ -59,7 +59,7 @@ open class BasicBuildListPagingPresenter<Key : Any, Data : Any>(
     }
 
     override suspend fun onEvents(
-        events: List<DataChangedEvent<Key, Data>>
+        events: List<PagingEvent<Key, Data>>
     ) {
         if (events.isEmpty()) return
         withContext(processingDispatcher) { buildList(events) }

@@ -3,25 +3,25 @@ package ru.snowmaze.pagingflow.presenters
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
-import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.batchEventsMedium
 import ru.snowmaze.pagingflow.diff.bufferEvents
 import ru.snowmaze.pagingflow.diff.mapDataToFlowMedium
 import ru.snowmaze.pagingflow.diff.mapDataMedium
-import ru.snowmaze.pagingflow.diff.mediums.BufferEventsDataChangesMedium
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
-import ru.snowmaze.pagingflow.diff.mediums.BatchingPagingDataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.BufferEventsEventsMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
+import ru.snowmaze.pagingflow.diff.mediums.BatchingPagingEventsMedium
 import ru.snowmaze.pagingflow.diff.mediums.composite.CompositePagingDataChangesMediumBuilder
 
 /**
  * Creates simple presenter, which builds list from pages
  * @param configuration configuration for presenter
  */
-fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresenter(
+fun <Key : Any, Data : Any> PagingEventsMedium<Key, Data>.pagingDataPresenter(
     configuration: BasicPresenterConfiguration<Key, Data> = BasicPresenterConfiguration()
 ) = BasicBuildListPagingPresenter(
-    pagingDataChangesMedium = this,
+    pagingEventsMedium = this,
     presenterConfiguration = configuration
 )
 
@@ -35,7 +35,7 @@ inline fun <Key : Any, Data : Any> PagingDataPresenter<Key, Data>.statePresenter
     sharingStarted = sharingStarted
 )
 
-inline fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.statePresenter(
+inline fun <Key : Any, Data : Any> PagingEventsMedium<Key, Data>.statePresenter(
     configuration: BasicPresenterConfiguration<Key, Data> = BasicPresenterConfiguration(),
     sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(5000)
 ) = pagingDataPresenter(configuration).statePresenter(
@@ -48,7 +48,7 @@ inline fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.statePrese
  * @param transform transforms event to list of data
  * @see pagingDataPresenter for arguments docs on arguments
  */
-fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mapDataPresenter(
+fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapDataPresenter(
     configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
     transform: suspend (PageChangedEvent<Key, Data>) -> List<NewData?>
 ) = mapDataMedium(transform).pagingDataPresenter(configuration)
@@ -56,7 +56,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
 /**
  * Maps events to flow of data
  */
-fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mapDataFlowPresenter(
+fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapDataFlowPresenter(
     configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
     transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>
 ) = mapDataToFlowMedium(transform).pagingDataPresenter(configuration)
@@ -64,12 +64,12 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
 /**
  * @param eventsBatchingDurationMsProvider provider of duration of batching window
  * @param shouldBatchAddPagesEvents defines whether should batching add pages events or not
- * @param shouldBufferEvents see [BufferEventsDataChangesMedium]
+ * @param shouldBufferEvents see [BufferEventsEventsMedium]
  * @param transform mapping lambda
  */
-fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mapDataPresenter(
+fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapDataPresenter(
     configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
-    eventsBatchingDurationMsProvider: (List<DataChangedEvent<Key, NewData>>) -> Long = { 0 },
+    eventsBatchingDurationMsProvider: (List<PagingEvent<Key, NewData>>) -> Long = { 0 },
     shouldBatchAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
     transform: suspend (PageChangedEvent<Key, Data>) -> List<NewData?>
@@ -84,9 +84,9 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
 /**
  * Maps events to flow of data
  */
-fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.mapDataFlowPresenter(
+fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapDataFlowPresenter(
     configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
-    eventsBatchingDurationMsProvider: (List<DataChangedEvent<Key, NewData>>) -> Long = { 0 },
+    eventsBatchingDurationMsProvider: (List<PagingEvent<Key, NewData>>) -> Long = { 0 },
     shouldBatchAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
     transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>
@@ -101,11 +101,11 @@ fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.ma
 /**
  * @param eventsBatchingDurationMsProvider provider of duration of batching window
  * @param shouldBatchAddPagesEvents defines whether should batching add pages events or not
- * @param shouldBufferEvents see [BufferEventsDataChangesMedium]
+ * @param shouldBufferEvents see [BufferEventsEventsMedium]
  */
-fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresenter(
+fun <Key : Any, Data : Any> PagingEventsMedium<Key, Data>.pagingDataPresenter(
     configuration: BasicPresenterConfiguration<Key, Data> = BasicPresenterConfiguration(),
-    eventsBatchingDurationMsProvider: (List<DataChangedEvent<Key, Data>>) -> Long = { 0 },
+    eventsBatchingDurationMsProvider: (List<PagingEvent<Key, Data>>) -> Long = { 0 },
     shouldBatchAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
 ) = (if (shouldBufferEvents) bufferEvents() else this).batchEventsMedium(
@@ -113,24 +113,24 @@ fun <Key : Any, Data : Any> PagingDataChangesMedium<Key, Data>.pagingDataPresent
     shouldBatchAddPagesEvents = shouldBatchAddPagesEvents
 ).pagingDataPresenter(configuration)
 
-fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.compositeDataPresenter(
+fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.compositeDataPresenter(
     configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
     shouldBufferEvents: Boolean = false,
     builder: CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.() -> Unit
 ) = CompositePagingDataChangesMediumBuilder.build(
-    if (shouldBufferEvents) BufferEventsDataChangesMedium(this) else this,
+    if (shouldBufferEvents) BufferEventsEventsMedium(this) else this,
     builder = builder
 ).pagingDataPresenter(configuration)
 
-fun <Key : Any, Data : Any, NewData : Any> PagingDataChangesMedium<Key, Data>.compositeDataPresenter(
+fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.compositeDataPresenter(
     configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
-    eventsBatchingDurationMsProvider: (List<DataChangedEvent<Key, Data>>) -> Long = { 0 },
+    eventsBatchingDurationMsProvider: (List<PagingEvent<Key, Data>>) -> Long = { 0 },
     shouldBatchAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
     builder: CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.() -> Unit
 ) = CompositePagingDataChangesMediumBuilder.build(
-    BatchingPagingDataChangesMedium(
-        if (shouldBufferEvents) BufferEventsDataChangesMedium(this) else this,
+    BatchingPagingEventsMedium(
+        if (shouldBufferEvents) BufferEventsEventsMedium(this) else this,
         eventsBatchingDurationMsProvider = eventsBatchingDurationMsProvider,
         shouldBatchAddPagesEvents = shouldBatchAddPagesEvents
     ), builder = builder

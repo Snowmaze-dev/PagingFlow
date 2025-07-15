@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import ru.snowmaze.pagingflow.diff.AwaitDataSetEvent
-import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior.*
 import ru.snowmaze.pagingflow.presenters.list.ListBuildStrategy
@@ -69,12 +69,13 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
 
     private val onInvalidateAction = ::onInvalidateInternal
 
-    protected suspend fun buildList(events: List<DataChangedEvent<Key, Data>>) {
+    protected suspend fun buildList(events: List<PagingEvent<Key, Data>>) {
         val invalidateEvent = events.lastOrNull() as? InvalidateEvent
         if (invalidateEvent != null) {
             val selectedBehavior = invalidateEvent.invalidateBehavior ?: invalidateBehavior
             if (selectedBehavior != INVALIDATE_IMMEDIATELY) {
                 onInvalidateInternal(selectedBehavior)
+                events.fastForEach { if (it is AwaitDataSetEvent) it.callback() }
                 return
             }
         }
@@ -96,7 +97,7 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
     }
 
     protected open suspend fun onItemsSet(
-        events: List<DataChangedEvent<Key, Data>>,
+        events: List<PagingEvent<Key, Data>>,
         currentData: LatestData<Data>
     ) {
 

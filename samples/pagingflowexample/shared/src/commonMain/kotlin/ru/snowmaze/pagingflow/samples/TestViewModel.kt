@@ -4,8 +4,7 @@ import dev.icerock.moko.mvvm.viewmodel.ViewModel
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.PagingFlowConfiguration
 import ru.snowmaze.pagingflow.buildPagingFlow
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
-import ru.snowmaze.pagingflow.loadNextPage
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 
 class TestViewModel : ViewModel() {
@@ -29,5 +28,5 @@ class TestViewModel : ViewModel() {
         loadFirstPage = true,
         TestPagingSource(totalItemsCount, true)
     )
-    val pagingDataChangesMedium: PagingDataChangesMedium<Int, String> = pagingFlow
+    val pagingEventsMedium: PagingEventsMedium<Int, String> = pagingFlow
 }

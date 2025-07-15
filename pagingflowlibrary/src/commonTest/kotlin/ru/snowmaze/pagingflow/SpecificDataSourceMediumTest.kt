@@ -2,7 +2,7 @@ package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
-import ru.snowmaze.pagingflow.diff.mediums.DataSourceDataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.DataSourceEventsMedium
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
@@ -33,11 +33,11 @@ class SpecificDataSourceMediumTest {
             addDownPagingSource(TestPagingSource(40))
             addDownPagingSource(testDataSource)
         }
-        val presenterForFirst = DataSourceDataChangesMedium<Int, String, String>(
+        val presenterForFirst = DataSourceEventsMedium<Int, String, String>(
             pagingFlow,
             0
         ).pagingDataPresenter().statePresenter(sharingStarted = SharingStarted.Eagerly)
-        val presenterForSecond = DataSourceDataChangesMedium<Int, String, String>(
+        val presenterForSecond = DataSourceEventsMedium<Int, String, String>(
             pagingFlow,
             1
         ).pagingDataPresenter().statePresenter(sharingStarted = SharingStarted.Eagerly)

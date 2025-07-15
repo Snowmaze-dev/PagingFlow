@@ -39,7 +39,11 @@ class BasicPagingFlowTest {
             addDownPagingSource(testDataSource)
             assertTrue(downPagingStatus.value.hasNextPage)
         }
-        val presenter = pagingFlow.pagingDataPresenter().statePresenter(
+        val presenter = pagingFlow.pagingDataPresenter(
+            configuration = BasicPresenterConfiguration(
+                invalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST
+            )
+        ).statePresenter(
             sharingStarted = SharingStarted.Eagerly
         )
 

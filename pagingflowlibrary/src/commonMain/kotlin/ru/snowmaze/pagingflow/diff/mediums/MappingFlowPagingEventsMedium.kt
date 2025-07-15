@@ -5,31 +5,31 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-import ru.snowmaze.pagingflow.diff.DataChangedCallback
-import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.diff.PagingEventsListener
+import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
 import ru.snowmaze.pagingflow.diff.handle
 
-class MappingFlowPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
-    pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
-    override val config: DataChangesMediumConfig = pagingDataChangesMedium.config,
+class MappingFlowPagingEventsMedium<Key : Any, Data : Any, NewData : Any>(
+    pagingEventsMedium: PagingEventsMedium<Key, Data>,
+    override val config: PagingEventsMediumConfig = pagingEventsMedium.config,
     private val transformOtherEvents: (
-        (DataChangedEvent<Key, Data>) -> EventsMapper<Key, NewData>
+        (PagingEvent<Key, Data>) -> EventsMapper<Key, NewData>
     )? = null,
     private val transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>,
-) : SubscribeForChangesDataChangesMedium<Key, Data, NewData>(pagingDataChangesMedium) {
+) : SubscribeForChangesEventsMedium<Key, Data, NewData>(pagingEventsMedium) {
 
     private val addedJobsMap = MutableScatterMap<Int, Job>()
     private val jobsMap = MutableScatterMap<Int, Job>()
     private val otherEventsListeners = MutableScatterMap<Long, Job>()
 
-    private val callback = object : DataChangedCallback<Key, Data> {
+    private val callback = object : PagingEventsListener<Key, Data> {
 
         // TODO unsubscribe when all subscribers unsubscribed
-        suspend fun handleEvent(newEvent: DataChangedEvent<Key, Data>) {
+        suspend fun handleEvent(newEvent: PagingEvent<Key, Data>) {
             newEvent.handle(
                 onPageAdded = { event ->
                     var isFirstValue = true
@@ -98,11 +98,11 @@ class MappingFlowPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
             )
         }
 
-        override suspend fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
+        override suspend fun onEvents(events: List<PagingEvent<Key, Data>>) {
             events.forEach { handleEvent(it) }
         }
 
-        override suspend fun onEvent(event: DataChangedEvent<Key, Data>) {
+        override suspend fun onEvent(event: PagingEvent<Key, Data>) {
             handleEvent(event)
         }
     }
@@ -111,6 +111,6 @@ class MappingFlowPagingDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
 }
 
 class EventsMapper<Key : Any, Data : Any>(
-    val eventFlow: Flow<DataChangedEvent<Key, Data>>,
+    val eventFlow: Flow<PagingEvent<Key, Data>>,
     val listenerId: Long
 )

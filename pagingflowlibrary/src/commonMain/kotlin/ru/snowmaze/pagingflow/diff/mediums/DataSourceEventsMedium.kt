@@ -1,21 +1,21 @@
 package ru.snowmaze.pagingflow.diff.mediums
 
-import ru.snowmaze.pagingflow.diff.DataChangedCallback
-import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.diff.PagingEventsListener
+import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.EventFromDataSource
 
-class DataSourceDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
-    dataChangesMedium: PagingDataChangesMedium<Key, Data>,
+class DataSourceEventsMedium<Key : Any, Data : Any, NewData : Any>(
+    dataChangesMedium: PagingEventsMedium<Key, Data>,
     private val dataSourceIndex: Int,
-    override val config: DataChangesMediumConfig = dataChangesMedium.config,
-) : SubscribeForChangesDataChangesMedium<Key, Data, NewData>(dataChangesMedium),
-    DataChangedCallback<Key, Data> {
+    override val config: PagingEventsMediumConfig = dataChangesMedium.config,
+) : SubscribeForChangesEventsMedium<Key, Data, NewData>(dataChangesMedium),
+    PagingEventsListener<Key, Data> {
 
     override fun getChangesCallback() = this
 
     private fun mapEvent(
-        event: DataChangedEvent<Key, Data>
-    ): DataChangedEvent<Key, NewData>? {
+        event: PagingEvent<Key, Data>
+    ): PagingEvent<Key, NewData>? {
         return (if (event is EventFromDataSource<*, *> &&
             event.sourceIndex == dataSourceIndex
         ) {
@@ -25,16 +25,16 @@ class DataSourceDataChangesMedium<Key : Any, Data : Any, NewData : Any>(
                 pageIndexInSource = event.pageIndexInSource
             )
         } else if (event !is EventFromDataSource<*, *>) event
-        else null) as? DataChangedEvent<Key, NewData>
+        else null) as? PagingEvent<Key, NewData>
     }
 
-    override suspend fun onEvents(events: List<DataChangedEvent<Key, Data>>) {
+    override suspend fun onEvents(events: List<PagingEvent<Key, Data>>) {
         notifyOnEvents(events.mapNotNullTo(ArrayList(events.count {
             (it as? EventFromDataSource<*, *>)?.sourceIndex == dataSourceIndex
         })) { mapEvent(it) })
     }
 
-    override suspend fun onEvent(event: DataChangedEvent<Key, Data>) {
+    override suspend fun onEvent(event: PagingEvent<Key, Data>) {
         mapEvent(event)?.let { notifyOnEvent(it) }
     }
 }

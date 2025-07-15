@@ -3,22 +3,22 @@ package ru.snowmaze.pagingflow.diff.mediums.composite
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.flow
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
-import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMediumConfig
 
 class CompositePagingDataChangesMediumBuilder<Key : Any, Data : Any, NewData : Any>(
-    private val pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
-    private val config: DataChangesMediumConfig = pagingDataChangesMedium.config
+    private val pagingEventsMedium: PagingEventsMedium<Key, Data>,
+    private val config: PagingEventsMediumConfig = pagingEventsMedium.config
 ) {
 
     companion object {
 
         fun <Key : Any, Data : Any, NewData : Any> build(
-            pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
-            config: DataChangesMediumConfig = pagingDataChangesMedium.config,
+            pagingEventsMedium: PagingEventsMedium<Key, Data>,
+            config: PagingEventsMediumConfig = pagingEventsMedium.config,
             builder: CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.() -> Unit
         ) = CompositePagingDataChangesMediumBuilder<Key, Data, NewData>(
-            pagingDataChangesMedium = pagingDataChangesMedium,
+            pagingEventsMedium = pagingEventsMedium,
             config = config
         ).apply(builder).build()
     }
@@ -47,8 +47,8 @@ class CompositePagingDataChangesMediumBuilder<Key : Any, Data : Any, NewData : A
         sections.add(CompositePresenterSection.DataSourceSection(dataSourceIndex, mapper))
     }
 
-    fun build() = CompositePagingDataChangesMedium(
-        pagingDataChangesMedium = pagingDataChangesMedium,
+    fun build() = CompositePagingEventsMedium(
+        pagingEventsMedium = pagingEventsMedium,
         sections = sections,
         config = config
     )
