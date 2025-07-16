@@ -35,7 +35,7 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
     private var currentData = LatestData<Data>(emptyList(), emptyList())
 
     override suspend fun onEvent(event: PagingEvent<Any, Data>) {
-        withContext(processingDispatcher) {
+        withContext(processingContext) {
             buildList(listOf(event))
         }
     }

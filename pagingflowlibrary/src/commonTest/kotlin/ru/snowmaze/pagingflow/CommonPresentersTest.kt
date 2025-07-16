@@ -29,7 +29,7 @@ class CommonPresentersTest {
         val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(
             basePagingFlowConfiguration.copy(
-                processingDispatcher = Dispatchers.Default,
+                processingContext = Dispatchers.Default,
                 collectOnlyLatest = true
             )
         ) {

@@ -11,9 +11,7 @@ import ru.snowmaze.pagingflow.diff.mediums.composite.CompositePagingDataChangesM
 import ru.snowmaze.pagingflow.diff.mediums.composite.section
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.dataFlow
-import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.statePresenter
-import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -49,6 +47,7 @@ class CompositeMediumTest {
 
     private fun mapToInts(data: List<String>) = data.map { it.drop(5).toInt() }
 
+    @OptIn(ExperimentalPagingApi::class)
     @Test
     fun baseMediumTest() = runTestOnDispatchersDefault {
         val testDataSource = TestPagingSource(pageSize * 3)
@@ -78,7 +77,7 @@ class CompositeMediumTest {
         }
         val latestEventsMedium = LatestEventsMedium(medium)
 
-        val presenter = medium.pagingDataPresenter().statePresenter()
+        val presenter = medium.statePresenter()
         firstFlow.emit(second)
         presenter.latestDataFlow.firstWithTimeout(timeout = 2000) { it.data.size == 2 }
         val lastEvents = latestEventsMedium.eventsFlow.first()

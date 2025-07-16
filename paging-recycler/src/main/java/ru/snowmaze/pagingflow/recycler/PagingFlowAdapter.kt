@@ -26,7 +26,6 @@ abstract class PagingFlowAdapter<Data : Any, VH : ViewHolder>(
     pagingEventsMedium: PagingEventsMedium<out Any, Data>,
     private val pagingTrigger: PagingTrigger,
     invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
-    mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) : RecyclerView.Adapter<VH>() {
 
     @Suppress("LeakingThis")

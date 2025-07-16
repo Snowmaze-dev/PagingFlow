@@ -74,7 +74,7 @@ class BatchingPagingEventsMedium<Key : Any, Data : Any>(
 
     fun sendEvents(batchingTime: Long = eventsBatchingDurationMsProvider(savedEvents)): Job {
         job?.cancel()
-        val job = coroutineScope.launch(config.processingDispatcher) {
+        val job = coroutineScope.launch(config.processingContext) {
             delay(batchingTime)
             mutex.withLock { notifyOnEventsInternal() }
         }

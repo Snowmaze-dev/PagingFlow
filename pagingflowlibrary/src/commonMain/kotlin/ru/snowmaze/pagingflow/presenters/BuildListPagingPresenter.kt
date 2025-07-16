@@ -1,6 +1,5 @@
 package ru.snowmaze.pagingflow.presenters
 
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -13,6 +12,7 @@ import ru.snowmaze.pagingflow.presenters.list.ListBuildStrategy
 import ru.snowmaze.pagingflow.utils.fastForEach
 import ru.snowmaze.pagingflow.utils.limitedParallelismCompat
 import kotlin.concurrent.Volatile
+import kotlin.coroutines.CoroutineContext
 
 inline fun <Data : Any> defaultPresenterFlowCreator(): () -> MutableSharedFlow<LatestData<Data>> = {
     MutableSharedFlow(1)
@@ -26,7 +26,7 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
     private val listBuildStrategy: ListBuildStrategy<Key, Data>,
     protected val invalidateBehavior: InvalidateBehavior,
     protected val coroutineScope: CoroutineScope,
-    processingDispatcher: CoroutineDispatcher,
+    processingContext: CoroutineContext,
     presenterFlow: () -> MutableSharedFlow<LatestData<Data>> = defaultPresenterFlowCreator()
 ) : PagingDataPresenter<Key, Data> {
 
@@ -34,7 +34,7 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
 
     override val latestDataFlow = _dataFlow.asSharedFlow()
 
-    protected val processingDispatcher = processingDispatcher.limitedParallelismCompat(1)
+    protected val processingContext = processingContext.limitedParallelismCompat(1)
 
     protected var lastInvalidateBehavior: InvalidateBehavior? = null
 
@@ -107,7 +107,7 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
      * Rebuilds list
      */
     fun forceRebuildList() {
-        coroutineScope.launch(processingDispatcher) {
+        coroutineScope.launch(processingContext) {
             buildList(emptyList())
         }
     }

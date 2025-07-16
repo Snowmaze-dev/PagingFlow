@@ -14,7 +14,6 @@ import ru.snowmaze.pagingflow.presenters.list.DiffListBuildStrategy
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.statePresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
-import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.random.Random
 import kotlin.test.Test
@@ -49,7 +48,7 @@ class PagingForwardsAndThenBackwardsTest {
         val testDataSource = TestPagingSource(totalCount, randomDelay)
         val pagingFlow = buildPagingFlow(
             basePagingFlowConfiguration.copy(
-                processingDispatcher = Dispatchers.Default,
+                processingContext = Dispatchers.Default,
                 maxItemsConfiguration = basePagingFlowConfiguration.maxItemsConfiguration?.copy(
                     maxItemsCount = pageSize * 4,
                     enableDroppedPagesNullPlaceholders = false

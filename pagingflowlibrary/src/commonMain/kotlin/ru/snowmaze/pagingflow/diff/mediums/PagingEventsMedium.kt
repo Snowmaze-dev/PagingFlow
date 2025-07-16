@@ -3,6 +3,7 @@ package ru.snowmaze.pagingflow.diff.mediums
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import ru.snowmaze.pagingflow.diff.PagingEventsListener
+import kotlin.coroutines.CoroutineContext
 
 /**
  * An interface that provides a way to subscribe to changes of paged data.
@@ -24,5 +25,5 @@ interface PagingEventsMedium<Key : Any, Data : Any> {
 
 class PagingEventsMediumConfig(
     val coroutineScope: CoroutineScope,
-    val processingDispatcher: CoroutineDispatcher
+    val processingContext: CoroutineContext
 )

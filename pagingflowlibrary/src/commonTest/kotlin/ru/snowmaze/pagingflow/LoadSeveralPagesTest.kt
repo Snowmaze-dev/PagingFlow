@@ -7,7 +7,6 @@ import ru.snowmaze.pagingflow.params.ReturnPagingLibraryKeys
 import ru.snowmaze.pagingflow.params.pagingParamsOf
 import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
-import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -37,7 +36,7 @@ class LoadSeveralPagesTest {
         val maxItems = pageSize * 4
         val pagingFlow = buildPagingFlow(
             basePagingFlowConfiguration.copy(
-                processingDispatcher = Dispatchers.Default,
+                processingContext = Dispatchers.Default,
                 maxItemsConfiguration = basePagingFlowConfiguration.maxItemsConfiguration?.copy(
                     maxItemsCount = maxItems,
                     enableDroppedPagesNullPlaceholders = false

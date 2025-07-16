@@ -28,8 +28,7 @@ import ru.snowmaze.pagingflow.params.PagingLibraryParamsKeys
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.result.LoadResult
-import ru.snowmaze.pagingflow.source.PageLoaderConfig
-import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
+import ru.snowmaze.pagingflow.source.ConcatPagingSourceConfig
 import ru.snowmaze.pagingflow.utils.fastForEach
 import ru.snowmaze.pagingflow.utils.fastIndexOfFirst
 import ru.snowmaze.pagingflow.utils.fastIndexOfLast
@@ -38,7 +37,7 @@ import kotlin.concurrent.Volatile
 import ru.snowmaze.pagingflow.utils.fastFirstOrNull
 
 internal class DataPagesManager<Key : Any, Data : Any>(
-    private val pageLoaderConfig: PageLoaderConfig<Key>,
+    private val pageLoaderConfig: ConcatPagingSourceConfig<Key>,
     private val setDataMutex: Mutex,
     private val pagingSourcesManager: PagingSourcesManager<Key, Data>
 ) : DefaultPagingEventsMedium<Key, Data>() {
@@ -56,7 +55,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
     private var isAnyDataChanged = false
 
     override val config = PagingEventsMediumConfig(
-        pageLoaderConfig.coroutineScope, pageLoaderConfig.processingDispatcher
+        pageLoaderConfig.coroutineScope, pageLoaderConfig.processingContext
     )
 
     override fun addPagingEventsListener(listener: PagingEventsListener<Key, Data>) {
@@ -76,7 +75,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
     }
 
     fun notifyIfNeeded(pagingParams: PagingParams?) {
-        if (!isAnyDataChanged) config.coroutineScope.launch(config.processingDispatcher) {
+        if (!isAnyDataChanged) config.coroutineScope.launch(config.processingContext) {
             setDataMutex.withLock {
                 notifyOnEvent(OnDataLoaded(pagingParams))
             }
@@ -217,7 +216,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         if (result is LoadResult.Success.FlowSuccess && result.dataFlow != null) {
 
             pageLoaderConfig.coroutineScope.launch(
-                pageLoaderConfig.processingDispatcher + page.listenJob
+                pageLoaderConfig.processingContext + page.listenJob
             ) {
                 var isFirst = true
                 val setData: suspend (data: UpdatableData<Key, Data>?) -> Unit = { value ->

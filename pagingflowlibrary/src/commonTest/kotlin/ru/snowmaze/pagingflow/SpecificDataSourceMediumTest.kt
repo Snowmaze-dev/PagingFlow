@@ -7,7 +7,6 @@ import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.statePresenter
-import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.test.Test
 import kotlin.test.assertEquals

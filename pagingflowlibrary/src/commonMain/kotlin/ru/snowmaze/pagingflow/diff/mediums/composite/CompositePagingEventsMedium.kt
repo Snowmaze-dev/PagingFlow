@@ -4,19 +4,18 @@ import androidx.collection.MutableScatterMap
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import ru.snowmaze.pagingflow.diff.PagingEventsListener
-import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent.ChangeType
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
+import ru.snowmaze.pagingflow.diff.PagingEvent
+import ru.snowmaze.pagingflow.diff.PagingEventsListener
 import ru.snowmaze.pagingflow.diff.handle
-import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMediumConfig
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMediumConfig
 import ru.snowmaze.pagingflow.diff.mediums.SubscribeForChangesEventsMedium
 import ru.snowmaze.pagingflow.params.MutablePagingParams
-import ru.snowmaze.pagingflow.utils.fastSumOf
 import ru.snowmaze.pagingflow.utils.flattenWithSize
 
 open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> internal constructor(
@@ -74,7 +73,8 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
                 },
                 onPageChanged = {
                     val section = dataSourcesSections[it.sourceIndex] ?: return@handle null
-                    PageChangedEvent(
+//                        val indexShift = section.removedPagesNumbers.size TODO
+                    val event = PageChangedEvent(
                         key = it.key,
                         pageIndex = section.firstPageIndex + it.pageIndexInSource,
                         sourceIndex = section.sourceIndex,
@@ -89,6 +89,8 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
                         params = it.params,
                         changeType = it.changeType
                     )
+                    section.pages[event.pageIndexInSource] = event
+                    event
                 },
                 onPageRemovedEvent = {
                     val section = dataSourcesSections[it.sourceIndex] ?: return@handle null
@@ -209,79 +211,99 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
         }
     }
 
+    private suspend inline fun notifyOnEventsInternal(events: Any) {
+        if (events is List<*>) notifyOnEvents(events as List<PagingEvent<Key, NewData>>)
+        else notifyOnEvent(events as PagingEvent<Key, NewData>)
+    }
+
     private fun onAddPage(
         section: CompositePresenterSection<Key, Data, NewData>,
         key: Key?,
         data: List<NewData>,
         pagingParams: MutablePagingParams?,
         addIndex: Int
-    ): List<PagingEvent<Key, NewData>> = buildList {
-        var currentSectionIndex = section.sourceIndex
+    ) = buildList {
         val indexShift = if (section is CompositePresenterSection.DataSourceSection) {
             val result = section.removedPagesNumbers.size
             section.removedPagesNumbers.remove(addIndex)
             result
         } else 0
-        val pickedAddIndex = (addIndex - indexShift).coerceAtLeast(0)
-        val event = PageAddedEvent(
-            key = key,
-            sourceIndex = section.sourceIndex,
-            pageIndex = section.firstPageIndex + pickedAddIndex - 1,
-            pageIndexInSource = pickedAddIndex - 1,
-            items = data,
-            params = pagingParams
-        )
-        if (pickedAddIndex >= section.pages.size) section.pages.add(event)
-        else section.pages.add(pickedAddIndex, event)
-        val pagesSize = sections.fastSumOf { it.pages.size }
-        var index = section.firstPageIndex + pickedAddIndex
-        while (pagesSize > index) {
+        var currentSectionIndex = section.sourceIndex
+        var currentEventIndexInSource = (addIndex - indexShift).coerceAtMost(section.pages.size)
+        var isNewEvent = true
+        while (true) {
             val currentSection = sections.getOrNull(currentSectionIndex) ?: break
-            val isAddSection = currentSection == section
+            val currentEvent = if (isNewEvent) {
+                val currentEvent = currentSection.pages.getOrNull(currentEventIndexInSource)
+                PageChangedEvent(
+                    key = key,
+                    sourceIndex = section.sourceIndex,
+                    pageIndex = section.firstPageIndex + currentEventIndexInSource,
+                    pageIndexInSource = currentEventIndexInSource,
+                    items = data,
+                    params = pagingParams,
+                    previousList = currentEvent?.items,
+                    previousItemCount = currentEvent?.items?.size
+                        ?: currentEvent?.previousItemCount ?: 0
+                )
+            } else {
+                if (currentEventIndexInSource == 0) {
+                    val event = currentSection.pages.firstOrNull()
+                    if (event != null) currentEventIndexInSource = event.pageIndexInSource
+                    event
+                } else currentSection.pages.getOrNull(currentEventIndexInSource)
+            }
 
-            val currentFirstPageIndex = if (isAddSection) section.firstPageIndex
-            else currentSection.firstPageIndex + 1
-
-            if (currentSection.pages.size == 0) {
+            if (currentEvent == null) {
                 currentSectionIndex++
+                currentEventIndexInSource = 0
                 continue
             }
-            val sourcePageIndex = (index - currentFirstPageIndex).coerceAtLeast(0)
-            val currentEvent = currentSection.pages[sourcePageIndex]
-            val nextEvent = currentSection.pages.getOrNull(sourcePageIndex + 1)
-            if (nextEvent == null) currentSectionIndex += 1
+
+            var nextEvent = currentSection.pages.getOrNull(currentEventIndexInSource + 1)
             var hasNextData = nextEvent != null
             if (!hasNextData) {
-                for (nextSectionIndex in currentSectionIndex until sections.size) {
+                for (nextSectionIndex in currentSectionIndex + 1 until sections.size) {
                     val nextSection = sections[nextSectionIndex]
                     if (nextSection.pages.isNotEmpty()) {
+                        nextEvent = nextSection.pages.first()
                         hasNextData = true
                         break
                     }
                 }
             }
+
             val newEvent = if (hasNextData) PageChangedEvent(
                 key = currentEvent.key,
                 sourceIndex = currentEvent.sourceIndex,
-                pageIndex = currentEvent.pageIndex + 1,
-                pageIndexInSource = if (isAddSection) currentEvent.pageIndexInSource + 1
-                else currentEvent.pageIndexInSource,
-                previousList = nextEvent?.items,
-                previousItemCount = nextEvent?.items?.size ?: 0,
+                pageIndex = if (isNewEvent) currentEvent.pageIndex
+                else currentEvent.pageIndex + 1,
+                pageIndexInSource = currentEventIndexInSource,
+                previousList = if (isNewEvent) currentEvent.previousList else nextEvent?.items,
+                previousItemCount = if (isNewEvent) currentEvent.previousItemCount
+                else nextEvent?.items?.size ?: 0,
                 items = currentEvent.items,
                 changeType = ChangeType.COMMON_CHANGE,
                 params = currentEvent.params,
             ) else PageAddedEvent(
                 key = currentEvent.key,
                 sourceIndex = currentEvent.sourceIndex,
-                pageIndex = currentEvent.pageIndex + 1,
-                pageIndexInSource = sourcePageIndex,
+                pageIndex = if (isNewEvent) currentEvent.pageIndex
+                else currentEvent.pageIndex + 1,
+                pageIndexInSource = currentEventIndexInSource,
                 items = currentEvent.items as List<NewData>,
                 params = currentEvent.params
             )
             add(newEvent)
-            currentSection.pages[sourcePageIndex] = newEvent
-            index++
+            if (isNewEvent) {
+                currentSection.pages.add(currentEventIndexInSource, newEvent)
+            } else {
+                currentSection.pages[currentEventIndexInSource] = newEvent
+            }
+            if (!hasNextData) break
+            currentEventIndexInSource++
+            isNewEvent = false
+
         }
         updateFirstIndexes()
     }
@@ -290,7 +312,7 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
         section: CompositePresenterSection<Key, Data, NewData>,
         indexInSource: Int,
         pageRemovedEvent: PageRemovedEvent<Key, Data>?
-    ): List<PagingEvent<Key, NewData>> = buildList {
+    ) = buildList {
         val indexShift = if (section is CompositePresenterSection.DataSourceSection) {
             val result = section.removedPagesNumbers.size
             if (indexInSource < section.pages.maxOf { it.pageIndexInSource }) {
@@ -298,89 +320,88 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
             }
             result
         } else 0
-        val pickedIndexInSource = indexInSource - indexShift
         var currentSectionIndex = section.sourceIndex
-        val pagesSize = sections.fastSumOf { it.pages.size }
-        val removedEvent = if (pickedIndexInSource >= section.pages.size) null
-        else section.pages.removeAt(pickedIndexInSource)
-        var index = section.firstPageIndex + pickedIndexInSource
-        var previousEvent = removedEvent
-        while (pagesSize > index) {
+        var currentEventIndexInSource = (indexInSource - indexShift).coerceAtMost(section.pages.size - 1)
+        var isNewEvent = true
+        var previousEvent: PageChangedEvent<Key, NewData> = section.pages.get(currentEventIndexInSource)
+        while (true) {
             val currentSection = sections.getOrNull(currentSectionIndex) ?: break
-            val isRemoveSection = currentSection === section
 
-            if (currentSection.pages.size == 0) {
+            if (currentSection.pages.isEmpty()) {
                 currentSectionIndex++
+                currentEventIndexInSource = 0
                 continue
             }
 
-            val currentFirstPageIndex = if (isRemoveSection) section.firstPageIndex
-            else currentSection.firstPageIndex + 1
+            val currentEvent = currentSection.pages.getOrNull(currentEventIndexInSource)
 
-            val sourcePageIndex = (index - currentFirstPageIndex).coerceAtLeast(0)
-            val currentEvent = currentSection.pages.getOrNull(sourcePageIndex)
             if (currentEvent == null) {
-                if (sourcePageIndex == section.pages.size) {
-                    currentSectionIndex++
-                } else {
-                    index++
-                }
+                currentSectionIndex++
+                currentEventIndexInSource = 0
                 continue
             }
 
-            val nextEvent = currentSection.pages.getOrNull(sourcePageIndex + 1)
-            if (nextEvent == null) currentSectionIndex += 1
-            if (nextEvent == null) {
-                for (nextSectionIndex in currentSectionIndex until sections.size) {
+            var hasNextData = currentSection.pages.getOrNull(currentEventIndexInSource + 1) != null
+            if (!hasNextData) {
+                for (nextSectionIndex in currentSectionIndex + 1 until sections.size) {
                     val nextSection = sections[nextSectionIndex]
-                    if (nextSection.pages.size != 0) {
+                    if (nextSection.pages.isNotEmpty()) {
+                        hasNextData = true
                         break
                     }
                 }
             }
-            val changedEvent = PageChangedEvent(
-                key = currentEvent.key,
-                sourceIndex = currentEvent.sourceIndex,
-                pageIndex = currentEvent.pageIndex - 1,
-                pageIndexInSource = (currentEvent.pageIndexInSource + if (isRemoveSection) -1 else 0)
-                    .coerceAtLeast(0),
-                previousList = previousEvent?.items,
-                previousItemCount = nextEvent?.items?.size ?: 0,
-                items = currentEvent.items,
-                changeType = ChangeType.COMMON_CHANGE,
-                params = currentEvent.params,
+
+            if (isNewEvent) {
+                section.pages.removeAt(currentEventIndexInSource)
+                if (hasNextData) {
+                    previousEvent = currentEvent
+                    isNewEvent = false
+                    continue
+                }
+            }
+
+            val isInChangedSection = section === currentSection
+            if (!isNewEvent) {
+                val changedEvent = PageChangedEvent(
+                    key = currentEvent.key,
+                    items = currentEvent.items,
+                    previousList = previousEvent.items,
+                    previousItemCount = previousEvent.items.size,
+                    params = currentEvent.params,
+                    pageIndex = currentEvent.pageIndex - 1,
+                    pageIndexInSource = if (isInChangedSection) currentEvent.pageIndexInSource - 1
+                    else currentEvent.pageIndexInSource,
+                    sourceIndex = currentEvent.sourceIndex
+                )
+                currentSection.pages[changedEvent.pageIndexInSource] = changedEvent
+
+                add(changedEvent)
+            }
+            if (!hasNextData) add(
+                PageRemovedEvent(
+                    key = currentEvent.key,
+                    sourceIndex = section.sourceIndex,
+                    pageIndex = currentEvent.pageIndex,
+                    pageIndexInSource = currentEventIndexInSource,
+                    itemsCount = if (isNewEvent) currentEvent.previousItemCount
+                    else currentEvent.items.size,
+                )
             )
-            currentSection.pages[sourcePageIndex] = changedEvent
+
+            if (!hasNextData) break
             previousEvent = currentEvent
-            add(changedEvent)
-            index++
+            currentEventIndexInSource++
+            isNewEvent = false
         }
-        add(
-            if (isEmpty()) PageRemovedEvent(
-                key = removedEvent?.key ?: pageRemovedEvent?.key,
-                sourceIndex = removedEvent?.sourceIndex ?: pageRemovedEvent?.sourceIndex ?: throw IllegalStateException(),
-                pageIndex = removedEvent?.pageIndex ?: pageRemovedEvent?.pageIndex ?: throw IllegalStateException(),
-                pageIndexInSource = removedEvent?.pageIndexInSource ?: pageRemovedEvent?.pageIndexInSource ?: throw IllegalStateException(),
-                itemsCount = removedEvent?.items?.size ?: pageRemovedEvent?.itemsCount ?: throw IllegalStateException(),
-            ) else PageRemovedEvent(
-                key = previousEvent?.key ?: pageRemovedEvent?.key,
-                sourceIndex = previousEvent?.sourceIndex ?: pageRemovedEvent?.sourceIndex ?: throw IllegalStateException(),
-                pageIndex = previousEvent?.pageIndex ?: pageRemovedEvent?.pageIndex ?: throw IllegalStateException(),
-                pageIndexInSource = previousEvent?.pageIndexInSource ?: pageRemovedEvent?.pageIndexInSource ?: throw IllegalStateException(),
-                itemsCount = previousEvent?.items?.size ?: pageRemovedEvent?.itemsCount ?: throw IllegalStateException(),
-            )
-        )
+
         updateFirstIndexes()
     }
 
     private fun onInvalidate() {
         for (section in sections) {
-            section.pages = mutableListOf()
+            if (section is CompositePresenterSection.DataSourceSection) section.pages =
+                mutableListOf()
         }
-    }
-
-    private suspend inline fun notifyOnEventsInternal(events: Any) {
-        if (events is List<*>) notifyOnEvents(events as List<PagingEvent<Key, NewData>>)
-        else notifyOnEvent(events as PagingEvent<Key, NewData>)
     }
 }

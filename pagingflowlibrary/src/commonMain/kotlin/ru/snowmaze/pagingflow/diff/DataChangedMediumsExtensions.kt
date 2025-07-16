@@ -36,7 +36,7 @@ inline fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.
  *
  */
 inline fun <Key : Any, Data : Any> PagingEventsMedium<Key, Data>.batchEventsMedium(
-    noinline eventsBatchingDurationMsProvider: (List<PagingEvent<Key, Data>>) -> Long = { 0 },
+    noinline eventsBatchingDurationMsProvider: (List<PagingEvent<Key, Data>>) -> Long = { 50L },
     shouldBatchAddPagesEvents: Boolean = false,
 ) = BatchingPagingEventsMedium(
     pagingEventsMedium = this,

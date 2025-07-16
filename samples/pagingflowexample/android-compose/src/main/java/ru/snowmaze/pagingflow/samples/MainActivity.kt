@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,23 +12,25 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.collectAsLazyPagingItems
-import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
+import ru.snowmaze.pagingflow.presenters.StatePagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.dataFlow
-import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
-import ru.snowmaze.pagingflow.utils.PagingTrigger
+import ru.snowmaze.pagingflow.presenters.statePresenter
 import ru.snowmaze.pagingflow.samples.TestViewModel.Companion.PREFETCH_DISTANCE
 import ru.snowmaze.pagingflow.samples.ui.theme.TestComposeAppTheme
+import ru.snowmaze.pagingflow.utils.PagingTrigger
 
 class MainActivity : ComponentActivity() {
 
@@ -38,7 +41,7 @@ class MainActivity : ComponentActivity() {
             TestComposeAppTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     val model = viewModel<TestViewModel>()
-                    val presenter = remember { model.pagingFlow.pagingDataPresenter() }
+                    val presenter = remember { model.pagingEventsMedium.statePresenter() }
                     List(innerPadding, presenter)
                 }
             }
@@ -47,7 +50,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun List(innerPadding: PaddingValues, pagingDataPresenter: PagingDataPresenter<Int, String>) {
+fun List(innerPadding: PaddingValues, pagingDataPresenter: StatePagingDataPresenter<Int, TestItem>) {
     val model = viewModel<TestViewModel>()
     val scope = rememberCoroutineScope()
     val pagingTrigger = remember {
@@ -59,13 +62,16 @@ fun List(innerPadding: PaddingValues, pagingDataPresenter: PagingDataPresenter<I
         )
     }
     val lazyListState = rememberLazyListState()
-    val items by pagingDataPresenter.dataFlow.collectAsState(emptyList())
+    pagingTrigger.launchedHandleLazyListState(lazyListState)
+    val items by pagingDataPresenter.dataFlow.collectAsStateWithLifecycle(emptyList())
     LazyColumn(
         modifier = Modifier.fillMaxWidth(), state = lazyListState, contentPadding = innerPadding
     ) {
         itemsIndexed(items) { index, item ->
-            if (item != null) TestItem(item)
-            pagingTrigger.launchedHandleLazyListState(lazyListState)
+            when (item) {
+                null, is TestItem.Item -> TestItem(item)
+                is TestItem.Loader -> {}
+            }
         }
     }
 }
@@ -87,9 +93,11 @@ fun PagingList(innerPadding: PaddingValues) {
 }
 
 @Composable
-fun TestItem(item: String) {
+fun TestItem(item: TestItem.Item?) {
     Text(
-        modifier = Modifier.padding(top = 4.dp, start = 8.dp, end = 8.dp, bottom = 20.dp),
-        text = item
+        modifier = Modifier.padding(top = 4.dp, start = 8.dp, end = 8.dp, bottom = 20.dp).apply {
+            if (item == null) background(Color.Gray, RoundedCornerShape(8.dp)) else this
+        },
+        text = item?.text ?: ""
     )
 }

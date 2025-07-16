@@ -1,12 +1,17 @@
 package ru.snowmaze.pagingflow.samples
 
 import dev.icerock.moko.mvvm.viewmodel.ViewModel
+import kotlinx.coroutines.flow.collectLatest
+import ru.snowmaze.pagingflow.ExperimentalPagingApi
 import ru.snowmaze.pagingflow.LoadParams
+import ru.snowmaze.pagingflow.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.PagingFlowConfiguration
 import ru.snowmaze.pagingflow.buildPagingFlow
-import ru.snowmaze.pagingflow.diff.mapDataMedium
+import ru.snowmaze.pagingflow.diff.batchEventsMedium
+import ru.snowmaze.pagingflow.diff.compositeDataMedium
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
-import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
+import ru.snowmaze.pagingflow.diff.mediums.composite.flowSection
+import ru.snowmaze.pagingflow.diff.mediums.composite.mapFlowSection
 
 class TestViewModel : ViewModel() {
 
@@ -27,32 +32,18 @@ class TestViewModel : ViewModel() {
             )
         ),
         loadFirstPage = true,
-        TestPagingSource(totalItemsCount, true)
+        TestPagingSource(totalItemsCount)
     )
-    val pagingEventsMedium: PagingEventsMedium<Int, TestItem> = pagingFlow.mapDataMedium {
-        it.items.map {
-            it?.let { TestItem.Item(it) }
+    @OptIn(ExperimentalPagingApi::class)
+    val pagingEventsMedium: PagingEventsMedium<Int, TestItem> = pagingFlow.compositeDataMedium {
+        dataSourceSection(0) {
+            it.map { item ->
+                TestItem.Item(item)
+            }
         }
-    }
-//        .compositeDataMedium {
-//        flowSection {
-//            pagingFlow.upPagingStatus.collectLatest {
-//                if (it.hasNextPage) {
-//                    send(listOf(TestItem.Loader(isDown = false)))
-//                }
-//            }
-//        }
-//        dataSourceSection(0) {
-//            it.map { item ->
-//                TestItem.Item(item)
-//            }
-//        }
-//        flowSection {
-//            pagingFlow.downPagingStatus.collectLatest {
-//                if (it.hasNextPage) {
-//                    send(listOf(TestItem.Loader(isDown = true)))
-//                }
-//            }
-//        }
-//    }
+        mapFlowSection(pagingFlow.downPagingStatus) {
+            if (it.hasNextPage) listOf(TestItem.Loader(isDown = true))
+            else null
+        }
+    }.batchEventsMedium(eventsBatchingDurationMsProvider = { 50L })
 }

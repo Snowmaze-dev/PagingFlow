@@ -10,7 +10,6 @@ import ru.snowmaze.pagingflow.presenters.list.ListByPagesBuildStrategy
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.statePresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
-import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.test.Test
 import kotlin.test.assertEquals

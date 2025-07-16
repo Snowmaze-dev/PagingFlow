@@ -21,7 +21,7 @@ open class BasicBuildListPagingPresenter<Key : Any, Data : Any>(
     listBuildStrategy = presenterConfiguration.listBuildStrategy,
     invalidateBehavior = presenterConfiguration.invalidateBehavior,
     coroutineScope = config.coroutineScope,
-    processingDispatcher = config.processingDispatcher,
+    processingContext = config.processingContext,
     presenterFlow = presenterConfiguration.presenterFlow,
 ), PagingEventsListener<Key, Data> {
 
@@ -34,7 +34,7 @@ open class BasicBuildListPagingPresenter<Key : Any, Data : Any>(
         if (!shouldBeAlwaysSubscribed) {
             var firstCall = true
             var isSubscribedAlready = true
-            coroutineScope.launch(processingDispatcher) {
+            coroutineScope.launch(processingContext) {
                 _dataFlow.subscriptionCount.collect { subscriptionCount ->
                     if (subscriptionCount == 0 && !firstCall) {
                         delay(presenterConfiguration.unsubscribeDelayWhenNoSubscribers)
@@ -51,7 +51,7 @@ open class BasicBuildListPagingPresenter<Key : Any, Data : Any>(
     }
 
     override suspend fun onEvent(event: PagingEvent<Key, Data>) {
-        withContext(processingDispatcher) {
+        withContext(processingContext) {
             singletonElementList.element = event
             buildList(singletonElementList)
             singletonElementList.element = null
@@ -62,6 +62,6 @@ open class BasicBuildListPagingPresenter<Key : Any, Data : Any>(
         events: List<PagingEvent<Key, Data>>
     ) {
         if (events.isEmpty()) return
-        withContext(processingDispatcher) { buildList(events) }
+        withContext(processingContext) { buildList(events) }
     }
 }

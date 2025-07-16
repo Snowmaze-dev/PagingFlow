@@ -9,6 +9,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import ru.snowmaze.pagingflow.LoadParams
+import ru.snowmaze.pagingflow.PagingFlowConfiguration
 import ru.snowmaze.pagingflow.PagingStatus
 import ru.snowmaze.pagingflow.diff.PagingEventsListener
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
@@ -24,8 +25,10 @@ import ru.snowmaze.pagingflow.utils.fastFirstOrNull
 import ru.snowmaze.pagingflow.utils.mapHasNext
 import ru.snowmaze.pagingflow.utils.toInfo
 
+typealias ConcatPagingSourceConfig<Key> = PagingFlowConfiguration<Key>
+
 open class ConcatPagingSource<Key : Any, Data : Any>(
-    private val concatDataSourceConfig: PageLoaderConfig<Key>,
+    private val concatPagingSourceConfig: ConcatPagingSourceConfig<Key>,
     override val pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler<Key, Data> =
         DefaultPagingUnhandledErrorsHandler()
 ) : PagingSource<Key, Data>, PagingEventsMedium<Key, Data> {
@@ -35,7 +38,7 @@ open class ConcatPagingSource<Key : Any, Data : Any>(
     private val pagingSourcesManager = PagingSourcesManager<Key, Data>()
 
     private val dataPagesManager = DataPagesManager(
-        pageLoaderConfig = concatDataSourceConfig,
+        pageLoaderConfig = concatPagingSourceConfig,
         setDataMutex = loadDataMutex,
         pagingSourcesManager = pagingSourcesManager
     )
@@ -52,7 +55,7 @@ open class ConcatPagingSource<Key : Any, Data : Any>(
     private val pageLoader = PageLoader(
         pagingSourcesManager = pagingSourcesManager,
         dataPagesManager = dataPagesManager,
-        pageLoaderConfig = concatDataSourceConfig,
+        pageLoaderConfig = concatPagingSourceConfig,
         pagingUnhandledErrorsHandler = pagingUnhandledErrorsHandler,
         defaultLoadParams = defaultLoadParams
     )
@@ -71,7 +74,7 @@ open class ConcatPagingSource<Key : Any, Data : Any>(
     )
 
     init {
-        val coroutineScope = CoroutineScope(config.processingDispatcher + SupervisorJob())
+        val coroutineScope = CoroutineScope(config.processingContext + SupervisorJob())
         config.coroutineScope.launch {
             try {
                 awaitCancellation()
@@ -113,7 +116,7 @@ open class ConcatPagingSource<Key : Any, Data : Any>(
     }
 
     fun removePagingSource(dataSourceIndex: Int) {
-        concatDataSourceConfig.coroutineScope.launch {
+        concatPagingSourceConfig.coroutineScope.launch {
             loadDataMutex.withLock {
                 dataSourcesHelper.remove(dataSourceIndex)
             }
@@ -130,7 +133,7 @@ open class ConcatPagingSource<Key : Any, Data : Any>(
 
     suspend fun invalidateAndSetPagingSources(pagingSourceList: List<PagingSource<Key, out Data>>) {
         loadDataMutex.withLock {
-            withContext(concatDataSourceConfig.processingDispatcher) {
+            withContext(concatPagingSourceConfig.processingContext) {
                 dataPagesManager.invalidate(removeCachedData = true)
                 pagingSourcesManager.replacePagingSources(
                     pagingSourceList as List<PagingSource<Key, Data>>
@@ -153,7 +156,7 @@ open class ConcatPagingSource<Key : Any, Data : Any>(
         invalidateBehavior: InvalidateBehavior?,
         removeCachedData: Boolean = false,
     ) = loadDataMutex.withLock {
-        withContext(concatDataSourceConfig.processingDispatcher) {
+        withContext(concatPagingSourceConfig.processingContext) {
             dataPagesManager.invalidate(
                 removeCachedData = removeCachedData,
                 invalidateBehavior = invalidateBehavior,

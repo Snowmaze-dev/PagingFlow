@@ -3,14 +3,12 @@ package ru.snowmaze.pagingflow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.test.runTest
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
-import ru.snowmaze.pagingflow.presenters.PagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.StatePagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.statePresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
-import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.random.Random
 import kotlin.test.Test

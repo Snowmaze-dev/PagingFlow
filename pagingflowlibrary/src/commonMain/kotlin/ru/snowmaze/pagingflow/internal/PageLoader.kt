@@ -23,7 +23,7 @@ import ru.snowmaze.pagingflow.params.SourceKeys.sourceResultKey
 import ru.snowmaze.pagingflow.params.toMutableParams
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.result.mapParams
-import ru.snowmaze.pagingflow.source.PageLoaderConfig
+import ru.snowmaze.pagingflow.source.ConcatPagingSourceConfig
 import ru.snowmaze.pagingflow.source.ConcatSourceData
 import ru.snowmaze.pagingflow.source.PagingSource
 import ru.snowmaze.pagingflow.utils.elementAtOrNull
@@ -35,7 +35,7 @@ import ru.snowmaze.pagingflow.utils.mapHasNext
 internal class PageLoader<Key : Any, Data : Any>(
     private val pagingSourcesManager: PagingSourcesManager<Key, Data>,
     private val dataPagesManager: DataPagesManager<Key, Data>,
-    val pageLoaderConfig: PageLoaderConfig<Key>,
+    val pageLoaderConfig: ConcatPagingSourceConfig<Key>,
     private val pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler<Key, Data>,
     private val defaultLoadParams: LoadParams<Key>?
 ) {
@@ -241,7 +241,7 @@ internal class PageLoader<Key : Any, Data : Any>(
         else if (isPaginationDown) lastPage.pageIndex + 1 else lastPage.pageIndex - 1
 
         val pageIndexInDataSource = if (lastPage?.dataSourceIndex == pagingSourceWithIndex.second) {
-            lastPage.pageIndexInPagingSource + 1
+            lastPage.pageIndexInPagingSource + if (isPaginationDown) 1 else -1
         } else 0
 
         var cachedResultPair = dataPagesManager.getCachedData(pageAbsoluteIndex)
