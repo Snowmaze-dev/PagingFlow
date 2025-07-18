@@ -5,20 +5,24 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -50,7 +54,10 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun List(innerPadding: PaddingValues, pagingDataPresenter: StatePagingDataPresenter<Int, TestItem>) {
+fun List(
+    innerPadding: PaddingValues,
+    pagingDataPresenter: StatePagingDataPresenter<Int, TestItem>
+) {
     val model = viewModel<TestViewModel>()
     val scope = rememberCoroutineScope()
     val pagingTrigger = remember {
@@ -58,20 +65,24 @@ fun List(innerPadding: PaddingValues, pagingDataPresenter: StatePagingDataPresen
             pagingFlow = { model.pagingFlow },
             prefetchDownDistance = PREFETCH_DISTANCE,
             itemCount = { pagingDataPresenter.data.size },
+            currentStartIndex = { pagingDataPresenter.startIndex },
             coroutineScope = scope
         )
     }
     val lazyListState = rememberLazyListState()
-    pagingTrigger.launchedHandleLazyListState(lazyListState)
     val items by pagingDataPresenter.dataFlow.collectAsStateWithLifecycle(emptyList())
     LazyColumn(
         modifier = Modifier.fillMaxWidth(), state = lazyListState, contentPadding = innerPadding
     ) {
-        itemsIndexed(items) { index, item ->
+        itemsIndexed(items, key = { index, item ->
+            item?.let { item.javaClass.simpleName.hashCode() + item.hashCode() }
+                ?: (Int.MAX_VALUE - index)
+        }) { index, item ->
             when (item) {
                 null, is TestItem.Item -> TestItem(item)
-                is TestItem.Loader -> {}
+                is TestItem.Loader -> LoaderItem(item)
             }
+            pagingTrigger.launchedHandleLazyListState(lazyListState)
         }
     }
 }
@@ -93,10 +104,22 @@ fun PagingList(innerPadding: PaddingValues) {
 }
 
 @Composable
-fun TestItem(item: TestItem.Item?) {
+private fun LoaderItem(item: TestItem.Loader) {
+    Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        CircularProgressIndicator(
+            modifier = Modifier.padding(vertical = 16.dp),
+        )
+    }
+}
+
+@Composable
+private fun TestItem(item: TestItem.Item?) {
     Text(
-        modifier = Modifier.padding(top = 4.dp, start = 8.dp, end = 8.dp, bottom = 20.dp).apply {
-            if (item == null) background(Color.Gray, RoundedCornerShape(8.dp)) else this
+        modifier = Modifier.padding(top = 4.dp, start = 8.dp, end = 8.dp, bottom = 20.dp).let() {
+            if (item == null) it
+                .size(128.dp, 24.dp)
+                .background(Color.Gray, RoundedCornerShape(8.dp))
+            else it
         },
         text = item?.text ?: ""
     )

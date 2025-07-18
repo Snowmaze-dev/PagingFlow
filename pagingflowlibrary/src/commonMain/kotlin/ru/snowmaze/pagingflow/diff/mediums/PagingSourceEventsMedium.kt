@@ -4,7 +4,7 @@ import ru.snowmaze.pagingflow.diff.PagingEventsListener
 import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.EventFromDataSource
 
-class DataSourceEventsMedium<Key : Any, Data : Any, NewData : Any>(
+class PagingSourceEventsMedium<Key : Any, Data : Any, NewData : Any>(
     dataChangesMedium: PagingEventsMedium<Key, Data>,
     private val dataSourceIndex: Int,
     override val config: PagingEventsMediumConfig = dataChangesMedium.config,
