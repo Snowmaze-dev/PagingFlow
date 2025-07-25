@@ -62,7 +62,7 @@ open class PagingParams internal constructor(
     }
 }
 
-class MutablePagingParams(
+class MutablePagingParams( // TODO make it interface
     map: ScatterMap<String, Any?>,
     reuseMap: Boolean = true
 ) : PagingParams(map, reuseMap) {

@@ -2,8 +2,8 @@ package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
-import ru.snowmaze.pagingflow.diff.flow.asFlow
-import ru.snowmaze.pagingflow.diff.flow.asPagingEventsMedium
+import ru.snowmaze.pagingflow.diff.mediums.flow.asFlow
+import ru.snowmaze.pagingflow.diff.mediums.flow.asPagingEventsMedium
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.data
@@ -44,7 +44,7 @@ class CommonPresentersTest {
                 )
             ).statePresenter(sharingStarted = SharingStarted.Eagerly)
 
-        pagingFlow.loadNextPageAndAwaitDataSet()
+        pagingFlow.loadNextPageAndAwaitDataSet(timeout = 500)
         assertEquals(
             pageSize,
             presenter.data.size

@@ -22,9 +22,10 @@ import kotlin.test.assertContentEquals
 
 class SetDataSourcesTest {
 
+    private val testDispatcher = UnconfinedTestDispatcher()
+
     @Test
-    fun setDataSourcesTest() = runTest {
-        val testDispatcher = UnconfinedTestDispatcher()
+    fun setDataSourcesTest() = runTest(testDispatcher) {
         val firstDataSource = DefinedItemsTestPagingSource("1", listOf(1))
         val secondDataSource = DefinedItemsTestPagingSource("2", listOf(2))
         val thirdDataSource = DefinedItemsTestPagingSource("3", listOf(3))

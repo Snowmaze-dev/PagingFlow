@@ -1,10 +1,12 @@
-package ru.snowmaze.pagingflow.diff.mediums
+package ru.snowmaze.pagingflow.diff.mediums.flow
 
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
-import ru.snowmaze.pagingflow.diff.PagingEventsListener
 import ru.snowmaze.pagingflow.diff.PagingEvent
+import ru.snowmaze.pagingflow.diff.PagingEventsListener
+import ru.snowmaze.pagingflow.diff.mediums.DefaultPagingEventsMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMediumConfig
 
 class FlowPagingEventsMedium<Key : Any, Data : Any>(
     override val config: PagingEventsMediumConfig,

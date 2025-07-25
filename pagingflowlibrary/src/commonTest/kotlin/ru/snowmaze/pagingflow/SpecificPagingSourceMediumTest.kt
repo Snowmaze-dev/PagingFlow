@@ -21,7 +21,7 @@ class SpecificPagingSourceMediumTest {
         defaultParams = LoadParams(pageSize, 0),
         processingDispatcher = Dispatchers.Default,
         maxItemsConfiguration = MaxItemsConfiguration(
-            maxItemsCount = removePagesOffset * pageSize, enableDroppedPagesNullPlaceholders = false
+            maxItemsCount = removePagesOffset * pageSize, maxDroppedPagesItemsCount = null
         )
     )
 

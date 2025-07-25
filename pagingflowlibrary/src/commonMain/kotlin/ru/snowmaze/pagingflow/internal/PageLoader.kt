@@ -1,5 +1,6 @@
 package ru.snowmaze.pagingflow.internal
 
+import androidx.collection.ObjectList
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
@@ -53,13 +54,6 @@ internal class PageLoader<Key : Any, Data : Any>(
     val upPagingStatus = MutableStateFlow<PagingStatus<Key>>(
         PagingStatus.Initial(hasNextPage = false)
     )
-
-    private val onPageRemoved = { inBeginning: Boolean, pageIndex: Int ->
-        changeHasNextStatus(
-            isPaginationDown = !inBeginning,
-            hasNext = true
-        )
-    }
 
     suspend inline fun loadData(loadParams: LoadParams<Key>): LoadResult<Key, Data> {
         val isPaginationDown = loadParams.paginationDirection == PaginationDirection.DOWN
@@ -177,10 +171,10 @@ internal class PageLoader<Key : Any, Data : Any>(
 
         val dataPages = dataPagesManager.dataPages
         val currentLastPageIndex = lastPageIndex ?: if (isPaginationDown) {
-            dataPages.fastIndexOfLast(dataPagesManager.isNotNullified)
-        } else dataPages.fastIndexOfFirst(dataPagesManager.isNotNullified)
+            dataPages.indexOfLast { !it.isNullified }
+        } else dataPages.indexOfFirst { !it.isNullified }
         val pagingSourceWithIndex: Pair<PagingSource<Key, Data>, Int>
-        val lastPage = dataPages.getOrNull(currentLastPageIndex)
+        val lastPage = dataPages.elementAtOrNull(currentLastPageIndex)
         val nextPageKey: Key?
 
         if (dataSourceIndex == null) {
@@ -345,7 +339,9 @@ internal class PageLoader<Key : Any, Data : Any>(
                 listenJob = SupervisorJob(),
                 pageIndex = pageAbsoluteIndex,
                 dataSourceIndex = pagingSourceWithIndex.second,
-                pageIndexInPagingSource = pageIndexInDataSource
+                pageIndexInPagingSource = pageIndexInDataSource,
+                flow = if (result is LoadResult.Success.FlowSuccess) result.dataFlow else null,
+                isPaginationDown = isPaginationDown
             )
 
             val newIndex = currentLastPageIndex + if (isPaginationDown) 1 else -1
@@ -356,19 +352,8 @@ internal class PageLoader<Key : Any, Data : Any>(
                 page = page,
                 loadParams = loadParams,
                 shouldReplaceOnConflict = shouldReplaceOnConflict,
-                onPageRemoved = onPageRemoved,
                 awaitDataSetChannel = dataSetChannel,
-            ) { newNextKey, isDown ->
-                changeHasNextStatus(
-                    isPaginationDown = isDown,
-                    hasNext = newNextKey != null || pagingSourcesManager.findNextPagingSource(
-                        currentPagingSource = pagingSourceWithIndex,
-                        isThereKey = false,
-                        paginationDirection = if (isDown) PaginationDirection.DOWN
-                        else PaginationDirection.UP
-                    ) != null
-                )
-            }
+            )
 
             // updating indexes in case when inserted new page in middle of other pages
             if (!shouldReplaceOnConflict) dataPagesManager.updateIndexes()
@@ -415,7 +400,7 @@ internal class PageLoader<Key : Any, Data : Any>(
         isLoadingPageInOrder: Boolean,
         pagingSourceWithIndex: Pair<PagingSource<Key, Data>, Int>?,
         currentKey: Key?,
-        dataPages: List<DataPage<Key, Data>>,
+        dataPages: ObjectList<DataPage<Key, Data>>,
         isPaginationDown: Boolean,
         paginationDirection: PaginationDirection,
         nextPageKey: Key? = null,
@@ -431,12 +416,12 @@ internal class PageLoader<Key : Any, Data : Any>(
     )
 
     private inline fun getLastSourceWithIndex(
-        dataPages: List<DataPage<Key, Data>>,
+        dataPages: ObjectList<DataPage<Key, Data>>,
         isPaginationDown: Boolean
     ) = (if (isPaginationDown) dataPages.lastOrNull()
-    else dataPages.fastFirstOrNull { !it.isNullified })?.pagingSourceWithIndex
+    else dataPages.firstOrNull { !it.isNullified })?.pagingSourceWithIndex
 
-    private fun changeHasNextStatus(isPaginationDown: Boolean, hasNext: Boolean) {
+    fun changeHasNextStatus(isPaginationDown: Boolean, hasNext: Boolean) {
         val stateFlow = if (isPaginationDown) downPagingStatus else upPagingStatus
         stateFlow.value = stateFlow.value.mapHasNext(hasNext)
     }

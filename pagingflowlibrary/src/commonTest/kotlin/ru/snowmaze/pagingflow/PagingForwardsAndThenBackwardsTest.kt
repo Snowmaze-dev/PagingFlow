@@ -31,7 +31,7 @@ class PagingForwardsAndThenBackwardsTest {
         processingDispatcher = testDispatcher,
         maxItemsConfiguration = MaxItemsConfiguration(
             maxItemsCount = removePagesOffset * pageSize,
-            enableDroppedPagesNullPlaceholders = false
+            maxDroppedPagesItemsCount = null
         )
     )
 
@@ -51,7 +51,6 @@ class PagingForwardsAndThenBackwardsTest {
                 processingContext = Dispatchers.Default,
                 maxItemsConfiguration = basePagingFlowConfiguration.maxItemsConfiguration?.copy(
                     maxItemsCount = pageSize * 4,
-                    enableDroppedPagesNullPlaceholders = false
                 ),
                 collectOnlyLatest = true,
                 storePageItems = false
@@ -102,7 +101,7 @@ class PagingForwardsAndThenBackwardsTest {
     }
 
     @Test
-    fun loadForwardsAndThenBackwards() = runTest {
+    fun loadForwardsAndThenBackwards() = runTest(testDispatcher) {
         val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
             addDownPagingSource(testDataSource)
@@ -148,12 +147,12 @@ class PagingForwardsAndThenBackwardsTest {
     }
 
     @Test
-    fun loadForwardsAndThenBackwardsWithNullPlaceholdersTest() = runTest {
+    fun loadForwardsAndThenBackwardsWithNullPlaceholdersTest() = runTest(testDispatcher) {
         val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(
             basePagingFlowConfiguration.copy(
                 maxItemsConfiguration = basePagingFlowConfiguration.maxItemsConfiguration?.copy(
-                    enableDroppedPagesNullPlaceholders = true
+                    maxDroppedPagesItemsCount = 0
                 )
             )
         ) {
@@ -187,7 +186,7 @@ class PagingForwardsAndThenBackwardsTest {
     }
 
     @Test
-    fun loadSmallPagesTest() = runTest {
+    fun loadSmallPagesTest() = runTest(testDispatcher) {
         val testDataSource = TestPagingSource(totalCount)
         var currentLoadParams = LoadParams<Int>(2)
         val maxItemsCount = 5

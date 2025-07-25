@@ -3,7 +3,10 @@ package ru.snowmaze.pagingflow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.SharingStarted
+import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
+import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.list.ListByPagesBuildStrategy
 import ru.snowmaze.pagingflow.presenters.statePresenter
@@ -36,7 +39,7 @@ class PagingBothDirectionsTest {
                 maxItemsConfiguration = MaxItemsConfiguration(
                     maxItemsCount = maxItems,
                     maxCachedResultPagesCount = maxCachedResultPagesCount,
-                    enableDroppedPagesNullPlaceholders = true
+                    maxDroppedPagesItemsCount = 0
                 )
             ),
             downPagingSource
@@ -107,6 +110,74 @@ class PagingBothDirectionsTest {
             pagingFlow.loadNextPageAndAwaitDataSet(PaginationDirection.UP)
             assertNull(onNewLoadChannel.receive().cachedResult)
         }
+    }
+
+    @Test
+    fun pagingWithLimitedNulls() = runTestOnDispatchersDefault {
+        val downPagingSource = TestPagingSource(totalCount)
+        val upPagingSource = TestPagingSource(totalCount, isReversed = true)
+        val maxPagesCount = 2
+        val maxItems = pageSize * maxPagesCount
+        val maxCachedResultPagesCount = maxPagesCount + 4
+        val maxDroppedPagesItemsCount = pageSize * 2
+        val pagingFlow = buildPagingFlow<Int, String>(
+            PagingFlowConfiguration(
+                defaultParams = LoadParams(pageSize),
+                processingDispatcher = Dispatchers.Default,
+                maxItemsConfiguration = MaxItemsConfiguration(
+                    maxItemsCount = maxItems,
+                    maxCachedResultPagesCount = maxCachedResultPagesCount,
+                    maxDroppedPagesItemsCount = maxDroppedPagesItemsCount,
+                    restoreDroppedNullPagesWhenNeeded = true
+                ),
+            )
+        ) {
+            addUpPagingSource(upPagingSource)
+            addDownPagingSource(downPagingSource)
+        }
+        val presenter = pagingFlow.statePresenter(sharingStarted = SharingStarted.Eagerly)
+        val params = MutablePagingParams.noCapacity()
+        var loadPages = 4
+        pagingFlow.loadSeveralPages(awaitDataSet = true) {
+            params.takeIf {
+                loadPages--
+                loadPages >= 0
+            }
+        }
+        val nulls = arrayOfNulls<String>(
+            pageSize * 2
+        ).asList()
+        presenter.dataFlow.firstEqualsWithTimeout(
+            nulls + downPagingSource.getItems(
+                pageSize * 2,
+                startFrom = pageSize * 2
+            )
+        )
+        pagingFlow.loadNextPageAndAwaitDataSet()
+        presenter.dataFlow.firstEqualsWithTimeout(
+            nulls + downPagingSource.getItems(pageSize * 2, startFrom = pageSize * 3)
+        )
+        loadPages = 4
+        pagingFlow.loadSeveralPages(awaitDataSet = true) {
+            params.takeIf {
+                loadPages--
+                loadPages >= 0
+            }
+        }
+        assertEquals(
+            nulls + downPagingSource.getItems(pageSize * 2, startFrom = pageSize * 7),
+            presenter.data
+        )
+        pagingFlow.loadNextPageAndAwaitDataSet(paginationDirection = PaginationDirection.UP)
+        assertEquals(
+            nulls + downPagingSource.getItems(pageSize * 2, startFrom = pageSize * 6),
+            presenter.data
+        )
+        pagingFlow.loadNextPageAndAwaitDataSet(paginationDirection = PaginationDirection.UP)
+        assertEquals(
+            nulls + downPagingSource.getItems(pageSize * 2, startFrom = pageSize * 5),
+            presenter.data
+        )
     }
 
     private fun buildUpPages(

@@ -64,10 +64,6 @@ open class PageChangedEvent<Key : Any, Data : Any>(
         changeType = changeType,
         params = params,
     )
-
-    override fun toString(): String {
-        return "PageChangedEvent(key=$key, sourceIndex=$sourceIndex, pageIndex=$pageIndex, pageIndexInSource=$pageIndexInSource, previousItemCount=$previousItemCount, items=$items, changeType=$changeType, params=$params)"
-    }
 }
 
 class PageAddedEvent<Key : Any, Data : Any>(
@@ -121,10 +117,6 @@ class PageRemovedEvent<Key : Any, Data : Any>(
         pageIndexInSource = pageIndexInSource,
         itemsCount = itemsCount
     )
-
-    override fun toString(): String {
-        return "PageRemovedEvent(key=$key, sourceIndex=$sourceIndex, pageIndex=$pageIndex, pageIndexInSource=$pageIndexInSource, itemsCount=$itemsCount)"
-    }
 }
 
 /**

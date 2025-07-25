@@ -9,6 +9,7 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import ru.snowmaze.pagingflow.LoadParams
+import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.PagingFlowConfiguration
 import ru.snowmaze.pagingflow.PagingStatus
 import ru.snowmaze.pagingflow.diff.PagingEventsListener
@@ -24,6 +25,7 @@ import ru.snowmaze.pagingflow.utils.DiffOperation
 import ru.snowmaze.pagingflow.utils.fastFirstOrNull
 import ru.snowmaze.pagingflow.utils.mapHasNext
 import ru.snowmaze.pagingflow.utils.toInfo
+import kotlin.coroutines.ContinuationInterceptor
 
 typealias ConcatPagingSourceConfig<Key> = PagingFlowConfiguration<Key>
 
@@ -37,16 +39,33 @@ open class ConcatPagingSource<Key : Any, Data : Any>(
 
     private val pagingSourcesManager = PagingSourcesManager<Key, Data>()
 
-    private val dataPagesManager = DataPagesManager(
+    private val dataPagesManager: DataPagesManager<Key, Data> = DataPagesManager(
         pageLoaderConfig = concatPagingSourceConfig,
         setDataMutex = loadDataMutex,
-        pagingSourcesManager = pagingSourcesManager
+        pagingSourcesManager = pagingSourcesManager,
+        onLastPageNextKeyChanged = { pagingSourceWithIndex, newNextKey, isDown ->
+            pageLoader.changeHasNextStatus(
+                isPaginationDown = isDown,
+                hasNext = newNextKey != null || pagingSourcesManager.findNextPagingSource(
+                    currentPagingSource = pagingSourceWithIndex,
+                    isThereKey = false,
+                    paginationDirection = if (isDown) PaginationDirection.DOWN
+                    else PaginationDirection.UP
+                ) != null
+            )
+        },
+        onPageRemoved = { inBeginning: Boolean, pageIndex: Int ->
+            pageLoader.changeHasNextStatus(
+                isPaginationDown = !inBeginning,
+                hasNext = true
+            )
+        }
     )
 
     val firstPageInfo
-        get() = dataPagesManager.dataPages.fastFirstOrNull { !it.isNullified }?.toInfo()
+        get() = dataPagesManager.dataPages.firstOrNull { !it.isNullified }?.toInfo()
     val lastPageInfo get() = dataPagesManager.dataPages.lastOrNull()?.toInfo()
-    val pagesInfo get() = dataPagesManager.dataPages.map { it.toInfo() }
+    val pagesInfo get() = dataPagesManager.dataPagesList.map { it.toInfo() }
 
     val notNullifiedPagesCount get() = dataPagesManager.dataPages.count { !it.isNullified }
 
@@ -74,7 +93,8 @@ open class ConcatPagingSource<Key : Any, Data : Any>(
     )
 
     init {
-        val coroutineScope = CoroutineScope(config.processingContext + SupervisorJob())
+        val context = config.processingContext[ContinuationInterceptor] ?: config.processingContext
+        val coroutineScope = CoroutineScope(context + SupervisorJob())
         config.coroutineScope.launch {
             try {
                 awaitCancellation()

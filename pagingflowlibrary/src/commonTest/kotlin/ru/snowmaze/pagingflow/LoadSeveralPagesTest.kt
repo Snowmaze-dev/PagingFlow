@@ -24,7 +24,7 @@ class LoadSeveralPagesTest {
         processingDispatcher = testDispatcher,
         maxItemsConfiguration = MaxItemsConfiguration(
             maxItemsCount = removePagesOffset * pageSize,
-            enableDroppedPagesNullPlaceholders = false
+            maxDroppedPagesItemsCount = null
         )
     )
 
@@ -39,7 +39,6 @@ class LoadSeveralPagesTest {
                 processingContext = Dispatchers.Default,
                 maxItemsConfiguration = basePagingFlowConfiguration.maxItemsConfiguration?.copy(
                     maxItemsCount = maxItems,
-                    enableDroppedPagesNullPlaceholders = false
                 )
             )
         ) {

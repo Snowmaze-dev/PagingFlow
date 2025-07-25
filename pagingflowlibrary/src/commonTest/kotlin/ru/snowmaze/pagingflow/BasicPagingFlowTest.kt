@@ -29,7 +29,7 @@ class BasicPagingFlowTest {
     )
 
     @Test
-    fun basePaginationUseCaseTest() = runTest {
+    fun basePaginationUseCaseTest() = runTest(testDispatcher) {
         val totalCount = Random.nextInt(80, 1000)
         val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
@@ -55,7 +55,7 @@ class BasicPagingFlowTest {
     }
 
     @Test
-    fun paginateFirstAndNothingToLoad() = runTest {
+    fun paginateFirstAndNothingToLoad() = runTest(testDispatcher) {
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
             addDownPagingSource(TestPagingSource(pageSize))
             addDownPagingSource(NothingToLoadSource())
@@ -71,13 +71,13 @@ class BasicPagingFlowTest {
     }
 
     @Test
-    fun testThreePaginationForwardAndThenBackwards() = runTest {
+    fun testThreePaginationForwardAndThenBackwards() = runTest(testDispatcher) {
         val testDataSource = TestPagingSource(pageSize * 3)
         val pagingFlow = buildPagingFlow(
             basePagingFlowConfiguration.copy(
                 maxItemsConfiguration = MaxItemsConfiguration(
                     pageSize * 2,
-                    enableDroppedPagesNullPlaceholders = false
+                    maxDroppedPagesItemsCount = null
                 ),
             )
         ) {
@@ -101,7 +101,7 @@ class BasicPagingFlowTest {
     }
 
     @Test
-    fun paginationErrorTest() = runTest {
+    fun paginationErrorTest() = runTest(testDispatcher) {
         val totalCount = Random.nextInt(80, 1000)
         val testDataSource = TestPagingSource(totalCount)
         val pagingFlow = buildPagingFlow(basePagingFlowConfiguration) {
@@ -123,7 +123,7 @@ class BasicPagingFlowTest {
     }
 
     @Test
-    fun baseThreeSourcesPaginationUseCaseTest() = runTest {
+    fun baseThreeSourcesPaginationUseCaseTest() = runTest(testDispatcher) {
         val firstTestDataSource = TestPagingSource(Random.nextInt(80, 500))
         val secondTestDataSource = TestPagingSource(Random.nextInt(80, 500))
         val thirdTestDataSource = TestPagingSource(Random.nextInt(80, 500))

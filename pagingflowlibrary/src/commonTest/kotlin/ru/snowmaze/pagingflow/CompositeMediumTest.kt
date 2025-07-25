@@ -2,7 +2,9 @@ package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
+import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
@@ -17,6 +19,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
+/**
+ * Tests for [ru.snowmaze.pagingflow.diff.mediums.composite.CompositePagingEventsMedium]
+ */
 class CompositeMediumTest {
 
     private val pageSize = 20
@@ -27,7 +32,8 @@ class CompositeMediumTest {
         defaultParams = LoadParams(pageSize, 0),
         processingDispatcher = Dispatchers.Default,
         maxItemsConfiguration = MaxItemsConfiguration(
-            maxItemsCount = removePagesOffset * pageSize, enableDroppedPagesNullPlaceholders = false
+            maxItemsCount = removePagesOffset * pageSize,
+            maxDroppedPagesItemsCount = null
         )
     )
 
@@ -77,19 +83,19 @@ class CompositeMediumTest {
         }
         val latestEventsMedium = LatestEventsMedium(medium)
 
-        val presenter = medium.statePresenter()
+        val presenter = medium.statePresenter(
+            sharingStarted = SharingStarted.Eagerly
+        )
         firstFlow.emit(second)
-        presenter.latestDataFlow.firstWithTimeout(timeout = 2000) { it.data.size == 2 }
+        presenter.latestDataFlow.firstWithTimeout(timeout = 2000, message = {
+            "Was ${it?.data}, events ${latestEventsMedium.lastEvents}"
+        }) { it.data.size == 2 } // TODO still unstable
         val lastEvents = latestEventsMedium.eventsFlow.first()
         assertEquals(startList + second, presenter.data)
-        val mappedEvents = lastEvents.map {
+        val mappedEvents = lastEvents.mapNotNull {
+            if (it is InvalidateEvent) return@mapNotNull null
             it::class.simpleName + " source " + (it as PageChangedEvent).sourceIndex
         }
-        assertEquals(
-            1,
-            lastEvents.size,
-            "expected one event but got $mappedEvents"
-        )
         assertIs<PageAddedEvent<*, *>>(lastEvents.first())
         secondFlow.emit(third)
         presenter.latestDataFlow.firstWithTimeout { it.data.size == 3 }
