@@ -49,7 +49,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
     private val _dataPages = MutableObjectList<DataPage<Key, Data>>()
     val dataPagesList = _dataPages.asList()
     val dataPages = _dataPages
-    val isNotNullified = { item: DataPage<Key, Data> -> !item.isNullified }
+
     private var nullItemsCount = 0
     private var itemsCount = 0
 
@@ -160,7 +160,15 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         }
 
         dataPages.clear()
-        skipPage?.let { dataPages.add(it) }
+        itemsCount = 0
+        nullItemsCount = 0
+        skipPage?.let { dataPages.add(it)
+            if (it.data == null) {
+                nullItemsCount += it.itemCount ?: 0
+            } else {
+                itemsCount += it.data?.data?.size ?: 0
+            }
+        }
         if (removeCachedData) cachedData.clear()
     }
 
@@ -253,16 +261,16 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         val isExistingPage = dataPages.elementAtOrNull(newIndex) != null
         val isPaginationDown = loadParams.paginationDirection == PaginationDirection.DOWN
         if (isExistingPage && shouldReplaceOnConflict) {
-            page.itemCount = _dataPages[newIndex].itemCount
+            page.itemCount = _dataPages.elementAtOrNull(newIndex)?.itemCount ?: 0
             _dataPages[newIndex] = page
         } else _dataPages.add(newIndex.coerceAtLeast(0), page)
         val invalidateData = loadParams.pagingParams?.getOrNull(
             PagingLibraryParamsKeys.InvalidateData
         ) == true
 
-        // page flow listening starts here
         lastPaginationDirection = isPaginationDown
 
+        // page flow listening starts here
         if (result is LoadResult.Success.FlowSuccess && result.dataFlow != null) {
             setupSubscriber(
                 dataFlow = result.dataFlow,
@@ -344,10 +352,11 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         isFirst: Boolean,
     ) {
         if (value == null) return
-        val previousItemCount = page.itemCount ?: 0
+        val previousDataItemCount = page.data?.data?.size ?: 0
+        val previousItemCount = page.itemCount
         val newItemCount = value.data.size
 
-        val isPageDataSizeChanged = newItemCount != page.currentItemCount
+        val isPageDataSizeChanged = newItemCount != previousDataItemCount
         var isDataChanged = true
         if (pageLoaderConfig.storePageItems) {
             isDataChanged = page.data?.data !== value.data
@@ -358,7 +367,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
 
         val isLastPageChanged: Boolean
         if (isPaginationDown) {
-            isLastPageChanged = page === dataPages.lastOrNull()
+            isLastPageChanged = page === dataPages.lastOrNull { !it.isNullified }
             page.nextPageKey = value.nextPageKey
         } else {
             isLastPageChanged = page === dataPages.firstOrNull { !it.isNullified }
@@ -372,10 +381,9 @@ internal class DataPagesManager<Key : Any, Data : Any>(
 
         if (isDataChanged) {
             if (isFirst && isExistingPage) {
-                nullItemsCount = (nullItemsCount - previousItemCount).coerceAtLeast(0)
-            }
-
-            itemsCount -= previousItemCount
+                nullItemsCount = (nullItemsCount - (previousItemCount ?: 0))
+                    .coerceAtLeast(0)
+            } else itemsCount -= previousDataItemCount
             itemsCount += newItemCount
 
             val currentKey = page.currentPageKey
@@ -391,11 +399,11 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                         items = value.data,
                         changeType = PageChangedEvent.ChangeType.CHANGE_FROM_NULLS_TO_ITEMS,
                         params = value.params,
-                        previousItemCount = previousItemCount
+                        previousItemCount = previousItemCount ?: previousDataItemCount
                     )
+                    page.isNullified = false
                     additionalLoadEvent = getEventToLoadNullsPageIfNeeded(
-                        isPaginationDown = isPaginationDown,
-                        pageChangedEvent = event
+                        isPaginationDown = isPaginationDown
                     )
                     event
                 } else PageAddedEvent(
@@ -413,7 +421,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                 pageIndexInSource = page.pageIndexInPagingSource,
                 items = value.data,
                 params = value.params,
-                previousItemCount = previousItemCount
+                previousItemCount = previousItemCount ?: previousDataItemCount
             )
 
             val trimEvents = if (isPageDataSizeChanged) trimPages(lastPaginationDirection, page)
@@ -457,10 +465,10 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                             if (awaitEvent == null) 0 else 1 +
                                     if (additionalLoadEvent != null) 1 else 0
                 )
-                if (awaitEvent != null) events.add(awaitEvent)
-                if (event != null) events.add(event)
                 if (additionalLoadEvent != null) events.add(additionalLoadEvent)
+                if (event != null) events.add(event)
                 events.addAll(trimEvents as List<PagingEvent<Key, Data>>)
+                if (awaitEvent != null) events.add(awaitEvent)
                 notifyOnEvents(events)
             }
             if (!notified) {
@@ -485,8 +493,13 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         val maxItemsCount = trimConfig.maxItemsCount
         if (itemsCount > maxItemsCount) {
 
-            val pageIndex = if (isPaginationDown) dataPages.indexOfFirst(isNotNullified)
-            else dataPages.indexOfLast(isNotNullified)
+            val pageIndex = if (isPaginationDown) {
+                dataPages.indexOfFirst { item: DataPage<Key, Data> ->
+                    !item.isNullified
+                }
+            } else dataPages.indexOfLast { item: DataPage<Key, Data> ->
+                !item.isNullified
+            }
             val page = dataPages.elementAtOrNull(pageIndex) ?: return null
 
             /**
@@ -544,8 +557,9 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                 )
                 nullItemsCount += itemCount
                 page.data = null
+                page.isNullified = true
                 page.flow = null
-                page.itemCount = null
+                page.itemCount = itemCount
 
                 /**
                  * Tested by [PagingBothDirectionsTest.pagingWithLimitedNulls]
@@ -553,13 +567,12 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                 if (maxDroppedPagesItemsCount != 0 &&
                     nullItemsCount > (maxDroppedPagesItemsCount ?: 0)
                 ) {
-                    val pageIndex = if (isPaginationDown) _dataPages.indexOfFirst { it.isNullified }
+                    val nullPageIndex = if (isPaginationDown) _dataPages.indexOfFirst { it.isNullified }
                     else _dataPages.indexOfLast { it.isNullified }
-                    if (pageIndex != -1) {
-                        val page = _dataPages[pageIndex]
-                        nullItemsCount -= page.currentItemCount
+                    if (nullPageIndex != -1) {
+                        val page = _dataPages.removeAt(nullPageIndex)
+                        nullItemsCount -= page.itemCount ?: 0
                         dropPageEvent = page.removeEvent()
-                        _dataPages.removeAt(pageIndex)
                         page.data = null
                         page.listenJob?.cancel()
                     }
@@ -590,8 +603,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
      * Tested by [PagingBothDirectionsTest.pagingWithLimitedNulls]
      */
     private inline fun getEventToLoadNullsPageIfNeeded(
-        isPaginationDown: Boolean,
-        pageChangedEvent: PageChangedEvent<Key, Data>
+        isPaginationDown: Boolean
     ): PageAddedEvent<Key, Data>? = if (nullItemsCount > 0 &&
         (pageLoaderConfig.maxItemsConfiguration?.maxDroppedPagesItemsCount ?: 0) > 0 &&
         pageLoaderConfig.maxItemsConfiguration?.restoreDroppedNullPagesWhenNeeded == true
@@ -600,37 +612,38 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         val pageSize = pageLoaderConfig.defaultParamsProvider().pageSize
         val event = if (isPaginationDown) {
             lastNullsPage = _dataPages.lastOrNull { it.isNullified } ?: return null
+            if (lastNullsPage.pageIndex >= -1) return null
             val newPageIndex = lastNullsPage.pageIndex + 1
             PageAddedEvent<Key, Data>(
                 key = null,
                 pageIndex = newPageIndex,
-                pageIndexInSource = lastNullsPage.pageIndexInPagingSource + 1, // TODO,
+                pageIndexInSource = lastNullsPage.pageIndexInPagingSource + 1, // TODO
                 sourceIndex = lastNullsPage.dataSourceIndex,
-                items = listOfNulls(pageSize)
+                items = listOfNulls(pageSize),
+                changeType = PageChangedEvent.ChangeType.CHANGE_TO_NULLS
             )
         } else {
             lastNullsPage = _dataPages.firstOrNull { it.isNullified } ?: return null
+            if (0 >= lastNullsPage.pageIndex) return null
             val newPageIndex = lastNullsPage.pageIndex - 1
             PageAddedEvent<Key, Data>(
                 key = null,
                 pageIndex = newPageIndex,
-                pageIndexInSource = lastNullsPage.pageIndexInPagingSource - 1, // TODO,
+                pageIndexInSource = lastNullsPage.pageIndexInPagingSource - 1, // TODO
                 sourceIndex = lastNullsPage.dataSourceIndex,
-                items = listOfNulls(pageSize)
+                items = listOfNulls(pageSize),
+                changeType = PageChangedEvent.ChangeType.CHANGE_TO_NULLS
             )
         }
         nullItemsCount += event.items.size
         _dataPages.add(
             if (isPaginationDown) _dataPages.size else 0,
             DataPage(
-                data = UpdatableData(
-                    event.items,
-                    nextPageKey = null,
-                    params = null
-                ),
-                null,
+                data = null,
+                event.items.size,
                 isPaginationDown = isPaginationDown,
                 isCancelled = false,
+                isNullified = true,
                 previousPageKey = lastNullsPage.currentPageKey,
                 currentPageKey = null,
                 nextPageKey = null,

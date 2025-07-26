@@ -1,6 +1,9 @@
 package ru.snowmaze.pagingflow.diff.mediums.composite
 
+import androidx.collection.MutableIntSet
+import androidx.collection.MutableObjectList
 import androidx.collection.MutableScatterMap
+import androidx.collection.ObjectList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -16,21 +19,24 @@ import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMediumConfig
 import ru.snowmaze.pagingflow.diff.mediums.SubscribeForChangesEventsMedium
 import ru.snowmaze.pagingflow.params.MutablePagingParams
+import ru.snowmaze.pagingflow.utils.elementAtOrNull
 import ru.snowmaze.pagingflow.utils.fastForEach
 import ru.snowmaze.pagingflow.utils.flattenWithSize
 
 open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> internal constructor(
     pagingEventsMedium: PagingEventsMedium<Key, Data>,
-    private val sections: List<CompositePresenterSection<Key, Data, NewData>>,
+    private val sections: ObjectList<CompositePresenterSection<Key, Data, NewData>>,
     final override val config: PagingEventsMediumConfig = pagingEventsMedium.config
-) : SubscribeForChangesEventsMedium<Key, Data, NewData>(pagingEventsMedium), PagingEventsListener<Key, Data> {
+) : SubscribeForChangesEventsMedium<Key, Data, NewData>(pagingEventsMedium),
+    PagingEventsListener<Key, Data> {
 
     private val dataSourcesSections =
         MutableScatterMap<Int, CompositePresenterSection.DataSourceSection<Key, Data, NewData>>()
+    private val sectionsList = sections.asList()
     private val mutex = Mutex()
 
     init {
-        for ((index, section) in sections.withIndex()) {
+        sections.forEachIndexed { index, section ->
             section.sourceIndex = index
             if (section is CompositePresenterSection.DataSourceSection<Key, Data, NewData>) {
                 if (dataSourcesSections.containsKey(section.dataSourceIndex)) { // TODO support multiple same datasources indexes
@@ -59,10 +65,10 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
     override fun getChangesCallback() = this
 
     override fun addPagingEventsListener(listener: PagingEventsListener<Key, NewData>) {
-        super.addPagingEventsListener(listener)
         config.coroutineScope.launch {
             mutex.withLock {
-                listener.onEvents(sections.flatMap { it.pages })
+                super.addPagingEventsListener(listener)
+                listener.onEvents(buildPagesList())
             }
         }
     }
@@ -76,31 +82,31 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
                 onAddPage(
                     section = section,
                     key = it.key,
-                    data = section.mapData(it.items as List<Data>),
+                    data = section.mapData(it),
                     pagingParams = it.params,
-                    addIndex = it.pageIndexInSource
+                    addIndex = it.pageIndexInSource,
+                    addedEvent = it
                 )
             },
-            onPageChanged = {
-                val section = dataSourcesSections[it.sourceIndex] ?: return@handle null
-//                        val indexShift = section.removedPagesNumbers.size TODO
-                val event = PageChangedEvent(
-                    key = it.key,
-                    pageIndex = section.firstPageIndex + it.pageIndexInSource,
+            onPageChanged = { event ->
+                val section = dataSourcesSections[event.sourceIndex] ?: return@handle null
+                val indexShift = section.removedPagesNumbers.count { event.pageIndexInSource > it }
+                val indexInSourceList = event.pageIndexInSource - indexShift
+                val newEvent = PageChangedEvent(
+                    key = event.key,
+                    pageIndex = section.firstPageIndex + indexInSourceList,
                     sourceIndex = section.sourceIndex,
-                    pageIndexInSource = it.pageIndexInSource,
-                    previousList = section.pages.getOrNull(it.pageIndexInSource)?.items,
-                    previousItemCount = section.pages.getOrNull(
-                        it.pageIndexInSource
-                    )?.items?.size ?: 0, // TODO
-                    items = if (it.changeType == ChangeType.CHANGE_TO_NULLS) {
-                        it.items as List<NewData>
-                    } else section.mapData(it.items as List<Data>),
-                    params = it.params,
-                    changeType = it.changeType
+                    pageIndexInSource = indexInSourceList,
+                    previousList = section.pages.elementAtOrNull(indexInSourceList)?.items,
+                    previousItemCount = section.pages.elementAtOrNull(
+                        indexInSourceList
+                    )?.items?.size ?: 0,
+                    items = section.mapData(event),
+                    params = event.params,
+                    changeType = event.changeType
                 )
-                section.pages[event.pageIndexInSource] = event
-                event
+                section.pages[newEvent.pageIndexInSource] = newEvent
+                newEvent
             },
             onPageRemovedEvent = {
                 val section = dataSourcesSections[it.sourceIndex] ?: return@handle null
@@ -116,7 +122,7 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
                         )
                     }
                 }
-                it as InvalidateEvent<Key, NewData>
+                buildPagesList(it as InvalidateEvent<Key, NewData>)
             },
             onElse = { it as PagingEvent<Key, NewData> }
         )
@@ -151,7 +157,7 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
 
     fun updateSectionsData() = config.coroutineScope.launch {
         mutex.withLock {
-            for (section in sections) {
+            sections.forEach { section ->
                 if (section is CompositePresenterSection.SimpleSection<Key, Data, NewData>) {
                     onCompositeSectionChanged(
                         section = section,
@@ -167,7 +173,7 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
         update: (CompositePresenterSection<Key, Data, NewData>) -> Unit = {}
     ) {
         var firstPageIndex = 0
-        sections.fastForEach { section ->
+        sections.forEach { section ->
             section.firstPageIndex = firstPageIndex
             firstPageIndex += section.pages.size
             update(section)
@@ -176,7 +182,7 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
 
     private fun onCompositeSectionChanged(
         section: CompositePresenterSection<Key, Data, NewData>,
-        data: List<NewData>,
+        data: List<NewData?>,
         pagingParams: MutablePagingParams
     ): Any? = when {
         section.pages.isEmpty() -> onAddPage(
@@ -184,7 +190,8 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
             key = null,
             data = data,
             pagingParams = pagingParams,
-            addIndex = 0
+            addIndex = 0,
+            addedEvent = null
         )
 
         data.isEmpty() -> onRemovePage(section, 0)
@@ -214,22 +221,22 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
     private fun onAddPage(
         section: CompositePresenterSection<Key, Data, NewData>,
         key: Key?,
-        data: List<NewData>,
+        data: List<NewData?>,
         pagingParams: MutablePagingParams?,
-        addIndex: Int
+        addIndex: Int,
+        addedEvent: PageAddedEvent<Key, Data>?
     ) = buildList {
         val indexShift = if (section is CompositePresenterSection.DataSourceSection) {
-            val result = section.removedPagesNumbers.size
             section.removedPagesNumbers.remove(addIndex)
-            result
+            section.removedPagesNumbers.count { addIndex > it }
         } else 0
         var currentSectionIndex = section.sourceIndex
         var currentEventIndexInSource = (addIndex - indexShift).coerceAtMost(section.pages.size)
         var isNewEvent = true
         while (true) {
-            val currentSection = sections.getOrNull(currentSectionIndex) ?: break
+            val currentSection = sections.elementAtOrNull(currentSectionIndex) ?: break
             val currentEvent = if (isNewEvent) {
-                val currentEvent = currentSection.pages.getOrNull(currentEventIndexInSource)
+                val currentEvent = currentSection.pages.elementAtOrNull(currentEventIndexInSource)
                 PageChangedEvent(
                     key = key,
                     sourceIndex = section.sourceIndex,
@@ -239,14 +246,17 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
                     params = pagingParams,
                     previousList = currentEvent?.items,
                     previousItemCount = currentEvent?.items?.size
-                        ?: currentEvent?.previousItemCount ?: 0
+                        ?: currentEvent?.previousItemCount ?: 0,
+                    changeType = addedEvent?.changeType
+                        ?: currentEvent?.changeType
+                        ?: ChangeType.COMMON_CHANGE
                 )
             } else {
                 if (currentEventIndexInSource == 0) {
                     val event = currentSection.pages.firstOrNull()
                     if (event != null) currentEventIndexInSource = event.pageIndexInSource
                     event
-                } else currentSection.pages.getOrNull(currentEventIndexInSource)
+                } else currentSection.pages.elementAtOrNull(currentEventIndexInSource)
             }
 
             if (currentEvent == null) {
@@ -255,7 +265,7 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
                 continue
             }
 
-            var nextEvent = currentSection.pages.getOrNull(currentEventIndexInSource + 1)
+            var nextEvent = currentSection.pages.elementAtOrNull(currentEventIndexInSource + 1)
             var hasNextData = nextEvent != null
             if (!hasNextData) {
                 for (nextSectionIndex in currentSectionIndex + 1 until sections.size) {
@@ -278,7 +288,7 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
                 previousItemCount = if (isNewEvent) currentEvent.previousItemCount
                 else nextEvent?.items?.size ?: 0,
                 items = currentEvent.items,
-                changeType = ChangeType.COMMON_CHANGE,
+                changeType = currentEvent.changeType,
                 params = currentEvent.params,
             ) else PageAddedEvent(
                 key = currentEvent.key,
@@ -287,13 +297,14 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
                 else currentEvent.pageIndex + 1,
                 pageIndexInSource = currentEventIndexInSource,
                 items = currentEvent.items as List<NewData>,
-                params = currentEvent.params
+                params = currentEvent.params,
+                changeType = currentEvent.changeType
             )
             add(newEvent)
             if (isNewEvent) {
                 currentSection.pages.add(currentEventIndexInSource, newEvent)
             } else {
-                currentSection.pages[currentEventIndexInSource] = newEvent
+                currentSection.pages[newEvent.pageIndexInSource] = newEvent
             }
             if (!hasNextData) break
             currentEventIndexInSource++
@@ -308,18 +319,17 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
         indexInSource: Int
     ) = buildList {
         val indexShift = if (section is CompositePresenterSection.DataSourceSection) {
-            val result = section.removedPagesNumbers.size
-            if (indexInSource < section.pages.maxOf { it.pageIndexInSource }) {
-                section.removedPagesNumbers.add(indexInSource)
-            }
+            val result = section.removedPagesNumbers.count { indexInSource > it }
+            section.removedPagesNumbers.add(indexInSource)
             result
         } else 0
         var currentSectionIndex = section.sourceIndex
-        var currentEventIndexInSource = (indexInSource - indexShift).coerceAtMost(section.pages.size - 1)
+        var currentEventIndexInSource = (indexInSource - indexShift)
+            .coerceAtMost(section.pages.lastIndex)
         var isNewEvent = true
-        var previousEvent: PageChangedEvent<Key, NewData> = section.pages.get(currentEventIndexInSource)
+        var previousEvent: PageChangedEvent<Key, NewData> = section.pages[currentEventIndexInSource]
         while (true) {
-            val currentSection = sections.getOrNull(currentSectionIndex) ?: break
+            val currentSection = sections.elementAtOrNull(currentSectionIndex) ?: break
 
             if (currentSection.pages.isEmpty()) {
                 currentSectionIndex++
@@ -327,7 +337,7 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
                 continue
             }
 
-            val currentEvent = currentSection.pages.getOrNull(currentEventIndexInSource)
+            val currentEvent = currentSection.pages.elementAtOrNull(currentEventIndexInSource)
 
             if (currentEvent == null) {
                 currentSectionIndex++
@@ -335,7 +345,8 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
                 continue
             }
 
-            var hasNextData = currentSection.pages.getOrNull(currentEventIndexInSource + 1) != null
+            var hasNextData =
+                currentSection.pages.elementAtOrNull(currentEventIndexInSource + 1) != null
             if (!hasNextData) {
                 for (nextSectionIndex in currentSectionIndex + 1 until sections.size) {
                     val nextSection = sections[nextSectionIndex]
@@ -366,7 +377,8 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
                     pageIndex = currentEvent.pageIndex - 1,
                     pageIndexInSource = if (isInChangedSection) currentEvent.pageIndexInSource - 1
                     else currentEvent.pageIndexInSource,
-                    sourceIndex = currentEvent.sourceIndex
+                    sourceIndex = currentEvent.sourceIndex,
+                    changeType = currentEvent.changeType
                 )
                 currentSection.pages[changedEvent.pageIndexInSource] = changedEvent
 
@@ -393,16 +405,16 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
     }
 
     private fun onInvalidate() {
-        for (section in sections) {
+        sections.forEach { section ->
             if (section is CompositePresenterSection.DataSourceSection) {
-                section.removedPagesNumbers = mutableSetOf()
-                section.pages = mutableListOf()
+                section.removedPagesNumbers = MutableIntSet()
+                section.pages = MutableObjectList()
             }
         }
     }
 
     private fun MutableList<Any>.addChangeSimpleSectionsEvent() {
-        for (section in sections) {
+        sections.forEach { section ->
             if (section is CompositePresenterSection.SimpleSection
                 && section.updateWhenDataUpdated
             ) {
@@ -411,9 +423,16 @@ open class CompositePagingEventsMedium<Key : Any, Data : Any, NewData : Any> int
                         section = section,
                         data = section.itemsProvider(),
                         pagingParams = MutablePagingParams.noCapacity()
-                    ) ?: continue
+                    ) ?: return@forEach
                 )
             }
         }
+    }
+
+    private fun buildPagesList(addedEvent: PagingEvent<Key, NewData>? = null) = buildList(
+        if (addedEvent == null) 0 else 1 + sectionsList.sumOf { it.pages.size }
+    ) {
+        addedEvent?.let { add(it) }
+        sections.forEach { addAll(it.pagesList) }
     }
 }

@@ -101,7 +101,8 @@ suspend inline fun <T> Flow<T>.firstEqualsWithTimeout(
     value: T,
     timeout: Long = 1000
 ) = firstWithTimeout(timeout, {
-    "expected $value but was $it"
+    """expected $value
+        |actual $it""".trimMargin()
 }) {
     value == it
 }

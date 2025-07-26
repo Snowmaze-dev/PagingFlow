@@ -1,6 +1,7 @@
 package ru.snowmaze.pagingflow.presenters.list
 
 import androidx.collection.MutableIntIntMap
+import androidx.collection.MutableIntSet
 import androidx.collection.MutableObjectList
 import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
@@ -23,6 +24,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
 
     private val pageSizes = MutableIntIntMap()
     private var list = MutableObjectList<Data?>(0)
+    private val nullPagesIndexes = MutableIntSet()
     override var startPageIndex: Int = 0
     override var recentLoadData: List<MutablePagingParams> = emptyList()
     private var minIndex: Int = 0
@@ -64,8 +66,10 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
             onPageChanged = { current -> // TODO changed without added event inconsistent behaviour
                 if (current.params != null) (recentLoadData as MutableList).add(current.params)
                 if (current.changeType == ChangeType.CHANGE_TO_NULLS) {
+                    nullPagesIndexes += current.pageIndex
                     startPageIndex += current.items.size
                 } else if (current.changeType == ChangeType.CHANGE_FROM_NULLS_TO_ITEMS) {
+                    nullPagesIndexes -= current.pageIndex
                     startPageIndex -= pageSizes.getOrElse(current.pageIndex) { 0 }
                 }
                 removePageItemsAndAdd(
@@ -75,6 +79,9 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
                 )
             },
             onPageRemovedEvent = { current ->
+                if (nullPagesIndexes.remove(current.pageIndex)) {
+                    startPageIndex -= current.itemsCount
+                }
                 val startIndex = calculateStartIndex(current.pageIndex)
                 val mutableList = list
                 repeat(pageSizes.getOrElse(current.pageIndex) { 0 }) { mutableList.removeAt(startIndex) }
@@ -121,6 +128,7 @@ open class DiffListBuildStrategy<Key : Any, Data : Any> protected constructor(
         else list = MutableObjectList(0)
         startPageIndex = 0
         minIndex = 0
+        nullPagesIndexes.clear()
         pageSizes.clear()
     }
 }

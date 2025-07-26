@@ -23,7 +23,8 @@ class MainActivity : AppCompatActivity() {
             PagingTrigger(
                 pagingFlow = { viewModel.pagingFlow },
                 prefetchDownDistance = PREFETCH_DISTANCE,
-                coroutineScope = lifecycleScope
+                coroutineScope = lifecycleScope,
+                throttleTimeMillis = 50,
             ),
             pagingEventsMedium = viewModel.pagingEventsMedium
         )

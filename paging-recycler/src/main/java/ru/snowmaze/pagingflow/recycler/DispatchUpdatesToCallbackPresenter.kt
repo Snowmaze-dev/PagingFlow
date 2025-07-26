@@ -5,6 +5,7 @@ import androidx.recyclerview.widget.ListUpdateCallback
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
@@ -21,12 +22,12 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
     private val offsetListUpdateCallbackProvider: (Int) -> OffsetListUpdateCallback,
     private val pagingMedium: PagingEventsMedium<out Any, Data>,
     private val itemCallback: DiffUtil.ItemCallback<Data>,
-    invalidateBehavior: InvalidateBehavior,
-    private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
-    private val setNewItems: (List<Data?>) -> Unit
+    private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
+    private val presenterConfiguration: BasicPresenterConfiguration<out Any, Data>,
+    private val setNewItems: (List<Data?>) -> Unit,
 ) : BasicBuildListPagingPresenter<Any, Data>(
     pagingEventsMedium = pagingMedium as PagingEventsMedium<Any, Data>,
-    presenterConfiguration = BasicPresenterConfiguration(invalidateBehavior = invalidateBehavior)
+    presenterConfiguration = presenterConfiguration as BasicPresenterConfiguration<Any, Data>
 ) {
 
     private val pagesIndexes = mutableMapOf<Int, List<Data?>>()
@@ -36,7 +37,9 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
 
     override suspend fun onEvent(event: PagingEvent<Any, Data>) {
         withContext(processingContext) {
-            buildList(listOf(event))
+            mutex.withLock {
+                buildList(listOf(event))
+            }
         }
     }
 
@@ -44,9 +47,10 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
         events: List<PagingEvent<Any, Data>>,
         currentData: LatestData<Data>
     ) {
-        this.currentData = currentData
         coroutineScope.launch(mainDispatcher) {
+            this@DispatchUpdatesToCallbackPresenter.currentData = currentData
             setNewItems(currentData.data)
+            // TODO make that cycle in background thread creating diff changes and then dispatch these updates in main thread
             events.fastForEach { event ->
                 event.handle(
                     onPageAdded = {
@@ -68,28 +72,37 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
                             list?.size ?: 0
                         )
                     },
-                    onInvalidate = {},
+                    onInvalidate = {
+                    },
                     onElse = {}
                 )
             }
-        }
+        }.join()
     }
 
-    private fun onPageChanged(event: PageChangedEvent<*, Data>) {
-        val offsetListUpdateCallback = offsetListUpdateCallbackProvider(
-            calculatePageStartItemIndex(event.pageIndex)
-        )
+    private inline fun onPageChanged(event: PageChangedEvent<*, Data>) {
+        val startIndex = calculatePageStartItemIndex(event.pageIndex)
+        val offsetListUpdateCallback = offsetListUpdateCallbackProvider(startIndex)
+
         when (event.changeType) {
             PageChangedEvent.ChangeType.COMMON_CHANGE -> {
                 val diffResult = PagingDiffUtil.calculateDiff(
-                    oldList = pagesIndexes.get(event.pageIndex) as? List<Data> ?: return,
+                    oldList = pagesIndexes[event.pageIndex] as? List<Data> ?: emptyList(),
                     newList = event.items as List<Data>,
                     diffCallback = itemCallback,
                 )
                 diffResult.dispatchUpdatesTo(offsetListUpdateCallback)
             }
 
-            else -> offsetListUpdateCallback.onChanged(0, event.items.size, null)
+            else -> {
+                offsetListUpdateCallback.onChanged(0, event.items.size, null)
+                if (event.previousItemCount > event.items.size) {
+                    offsetListUpdateCallback.onRemoved(
+                        event.items.size,
+                        event.previousItemCount - event.items.size
+                    )
+                }
+            }
         }
         pagesIndexes[event.pageIndex] = event.items
     }

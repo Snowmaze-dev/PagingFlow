@@ -73,6 +73,7 @@ class PageAddedEvent<Key : Any, Data : Any>(
     pageIndexInSource: Int,
     items: List<Data?>,
     params: MutablePagingParams? = null,
+    changeType: ChangeType = ChangeType.COMMON_CHANGE
 ) : PageChangedEvent<Key, Data>(
     key = key,
     pageIndex = pageIndex,
@@ -81,6 +82,7 @@ class PageAddedEvent<Key : Any, Data : Any>(
     previousList = null,
     items = items,
     params = params,
+    changeType = changeType,
     previousItemCount = 0
 ) {
 
@@ -94,6 +96,7 @@ class PageAddedEvent<Key : Any, Data : Any>(
         pageIndex = pageIndex,
         items = items as List<Data>,
         params = params,
+        changeType = changeType,
         pageIndexInSource = pageIndexInSource
     )
 }
@@ -157,4 +160,10 @@ inline fun <Key : Any, Data : Any, T : Any> PagingEvent<Key, Data>.handle(
         is InvalidateEvent -> onInvalidate(this)
         else -> onElse(this)
     }
+}
+
+inline fun <Key : Any, Data : Any, T : Any> PageChangedEvent<Key, Data>.map(
+    transform: (Data?) -> T?
+): List<T?> {
+    return items.map(transform)
 }

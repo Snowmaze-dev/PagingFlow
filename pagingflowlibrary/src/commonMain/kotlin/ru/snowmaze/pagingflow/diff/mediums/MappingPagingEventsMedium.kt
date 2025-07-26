@@ -40,7 +40,8 @@ class MappingPagingEventsMedium<Key : Any, Data : Any, NewData : Any>(
                 pageIndex = it.pageIndex,
                 pageIndexInSource = it.pageIndexInSource,
                 items = transform(it) as List<NewData>,
-                params = it.params
+                params = it.params,
+                changeType = it.changeType
             )
         },
         onPageChanged = {

@@ -51,8 +51,6 @@ class CompositeMediumTest {
         assertEquals(data, presenter.data)
     }
 
-    private fun mapToInts(data: List<String>) = data.map { it.drop(5).toInt() }
-
     @OptIn(ExperimentalPagingApi::class)
     @Test
     fun baseMediumTest() = runTestOnDispatchersDefault {
@@ -89,13 +87,12 @@ class CompositeMediumTest {
         firstFlow.emit(second)
         presenter.latestDataFlow.firstWithTimeout(timeout = 2000, message = {
             "Was ${it?.data}, events ${latestEventsMedium.lastEvents}"
-        }) { it.data.size == 2 } // TODO still unstable
-        val lastEvents = latestEventsMedium.eventsFlow.first()
-        assertEquals(startList + second, presenter.data)
-        val mappedEvents = lastEvents.mapNotNull {
+        }) { it.data.size == 2 }
+        val lastEvents = latestEventsMedium.eventsFlow.first().mapNotNull {
             if (it is InvalidateEvent) return@mapNotNull null
-            it::class.simpleName + " source " + (it as PageChangedEvent).sourceIndex
+            it
         }
+        assertEquals(startList + second, presenter.data)
         assertIs<PageAddedEvent<*, *>>(lastEvents.first())
         secondFlow.emit(third)
         presenter.latestDataFlow.firstWithTimeout { it.data.size == 3 }
@@ -165,4 +162,8 @@ class CompositeMediumTest {
             ) + third + fifth + startList
         )
     }
+
+    private fun mapToInts(data: List<String?>) = data.map { it?.drop(5)?.toInt() }
+
+    private fun mapToInts(event: PageChangedEvent<Int, String>) = mapToInts(event.items)
 }

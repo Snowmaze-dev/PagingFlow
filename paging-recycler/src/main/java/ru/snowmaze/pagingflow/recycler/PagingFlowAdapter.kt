@@ -6,12 +6,11 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListUpdateCallback
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.SharingStarted
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
+import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
-import ru.snowmaze.pagingflow.presenters.dataFlow
+import ru.snowmaze.pagingflow.presenters.statePresenter
 import ru.snowmaze.pagingflow.utils.PagingTrigger
 
 /**
@@ -25,7 +24,8 @@ abstract class PagingFlowAdapter<Data : Any, VH : ViewHolder>(
     itemCallback: DiffUtil.ItemCallback<Data>,
     pagingEventsMedium: PagingEventsMedium<out Any, Data>,
     private val pagingTrigger: PagingTrigger,
-    invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
+    presenterConfiguration: BasicPresenterConfiguration<out Any, Data> =
+        BasicPresenterConfiguration()
 ) : RecyclerView.Adapter<VH>() {
 
     @Suppress("LeakingThis")
@@ -36,16 +36,17 @@ abstract class PagingFlowAdapter<Data : Any, VH : ViewHolder>(
         },
         pagingMedium = pagingEventsMedium,
         itemCallback = itemCallback,
-        invalidateBehavior = invalidateBehavior
+        presenterConfiguration = presenterConfiguration
     ) {
         items = it
-    }
+        onNewItems(it)
+    }.statePresenter(sharingStarted = SharingStarted.Eagerly)
     private var items = emptyList<Data?>()
     val startIndex get() = dispatchUpdatesToCallbackPresenter.startIndex
 
     init {
         pagingTrigger.currentStartIndexProvider = { dispatchUpdatesToCallbackPresenter.startIndex }
-        pagingTrigger.itemCount = { itemCount }
+        pagingTrigger.itemCount = { items.size }
         pagingTrigger.currentTimeMillisProvider = { System.currentTimeMillis() }
     }
 
@@ -57,7 +58,9 @@ abstract class PagingFlowAdapter<Data : Any, VH : ViewHolder>(
 
     override fun getItemCount() = items.size
 
-    fun getItemNullable(index: Int) = items[index]
+    fun getNullable(index: Int) = items[index]
 
     operator fun get(index: Int) = items[index] as Data
+
+    open fun onNewItems(items: List<Data?>) {}
 }

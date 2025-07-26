@@ -41,4 +41,8 @@ internal class SingleElementList<T : Any> : List<T>, Iterator<T> {
         iterated = true
         element!!
     }
+
+    override fun toString(): String {
+        return "SingleElementList(element=$element, iterated=$iterated, size=$size)"
+    }
 }

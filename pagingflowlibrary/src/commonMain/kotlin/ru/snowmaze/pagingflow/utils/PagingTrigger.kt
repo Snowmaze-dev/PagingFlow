@@ -29,9 +29,7 @@ class PagingTrigger(
     private val shouldTryPaginateBackOnMaxItemsOffset: Boolean = false,
     private val saveLastThrottledEvent: Boolean = true,
     private val coroutineScope: CoroutineScope,
-    var currentTimeMillisProvider: () -> Long = {
-        Clock.System.now().toEpochMilliseconds()
-    },
+    var currentTimeMillisProvider: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
 
     constructor(
@@ -107,9 +105,9 @@ class PagingTrigger(
         val direction = if (paginationDownEnabled && index >= (itemCount - prefetchDownDistance)) {
             PaginationDirection.DOWN
         } else if (paginationUpEnabled) {
-            val relativeStartIndex = if (maxItemsCount == null) index else {
-                index - currentStartIndexProvider(PaginationDirection.UP)
-            }
+            val startIndex = currentStartIndexProvider(PaginationDirection.UP)
+            val relativeStartIndex = if (maxItemsCount == null) index
+            else index - startIndex
             val shouldLoadUp = if (shouldTryPaginateBackOnMaxItemsOffset && maxItemsCount != null) {
                 val pageSize = pageSize()
                 prefetchUpDistance * ((maxItemsCount / pageSize) - 1) >= relativeStartIndex

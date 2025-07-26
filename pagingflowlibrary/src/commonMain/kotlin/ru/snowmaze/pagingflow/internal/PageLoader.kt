@@ -341,7 +341,8 @@ internal class PageLoader<Key : Any, Data : Any>(
                 dataSourceIndex = pagingSourceWithIndex.second,
                 pageIndexInPagingSource = pageIndexInDataSource,
                 flow = if (result is LoadResult.Success.FlowSuccess) result.dataFlow else null,
-                isPaginationDown = isPaginationDown
+                isPaginationDown = isPaginationDown,
+                isNullified = false
             )
 
             val newIndex = currentLastPageIndex + if (isPaginationDown) 1 else -1

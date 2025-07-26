@@ -1,11 +1,13 @@
 package ru.snowmaze.pagingflow.diff.mediums.composite
 
+import androidx.collection.MutableObjectList
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.collectLatest
 import ru.snowmaze.pagingflow.ExperimentalPagingApi
+import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMediumConfig
 
@@ -28,7 +30,7 @@ class CompositePagingDataChangesMediumBuilder<Key : Any, Data : Any, NewData : A
         ).apply(builder).build()
     }
 
-    private val sections = mutableListOf<CompositePresenterSection<Key, Data, NewData>>()
+    private val sections = MutableObjectList<CompositePresenterSection<Key, Data, NewData>>()
 
     /**
      * Adds simple section
@@ -37,17 +39,17 @@ class CompositePagingDataChangesMediumBuilder<Key : Any, Data : Any, NewData : A
      */
     fun section(
         updateWhenDataUpdated: Boolean = false,
-        itemsProvider: () -> List<NewData>
+        itemsProvider: () -> List<NewData?>
     ) {
         sections.add(CompositePresenterSection.SimpleSection(updateWhenDataUpdated, itemsProvider))
     }
 
-    fun flowSection(itemsProvider: Flow<List<NewData>>) {
+    fun flowSection(itemsProvider: Flow<List<NewData?>>) {
         sections.add(CompositePresenterSection.FlowSection(itemsProvider))
     }
 
     fun dataSourceSection(
-        dataSourceIndex: Int, mapper: (List<Data>) -> List<NewData> = { it as List<NewData> }
+        dataSourceIndex: Int, mapper: (PageChangedEvent<Key, Data>) -> List<NewData?>
     ) {
         sections.add(CompositePresenterSection.DataSourceSection(dataSourceIndex, mapper))
     }

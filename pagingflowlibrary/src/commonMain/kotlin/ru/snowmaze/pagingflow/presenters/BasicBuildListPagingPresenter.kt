@@ -2,6 +2,8 @@ package ru.snowmaze.pagingflow.presenters
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import ru.snowmaze.pagingflow.diff.PagingEventsListener
 import ru.snowmaze.pagingflow.diff.PagingEvent
@@ -26,6 +28,7 @@ open class BasicBuildListPagingPresenter<Key : Any, Data : Any>(
 ), PagingEventsListener<Key, Data> {
 
     private val singletonElementList = SingleElementList<PagingEvent<Key, Data>>()
+    protected val mutex = Mutex()
 
     init {
         val callback = this
@@ -52,9 +55,11 @@ open class BasicBuildListPagingPresenter<Key : Any, Data : Any>(
 
     override suspend fun onEvent(event: PagingEvent<Key, Data>) {
         withContext(processingContext) {
-            singletonElementList.element = event
-            buildList(singletonElementList)
-            singletonElementList.element = null
+            mutex.withLock {
+                singletonElementList.element = event
+                buildList(singletonElementList)
+                singletonElementList.element = null
+            }
         }
     }
 
@@ -62,6 +67,10 @@ open class BasicBuildListPagingPresenter<Key : Any, Data : Any>(
         events: List<PagingEvent<Key, Data>>
     ) {
         if (events.isEmpty()) return
-        withContext(processingContext) { buildList(events) }
+        withContext(processingContext) {
+            mutex.withLock {
+                buildList(events)
+            }
+        }
     }
 }

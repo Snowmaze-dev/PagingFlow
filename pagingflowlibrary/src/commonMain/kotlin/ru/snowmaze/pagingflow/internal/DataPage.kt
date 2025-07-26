@@ -10,6 +10,7 @@ internal class DataPage<Key : Any, Data : Any>(
     var data: UpdatableData<Key, Data>?,
 
     var itemCount: Int?,
+    var isNullified: Boolean,
 
     val isPaginationDown: Boolean,
 
@@ -26,6 +27,4 @@ internal class DataPage<Key : Any, Data : Any>(
 ) {
 
     inline val currentItemCount get() = data?.data?.size ?: itemCount ?: 0
-
-    inline val isNullified get() = itemCount == null
 }

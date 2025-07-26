@@ -28,8 +28,13 @@ class TestAdapter(
 ) {
 
     companion object {
+        const val PLACEHOLDER = -1
         const val ITEM = 0
         const val LOADER = 1
+    }
+
+    init {
+        setHasStableIds(true)
     }
 
     class TestViewHolder(val textView: TextView) : BaseViewHolder<TestItem.Item?>(textView) {
@@ -51,7 +56,7 @@ class TestAdapter(
     override fun onCreateViewHolder(
         parent: ViewGroup, viewType: Int
     ) = (when (viewType) {
-        ITEM -> TestViewHolder(AppCompatTextView(parent.context).apply {
+        PLACEHOLDER, ITEM -> TestViewHolder(AppCompatTextView(parent.context).apply {
             val dp = resources.displayMetrics.density
             layoutParams = RecyclerView.LayoutParams(MATCH_PARENT, WRAP_CONTENT).apply {
                 leftMargin = (dp * 8).toInt()
@@ -78,16 +83,22 @@ class TestAdapter(
     }) as BaseViewHolder<TestItem>
 
     override fun onBindViewHolder(holder: BaseViewHolder<TestItem>, position: Int) {
-        val item = getItemNullable(position)
+        val item = getNullable(position)
         if (item == null) {
             (holder as BaseViewHolder<TestItem?>).bind(null)
         } else holder.bind(item)
     }
 
-    override fun getItemViewType(position: Int) = when (getItemNullable(position)) {
-        null -> ITEM
+    override fun getItemViewType(position: Int) = when (getNullable(position)) {
+        null -> PLACEHOLDER
         is TestItem.Item -> ITEM
         is TestItem.Loader -> LOADER
+    }
+
+    private val halfLong = Long.MAX_VALUE / 2
+
+    override fun getItemId(position: Int): Long {
+        return getNullable(position)?.hashCode()?.toLong()?.let { it + halfLong } ?: position.toLong()
     }
 }
 

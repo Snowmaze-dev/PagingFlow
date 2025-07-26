@@ -45,6 +45,7 @@ class MappingFlowPagingEventsMedium<Key : Any, Data : Any, NewData : Any>(
                                         pageIndexInSource = event.pageIndexInSource,
                                         items = it as List<NewData>,
                                         params = event.params,
+                                        changeType = event.changeType
                                     )
                                 } else {
                                     PageChangedEvent(
@@ -54,7 +55,8 @@ class MappingFlowPagingEventsMedium<Key : Any, Data : Any, NewData : Any>(
                                         pageIndexInSource = event.pageIndexInSource,
                                         items = it as List<NewData>,
                                         params = event.params,
-                                        previousItemCount = event.previousItemCount
+                                        previousItemCount = event.previousItemCount,
+                                        changeType = event.changeType
                                     )
                                 }
                             )
