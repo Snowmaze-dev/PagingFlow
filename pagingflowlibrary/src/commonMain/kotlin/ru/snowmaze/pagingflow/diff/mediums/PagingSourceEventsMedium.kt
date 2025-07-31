@@ -30,7 +30,8 @@ class PagingSourceEventsMedium<Key : Any, Data : Any, NewData : Any>(
 
     override suspend fun onEvents(events: List<PagingEvent<Key, Data>>) {
         notifyOnEvents(events.mapNotNullTo(ArrayList(events.count {
-            (it as? EventFromDataSource<*, *>)?.sourceIndex == dataSourceIndex
+            val event = it as? EventFromDataSource<*, *>
+            event == null || event.sourceIndex == dataSourceIndex
         })) { mapEvent(it) })
     }
 

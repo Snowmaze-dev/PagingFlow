@@ -6,6 +6,7 @@ import ru.snowmaze.pagingflow.diff.mediums.BufferEventsEventsMedium
 import ru.snowmaze.pagingflow.diff.mediums.MappingFlowPagingEventsMedium
 import ru.snowmaze.pagingflow.diff.mediums.MappingPagingEventsMedium
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingSourceEventsMedium
 import ru.snowmaze.pagingflow.diff.mediums.composite.CompositePagingDataChangesMediumBuilder
 
 /**
@@ -50,3 +51,11 @@ fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.composi
     this,
     builder = builder
 )
+
+inline fun <Key : Any, Data : Any> PagingEventsMedium<Key, Data>.specificPagingSourceMedium(
+    index: Int
+) = PagingSourceEventsMedium<Key, Data, Data>(this, index)
+
+inline fun <Key : Any, Data : Any, NewData: Any> PagingEventsMedium<Key, Data>.specificPagingSourceWithCastMedium(
+    index: Int
+) = PagingSourceEventsMedium<Key, Data, NewData>(this, index)

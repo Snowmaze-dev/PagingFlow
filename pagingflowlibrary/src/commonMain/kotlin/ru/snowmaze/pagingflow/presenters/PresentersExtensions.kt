@@ -11,8 +11,7 @@ import ru.snowmaze.pagingflow.diff.mapDataToFlowMedium
 import ru.snowmaze.pagingflow.diff.mapDataMedium
 import ru.snowmaze.pagingflow.diff.mediums.BufferEventsEventsMedium
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
-import ru.snowmaze.pagingflow.diff.mediums.BatchingPagingEventsMedium
-import ru.snowmaze.pagingflow.diff.mediums.composite.CompositePagingDataChangesMediumBuilder
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMediumConfig
 
 /**
  * Creates simple presenter, which builds list from pages
@@ -37,9 +36,10 @@ inline fun <Key : Any, Data : Any> PagingDataPresenter<Key, Data>.statePresenter
 
 inline fun <Key : Any, Data : Any> PagingEventsMedium<Key, Data>.statePresenter(
     configuration: BasicPresenterConfiguration<Key, Data> = BasicPresenterConfiguration(),
+    mediumConfig: PagingEventsMediumConfig = this.config,
     sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(5000)
 ) = pagingDataPresenter(configuration).statePresenter(
-    coroutineScope = config.coroutineScope,
+    coroutineScope = mediumConfig.coroutineScope,
     sharingStarted = sharingStarted
 )
 

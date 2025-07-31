@@ -4,7 +4,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.yield
 import ru.snowmaze.pagingflow.diff.AwaitDataSetEvent
 import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
@@ -94,7 +93,6 @@ abstract class BuildListPagingPresenter<Key : Any, Data : Any>(
         )
         _dataFlow.emit(latestData)
         onItemsSet(events, latestData)
-        yield()
         events.fastForEach { if (it is AwaitDataSetEvent) it.callback() }
     }
 

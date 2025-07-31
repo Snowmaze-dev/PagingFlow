@@ -3,7 +3,9 @@ package ru.snowmaze.pagingflow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.yield
 import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.data
@@ -135,7 +137,14 @@ class PagingBothDirectionsTest {
             addUpPagingSource(upPagingSource)
             addDownPagingSource(downPagingSource)
         }
-        val presenter = pagingFlow.statePresenter(sharingStarted = SharingStarted.Eagerly)
+        val presenter = pagingFlow.statePresenter(
+            configuration = BasicPresenterConfiguration(
+                presenterFlow = ::MutableSharedFlow,
+                shouldBeAlwaysSubscribed = true
+            ),
+            sharingStarted = SharingStarted.Eagerly
+        )
+        yield()
         val params = MutablePagingParams.noCapacity()
         var loadPages = 4
         pagingFlow.loadSeveralPages(awaitDataSet = true) {
