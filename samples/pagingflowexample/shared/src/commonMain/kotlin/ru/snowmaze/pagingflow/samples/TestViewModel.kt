@@ -7,7 +7,7 @@ import ru.snowmaze.pagingflow.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.PagingFlowConfiguration
 import ru.snowmaze.pagingflow.buildPagingFlow
 import ru.snowmaze.pagingflow.diff.batchEventsMedium
-import ru.snowmaze.pagingflow.diff.compositeDataMedium
+import ru.snowmaze.pagingflow.diff.compositeListMedium
 import ru.snowmaze.pagingflow.diff.map
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.diff.mediums.composite.mapFlowSection
@@ -43,7 +43,7 @@ class TestViewModel : ViewModel() {
 //            if (item == null) null else TestItem.Item(item)
 //        }
 //    }
-    val pagingEventsMedium: PagingEventsMedium<Int, TestItem> = pagingFlow.compositeDataMedium {
+    val pagingEventsMedium: PagingEventsMedium<Int, TestItem> = pagingFlow.compositeListMedium {
         dataSourceSection(0) {
             it.map { item ->
                 if (item == null) null else TestItem.Item(item)

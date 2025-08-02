@@ -11,7 +11,7 @@ import ru.snowmaze.pagingflow.diff.PagingEvent
  * Buffers events if medium have no subscribers and then replies them when previous subscribers resubscribe
  * TODO cover with tests
  */
-class BufferEventsEventsMedium<Key : Any, Data : Any>(
+class BufferEventsMedium<Key : Any, Data : Any>(
     dataChangesMedium: PagingEventsMedium<Key, Data>,
     override val config: PagingEventsMediumConfig = dataChangesMedium.config
 ) : DefaultPagingEventsMedium<Key, Data>() {

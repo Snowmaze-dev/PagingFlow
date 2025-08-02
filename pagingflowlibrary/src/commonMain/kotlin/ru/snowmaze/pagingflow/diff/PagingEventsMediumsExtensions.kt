@@ -2,29 +2,29 @@ package ru.snowmaze.pagingflow.diff
 
 import kotlinx.coroutines.flow.Flow
 import ru.snowmaze.pagingflow.diff.mediums.BatchingPagingEventsMedium
-import ru.snowmaze.pagingflow.diff.mediums.BufferEventsEventsMedium
-import ru.snowmaze.pagingflow.diff.mediums.MappingFlowPagingEventsMedium
-import ru.snowmaze.pagingflow.diff.mediums.MappingPagingEventsMedium
+import ru.snowmaze.pagingflow.diff.mediums.BufferEventsMedium
+import ru.snowmaze.pagingflow.diff.mediums.MapFlowPagingEventsMedium
+import ru.snowmaze.pagingflow.diff.mediums.MapPagingEventsMedium
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.diff.mediums.PagingSourceEventsMedium
 import ru.snowmaze.pagingflow.diff.mediums.composite.CompositePagingDataChangesMediumBuilder
 
 /**
- * @see BufferEventsEventsMedium
+ * @see BufferEventsMedium
  */
 inline fun <Key : Any, Data : Any> PagingEventsMedium<Key, Data>.bufferEvents(
-) = BufferEventsEventsMedium(this)
+) = BufferEventsMedium(this)
 
-inline fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapDataMedium(
+inline fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapChangesMedium(
     noinline transform: suspend (PageChangedEvent<Key, Data>) -> List<NewData?>
-) = MappingPagingEventsMedium(
+) = MapPagingEventsMedium(
     pagingEventsMedium = this,
     transform = transform
 )
 
-inline fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapDataToFlowMedium(
+inline fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapChangesToFlowMedium(
     noinline transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>
-) = MappingFlowPagingEventsMedium(
+) = MapFlowPagingEventsMedium(
     pagingEventsMedium = this,
     transform = transform
 )
@@ -45,7 +45,7 @@ inline fun <Key : Any, Data : Any> PagingEventsMedium<Key, Data>.batchEventsMedi
     shouldBatchAddPagesEvents = shouldBatchAddPagesEvents
 )
 
-fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.compositeDataMedium(
+fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.compositeListMedium(
     builder: CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.() -> Unit
 ) = CompositePagingDataChangesMediumBuilder.build(
     this,
