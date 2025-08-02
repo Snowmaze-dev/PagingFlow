@@ -55,3 +55,7 @@ viewLifecycleOwner.coroutineScope.launch {
    }
 }
 ```
+
+### Architecture
+
+[<img width="3881" height="1080" alt="PagingFlow drawio" src="https://github.com/user-attachments/assets/dd54e981-635f-4985-9ad2-aec059897323" />](https://viewer.diagrams.net/?tags=%7B%7D&lightbox=1&highlight=0000ff&edit=_blank&layers=1&nav=1&title=PagingFlow.drawio&dark=auto#Uhttps%3A%2F%2Fdrive.google.com%2Fuc%3Fid%3D1D6pVE357gAQaY_nuGQvC8gNb2GdWj03z%26export%3Ddownload)
