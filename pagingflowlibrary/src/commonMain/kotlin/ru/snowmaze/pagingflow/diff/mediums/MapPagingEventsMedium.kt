@@ -8,7 +8,7 @@ import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
 import ru.snowmaze.pagingflow.diff.handle
 
-class MappingPagingEventsMedium<Key : Any, Data : Any, NewData : Any>(
+class MapPagingEventsMedium<Key : Any, Data : Any, NewData : Any>(
     pagingEventsMedium: PagingEventsMedium<Key, Data>,
     override val config: PagingEventsMediumConfig = pagingEventsMedium.config,
     private val transformOtherEvents: (

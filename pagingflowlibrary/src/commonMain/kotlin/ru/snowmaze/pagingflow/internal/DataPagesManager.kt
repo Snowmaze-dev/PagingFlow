@@ -147,7 +147,10 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         }
         isAnyDataChanged = false
         if (dataPages.isNotEmpty()) {
-            val invalidateChannel = Channel<Unit>(1)
+            val invalidateChannel = Channel<Unit>(
+                1,
+                onBufferOverflow = BufferOverflow.DROP_OLDEST
+            )
             if (notifyOnEvents(
                     listOf(
                         AwaitDataSetEvent { invalidateChannel.send(Unit) },
@@ -162,7 +165,8 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         dataPages.clear()
         itemsCount = 0
         nullItemsCount = 0
-        skipPage?.let { dataPages.add(it)
+        skipPage?.let {
+            dataPages.add(it)
             if (it.data == null) {
                 nullItemsCount += it.itemCount ?: 0
             } else {
@@ -427,12 +431,14 @@ internal class DataPagesManager<Key : Any, Data : Any>(
             val trimEvents = if (isPageDataSizeChanged) trimPages(lastPaginationDirection, page)
             else emptyList()
             val shouldAwaitFirst = awaitDataSetChannel != null && isFirst
-            val awaitChannel = if (pageLoaderConfig.collectOnlyLatest) Channel<Unit>(1)
-            else null
+            val awaitChannel = if (pageLoaderConfig.collectOnlyLatest) Channel<Unit>(
+                1,
+                onBufferOverflow = BufferOverflow.DROP_OLDEST
+            ) else null
             val awaitEvent = if (shouldAwaitFirst || pageLoaderConfig.collectOnlyLatest) {
                 AwaitDataSetEvent<Key, Data> {
-                    awaitDataSetChannelCalled?.invoke()
                     awaitDataSetChannel?.trySend(Unit)
+                    awaitDataSetChannelCalled?.invoke()
                     awaitChannel?.trySend(Unit)
                 }
             } else null
@@ -567,8 +573,9 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                 if (maxDroppedPagesItemsCount != 0 &&
                     nullItemsCount > (maxDroppedPagesItemsCount ?: 0)
                 ) {
-                    val nullPageIndex = if (isPaginationDown) _dataPages.indexOfFirst { it.isNullified }
-                    else _dataPages.indexOfLast { it.isNullified }
+                    val nullPageIndex =
+                        if (isPaginationDown) _dataPages.indexOfFirst { it.isNullified }
+                        else _dataPages.indexOfLast { it.isNullified }
                     if (nullPageIndex != -1) {
                         val page = _dataPages.removeAt(nullPageIndex)
                         nullItemsCount -= page.itemCount ?: 0
@@ -658,7 +665,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         event
     } else null
 
-    private fun DataPage<Key, Data>.removeEvent() = PageRemovedEvent<Key, Data>(
+    private inline fun DataPage<Key, Data>.removeEvent() = PageRemovedEvent<Key, Data>(
         key = currentPageKey,
         sourceIndex = dataSourceIndex,
         pageIndex = pageIndex,

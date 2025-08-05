@@ -1,6 +1,5 @@
 package ru.snowmaze.pagingflow.diff.mediums
 
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import ru.snowmaze.pagingflow.diff.PagingEventsListener
 import kotlin.coroutines.CoroutineContext
@@ -23,7 +22,7 @@ interface PagingEventsMedium<Key : Any, Data : Any> {
     fun removePagingEventsListener(listener: PagingEventsListener<Key, Data>): Boolean
 }
 
-class PagingEventsMediumConfig(
+data class PagingEventsMediumConfig(
     val coroutineScope: CoroutineScope,
     val processingContext: CoroutineContext
 )

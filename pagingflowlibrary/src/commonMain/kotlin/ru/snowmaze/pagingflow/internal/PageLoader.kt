@@ -5,6 +5,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
@@ -312,7 +313,10 @@ internal class PageLoader<Key : Any, Data : Any>(
         val shouldReturnAwaitJob = loadParams.pagingParams
             ?.getOrNull(PagingLibraryParamsKeys.ReturnAwaitJob) == true
 
-        val dataSetChannel = if (shouldReturnAwaitJob) Channel<Unit>(1) else null
+        val dataSetChannel = if (shouldReturnAwaitJob) Channel<Unit>(
+            1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST
+        ) else null
         val job: Job? = if (shouldReturnAwaitJob) {
             pageLoaderConfig.coroutineScope.launch {
                 withTimeoutOrNull(15000) {

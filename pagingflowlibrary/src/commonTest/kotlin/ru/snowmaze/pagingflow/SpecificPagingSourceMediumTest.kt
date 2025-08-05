@@ -1,11 +1,12 @@
 package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
-import ru.snowmaze.pagingflow.diff.mediums.PagingSourceEventsMedium
+import ru.snowmaze.pagingflow.diff.specificPagingSourceMedium
+import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.dataFlow
-import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.statePresenter
 import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.test.Test
@@ -32,22 +33,24 @@ class SpecificPagingSourceMediumTest {
             addDownPagingSource(TestPagingSource(40))
             addDownPagingSource(testPagingSource)
         }
-        val presenterForFirst = PagingSourceEventsMedium<Int, String, String>(
-            pagingFlow,
-            0
-        ).pagingDataPresenter().statePresenter(sharingStarted = SharingStarted.Eagerly)
-        val presenterForSecond = PagingSourceEventsMedium<Int, String, String>(
-            pagingFlow,
-            1
-        ).pagingDataPresenter().statePresenter(sharingStarted = SharingStarted.Eagerly)
-        pagingFlow.loadNextPageWithResult()
+        val presenterForFirst = pagingFlow.specificPagingSourceMedium(0).statePresenter(
+            configuration = BasicPresenterConfiguration(presenterFlow = ::MutableSharedFlow),
+            sharingStarted = SharingStarted.Eagerly
+        )
+        val presenterForSecond = pagingFlow.specificPagingSourceMedium(1).statePresenter(
+            configuration = BasicPresenterConfiguration(presenterFlow = ::MutableSharedFlow),
+            sharingStarted = SharingStarted.Eagerly
+        )
+        pagingFlow.loadNextPageAndAwaitDataSet()
         presenterForSecond.dataFlow.firstEqualsWithTimeout(emptyList())
         assertEquals(testPagingSource.getItems(20), presenterForFirst.data)
-        pagingFlow.loadNextPageWithResult()
+        pagingFlow.loadNextPageAndAwaitDataSet()
         presenterForFirst.dataFlow.firstEqualsWithTimeout(testPagingSource.getItems(40))
         presenterForSecond.dataFlow.firstEqualsWithTimeout(emptyList())
-        pagingFlow.loadNextPageWithResult()
-        presenterForFirst.dataFlow.firstEqualsWithTimeout(testPagingSource.getItems(40).takeLast(20))
+        pagingFlow.loadNextPageAndAwaitDataSet()
+        presenterForFirst.dataFlow.firstEqualsWithTimeout(
+            testPagingSource.getItems(40).takeLast(20)
+        )
         presenterForSecond.dataFlow.firstEqualsWithTimeout(testPagingSource.getItems(20))
     }
 }

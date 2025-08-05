@@ -7,12 +7,11 @@ import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.batchEventsMedium
 import ru.snowmaze.pagingflow.diff.bufferEvents
-import ru.snowmaze.pagingflow.diff.mapDataToFlowMedium
-import ru.snowmaze.pagingflow.diff.mapDataMedium
-import ru.snowmaze.pagingflow.diff.mediums.BufferEventsEventsMedium
+import ru.snowmaze.pagingflow.diff.mapChangesToFlowMedium
+import ru.snowmaze.pagingflow.diff.mapChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.BufferEventsMedium
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
-import ru.snowmaze.pagingflow.diff.mediums.BatchingPagingEventsMedium
-import ru.snowmaze.pagingflow.diff.mediums.composite.CompositePagingDataChangesMediumBuilder
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMediumConfig
 
 /**
  * Creates simple presenter, which builds list from pages
@@ -37,9 +36,10 @@ inline fun <Key : Any, Data : Any> PagingDataPresenter<Key, Data>.statePresenter
 
 inline fun <Key : Any, Data : Any> PagingEventsMedium<Key, Data>.statePresenter(
     configuration: BasicPresenterConfiguration<Key, Data> = BasicPresenterConfiguration(),
+    mediumConfig: PagingEventsMediumConfig = this.config,
     sharingStarted: SharingStarted = SharingStarted.WhileSubscribed(5000)
 ) = pagingDataPresenter(configuration).statePresenter(
-    coroutineScope = config.coroutineScope,
+    coroutineScope = mediumConfig.coroutineScope,
     sharingStarted = sharingStarted
 )
 
@@ -51,7 +51,7 @@ inline fun <Key : Any, Data : Any> PagingEventsMedium<Key, Data>.statePresenter(
 fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapDataPresenter(
     configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
     transform: suspend (PageChangedEvent<Key, Data>) -> List<NewData?>
-) = mapDataMedium(transform).pagingDataPresenter(configuration)
+) = mapChangesMedium(transform).pagingDataPresenter(configuration)
 
 /**
  * Maps events to flow of data
@@ -59,12 +59,12 @@ fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapData
 fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapDataFlowPresenter(
     configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
     transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>
-) = mapDataToFlowMedium(transform).pagingDataPresenter(configuration)
+) = mapChangesToFlowMedium(transform).pagingDataPresenter(configuration)
 
 /**
  * @param eventsBatchingDurationMsProvider provider of duration of batching window
  * @param shouldBatchAddPagesEvents defines whether should batching add pages events or not
- * @param shouldBufferEvents see [BufferEventsEventsMedium]
+ * @param shouldBufferEvents see [BufferEventsMedium]
  * @param transform mapping lambda
  */
 fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapDataPresenter(
@@ -73,7 +73,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapData
     shouldBatchAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
     transform: suspend (PageChangedEvent<Key, Data>) -> List<NewData?>
-) = mapDataMedium(transform).also {
+) = mapChangesMedium(transform).also {
     if (shouldBufferEvents) it.bufferEvents()
     else it
 }.batchEventsMedium(
@@ -90,7 +90,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapData
     shouldBatchAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
     transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>
-) = mapDataToFlowMedium(transform).also {
+) = mapChangesToFlowMedium(transform).also {
     if (shouldBufferEvents) it.bufferEvents()
     else it
 }.batchEventsMedium(
@@ -101,7 +101,7 @@ fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapData
 /**
  * @param eventsBatchingDurationMsProvider provider of duration of batching window
  * @param shouldBatchAddPagesEvents defines whether should batching add pages events or not
- * @param shouldBufferEvents see [BufferEventsEventsMedium]
+ * @param shouldBufferEvents see [BufferEventsMedium]
  */
 fun <Key : Any, Data : Any> PagingEventsMedium<Key, Data>.pagingDataPresenter(
     configuration: BasicPresenterConfiguration<Key, Data> = BasicPresenterConfiguration(),

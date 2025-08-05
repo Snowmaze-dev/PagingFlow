@@ -8,7 +8,7 @@ import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
-import ru.snowmaze.pagingflow.diff.compositeDataMedium
+import ru.snowmaze.pagingflow.diff.compositeListMedium
 import ru.snowmaze.pagingflow.diff.mediums.composite.CompositePagingDataChangesMediumBuilder
 import ru.snowmaze.pagingflow.diff.mediums.composite.section
 import ru.snowmaze.pagingflow.presenters.data
@@ -44,7 +44,7 @@ class CompositeMediumTest {
             addDownPagingSource(testDataSource)
         }
         val data = listOf(123)
-        val presenter = pagingFlow.compositeDataMedium {
+        val presenter = pagingFlow.compositeListMedium {
             section(data)
         }.statePresenter()
         presenter.latestDataFlow.firstWithTimeout { it.data.size == 1 }
