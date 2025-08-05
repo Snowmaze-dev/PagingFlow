@@ -352,11 +352,11 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         isFirst: Boolean,
     ) {
         if (value == null) return
-        val previousDataItemCount = page.data?.data?.size ?: 0
-        val previousItemCount = page.itemCount
+        val previousItemCount = page.data?.data?.size ?: page.itemCount
         val newItemCount = value.data.size
 
-        val isPageDataSizeChanged = newItemCount != previousDataItemCount
+        val isPageDataSizeChanged = if (isFirst) true else newItemCount != previousItemCount
+
         var isDataChanged = true
         if (pageLoaderConfig.storePageItems) {
             isDataChanged = page.data?.data !== value.data
@@ -383,7 +383,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
             if (isFirst && isExistingPage) {
                 nullItemsCount = (nullItemsCount - (previousItemCount ?: 0))
                     .coerceAtLeast(0)
-            } else itemsCount -= previousDataItemCount
+            } else itemsCount -= previousItemCount ?: 0
             itemsCount += newItemCount
 
             val currentKey = page.currentPageKey
@@ -399,7 +399,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                         items = value.data,
                         changeType = PageChangedEvent.ChangeType.CHANGE_FROM_NULLS_TO_ITEMS,
                         params = value.params,
-                        previousItemCount = previousItemCount ?: previousDataItemCount
+                        previousItemCount = previousItemCount ?: 0
                     )
                     page.isNullified = false
                     additionalLoadEvent = getEventToLoadNullsPageIfNeeded(
@@ -421,7 +421,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
                 pageIndexInSource = page.pageIndexInPagingSource,
                 items = value.data,
                 params = value.params,
-                previousItemCount = previousItemCount ?: previousDataItemCount
+                previousItemCount = previousItemCount ?: 0
             )
 
             val trimEvents = if (isPageDataSizeChanged) trimPages(lastPaginationDirection, page)
