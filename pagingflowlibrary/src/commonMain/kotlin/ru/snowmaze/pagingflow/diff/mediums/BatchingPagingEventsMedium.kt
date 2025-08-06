@@ -5,15 +5,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import ru.snowmaze.pagingflow.diff.PagingEventsListener
 import ru.snowmaze.pagingflow.diff.PagingEvent
-import ru.snowmaze.pagingflow.diff.PageAddedEvent
-import ru.snowmaze.pagingflow.utils.fastIndexOfLast
+import ru.snowmaze.pagingflow.diff.PagingEventsListener
 
 class BatchingPagingEventsMedium<Key : Any, Data : Any>(
     private val pagingEventsMedium: PagingEventsMedium<Key, Data>,
+    private val shouldBatch: ((PagingEvent<Key, Data>) -> Boolean)?,
     private val eventsBatchingDurationMsProvider: (List<PagingEvent<Key, Data>>) -> Long,
-    private val shouldBatchAddPagesEvents: Boolean = false,
     override val config: PagingEventsMediumConfig = pagingEventsMedium.config,
 ) : SubscribeForChangesEventsMedium<Key, Data, Data>(pagingEventsMedium),
     PagingEventsListener<Key, Data> {
@@ -30,8 +28,8 @@ class BatchingPagingEventsMedium<Key : Any, Data : Any>(
     ): Unit = mutex.withLock {
         var newEvents = events
         var batchingTime: Long? = null
-        if (!shouldBatchAddPagesEvents) {
-            val lastIndex = events.fastIndexOfLast { it is PageAddedEvent<Key, Data> }
+        if (shouldBatch != null) {
+            val lastIndex = events.indexOfLast { !shouldBatch(it) }
             if (lastIndex == events.lastIndex) batchingTime = 0
             else if (lastIndex != -1) {
                 val toIndex = lastIndex + 1
@@ -55,21 +53,24 @@ class BatchingPagingEventsMedium<Key : Any, Data : Any>(
     override suspend fun onEvent(
         event: PagingEvent<Key, Data>
     ): Unit = mutex.withLock {
-        if (event is PageAddedEvent && !shouldBatchAddPagesEvents) {
-            if (savedEvents.isEmpty()) notifyOnEvent(event)
-            else {
-                val newList = savedEvents + event
-                savedEvents.clear()
-                notifyOnEvents(newList)
+        if (shouldBatch != null) {
+            val shouldBatch = shouldBatch(event)
+            if (!shouldBatch) {
+                if (savedEvents.isEmpty()) notifyOnEvent(event)
+                else {
+                    val newList = savedEvents + event
+                    savedEvents.clear()
+                    notifyOnEvents(newList)
+                }
+                return@withLock
             }
-        } else {
-            savedEvents.add(event)
-            val batchingTime = eventsBatchingDurationMsProvider(savedEvents)
-            if (batchingTime == 0L) {
-                job?.cancel()
-                notifyOnEventsInternal()
-            } else sendEvents(batchingTime)
         }
+        savedEvents.add(event)
+        val batchingTime = eventsBatchingDurationMsProvider(savedEvents)
+        if (batchingTime == 0L) {
+            job?.cancel()
+            notifyOnEventsInternal()
+        } else sendEvents(batchingTime)
     }
 
     fun sendEvents(batchingTime: Long = eventsBatchingDurationMsProvider(savedEvents)): Job {
@@ -83,10 +84,11 @@ class BatchingPagingEventsMedium<Key : Any, Data : Any>(
     }
 
     private suspend inline fun notifyOnEventsInternal() {
-        val count = savedEvents.size
-        if (count == 0) return
-        else if (count == 1) notifyOnEvent(savedEvents.first())
-        else notifyOnEvents(savedEvents.toList())
+        when (savedEvents.size) {
+            0 -> return
+            1 -> notifyOnEvent(savedEvents.first())
+            else -> notifyOnEvents(savedEvents.toList())
+        }
         savedEvents.clear()
     }
 }

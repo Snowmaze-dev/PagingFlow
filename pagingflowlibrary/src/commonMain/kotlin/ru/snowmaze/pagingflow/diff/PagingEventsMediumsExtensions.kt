@@ -32,17 +32,22 @@ inline fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.
 /**
  * @param eventsBatchingDurationMsProvider provider of duration of batching window
  *
- * @param shouldBatchAddPagesEvents defines whether should throttle add pages events or not
+ * @param shouldBatchEvent lambda which lets you define that should batch medium batch some events or not
  * speeds up adding new ages if enabled
  *
  */
 inline fun <Key : Any, Data : Any> PagingEventsMedium<Key, Data>.batchEventsMedium(
     noinline eventsBatchingDurationMsProvider: (List<PagingEvent<Key, Data>>) -> Long = { 50L },
-    shouldBatchAddPagesEvents: Boolean = false,
+    noinline shouldBatchEvent: ((PagingEvent<Key, Data>) -> Boolean)? = {
+        when (it) {
+            is PageAddedEvent, is InvalidateEvent -> false
+            else -> true
+        }
+    }
 ) = BatchingPagingEventsMedium(
     pagingEventsMedium = this,
+    shouldBatch = shouldBatchEvent,
     eventsBatchingDurationMsProvider = eventsBatchingDurationMsProvider,
-    shouldBatchAddPagesEvents = shouldBatchAddPagesEvents
 )
 
 fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.compositeListMedium(

@@ -3,6 +3,8 @@ package ru.snowmaze.pagingflow.presenters
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import ru.snowmaze.pagingflow.diff.InvalidateEvent
+import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.batchEventsMedium
@@ -63,22 +65,27 @@ fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapData
 
 /**
  * @param eventsBatchingDurationMsProvider provider of duration of batching window
- * @param shouldBatchAddPagesEvents defines whether should batching add pages events or not
+ * @param shouldBatchEvent lambda which lets you define that should batch medium batch some events or not
  * @param shouldBufferEvents see [BufferEventsMedium]
  * @param transform mapping lambda
  */
 fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapDataPresenter(
     configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
     eventsBatchingDurationMsProvider: (List<PagingEvent<Key, NewData>>) -> Long = { 0 },
-    shouldBatchAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
+    shouldBatchEvent: ((PagingEvent<Key, NewData>) -> Boolean)? = {
+        when (it) {
+            is PageAddedEvent, is InvalidateEvent -> false
+            else -> true
+        }
+    },
     transform: suspend (PageChangedEvent<Key, Data>) -> List<NewData?>
 ) = mapChangesMedium(transform).also {
     if (shouldBufferEvents) it.bufferEvents()
     else it
 }.batchEventsMedium(
     eventsBatchingDurationMsProvider = eventsBatchingDurationMsProvider,
-    shouldBatchAddPagesEvents = shouldBatchAddPagesEvents
+    shouldBatchEvent = shouldBatchEvent
 ).pagingDataPresenter(configuration)
 
 /**
@@ -87,28 +94,38 @@ fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapData
 fun <Key : Any, Data : Any, NewData : Any> PagingEventsMedium<Key, Data>.mapDataFlowPresenter(
     configuration: BasicPresenterConfiguration<Key, NewData> = BasicPresenterConfiguration(),
     eventsBatchingDurationMsProvider: (List<PagingEvent<Key, NewData>>) -> Long = { 0 },
-    shouldBatchAddPagesEvents: Boolean = false,
     shouldBufferEvents: Boolean = false,
+    shouldBatchEvent: ((PagingEvent<Key, NewData>) -> Boolean)? = {
+        when (it) {
+            is PageAddedEvent, is InvalidateEvent -> false
+            else -> true
+        }
+    },
     transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>
 ) = mapChangesToFlowMedium(transform).also {
     if (shouldBufferEvents) it.bufferEvents()
     else it
 }.batchEventsMedium(
     eventsBatchingDurationMsProvider = eventsBatchingDurationMsProvider,
-    shouldBatchAddPagesEvents = shouldBatchAddPagesEvents
+    shouldBatchEvent = shouldBatchEvent
 ).pagingDataPresenter(configuration)
 
 /**
  * @param eventsBatchingDurationMsProvider provider of duration of batching window
- * @param shouldBatchAddPagesEvents defines whether should batching add pages events or not
+ * @param shouldBatchEvent lambda which lets you define that should batch medium batch some events or not
  * @param shouldBufferEvents see [BufferEventsMedium]
  */
 fun <Key : Any, Data : Any> PagingEventsMedium<Key, Data>.pagingDataPresenter(
     configuration: BasicPresenterConfiguration<Key, Data> = BasicPresenterConfiguration(),
     eventsBatchingDurationMsProvider: (List<PagingEvent<Key, Data>>) -> Long = { 0 },
-    shouldBatchAddPagesEvents: Boolean = false,
+    shouldBatchEvent: ((PagingEvent<Key, Data>) -> Boolean)? = {
+        when (it) {
+            is PageAddedEvent, is InvalidateEvent -> false
+            else -> true
+        }
+    },
     shouldBufferEvents: Boolean = false,
 ) = (if (shouldBufferEvents) bufferEvents() else this).batchEventsMedium(
     eventsBatchingDurationMsProvider = eventsBatchingDurationMsProvider,
-    shouldBatchAddPagesEvents = shouldBatchAddPagesEvents
+    shouldBatchEvent = shouldBatchEvent
 ).pagingDataPresenter(configuration)
