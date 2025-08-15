@@ -138,6 +138,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
         invalidateBehavior: InvalidateBehavior? = null,
         removeCachedData: Boolean = true,
         skipPage: DataPage<Key, Data>? = null,
+        awaitInvalidate: Boolean = false
     ) {
         val dataPages = _dataPages
         dataPages.forEach { page ->
@@ -146,7 +147,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
             page.data = null
         }
         isAnyDataChanged = false
-        if (dataPages.isNotEmpty()) {
+        if (dataPages.isNotEmpty() && awaitInvalidate) {
             val invalidateChannel = Channel<Unit>(
                 1,
                 onBufferOverflow = BufferOverflow.DROP_OLDEST

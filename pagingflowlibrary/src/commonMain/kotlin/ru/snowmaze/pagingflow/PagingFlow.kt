@@ -1,5 +1,6 @@
 package ru.snowmaze.pagingflow
 
+import kotlinx.coroutines.launch
 import ru.snowmaze.pagingflow.diff.PagingEventsListener
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.params.MutablePagingParams
@@ -133,8 +134,18 @@ open class PagingFlow<Key : Any, Data : Any>(
     override suspend fun invalidate(
         invalidateBehavior: InvalidateBehavior?,
         removeCachedData: Boolean,
-    ) = concatDataSource.invalidate(
-        removeCachedData = removeCachedData,
-        invalidateBehavior = invalidateBehavior
-    )
+        awaitInvalidate: Boolean
+    ) {
+        if (awaitInvalidate) concatDataSource.invalidate(
+            removeCachedData = removeCachedData,
+            invalidateBehavior = invalidateBehavior,
+            awaitInvalidate = true
+        ) else config.coroutineScope.launch(config.processingContext) {
+            concatDataSource.invalidate(
+                removeCachedData = removeCachedData,
+                invalidateBehavior = invalidateBehavior,
+                awaitInvalidate = false
+            )
+        }
+    }
 }

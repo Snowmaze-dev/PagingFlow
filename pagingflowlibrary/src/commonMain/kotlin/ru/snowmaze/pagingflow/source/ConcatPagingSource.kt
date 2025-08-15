@@ -1,6 +1,7 @@
 package ru.snowmaze.pagingflow.source
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.asStateFlow
@@ -101,7 +102,8 @@ open class ConcatPagingSource<Key : Any, Data : Any>(
                 coroutineScope.launch {
                     invalidate(
                         invalidateBehavior = InvalidateBehavior.INVALIDATE_IMMEDIATELY,
-                        removeCachedData = true
+                        removeCachedData = true,
+                        awaitInvalidate = false
                     )
                 }
             }
@@ -167,18 +169,21 @@ open class ConcatPagingSource<Key : Any, Data : Any>(
     ) = loadDataMutex.withLock { pageLoader.loadData(loadParams) }
 
     /**
-     * Deletes all pages
+     * Deletes all pages and resets data
      * @param removeCachedData should also remove cached data for pages?
      * @param invalidateBehavior see [InvalidateBehavior]
+     * @param awaitInvalidate should await for invalidate event to reach presenter or not
      */
     suspend fun invalidate(
         invalidateBehavior: InvalidateBehavior?,
         removeCachedData: Boolean = false,
+        awaitInvalidate: Boolean
     ) = loadDataMutex.withLock {
-        withContext(concatPagingSourceConfig.processingContext) {
+        withContext(concatPagingSourceConfig.processingContext + NonCancellable) {
             dataPagesManager.invalidate(
                 removeCachedData = removeCachedData,
                 invalidateBehavior = invalidateBehavior,
+                awaitInvalidate = awaitInvalidate
             )
             pageLoader.downPagingStatus.value = PagingStatus.Initial(
                 hasNextPage = pagingSourcesManager.downPagingSources.isNotEmpty()

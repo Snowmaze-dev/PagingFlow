@@ -22,5 +22,6 @@ sealed interface PagingFlowLoader<Key: Any> {
     suspend fun invalidate(
         invalidateBehavior: InvalidateBehavior? = null,
         removeCachedData: Boolean = false,
+        awaitInvalidate: Boolean = true
     )
 }
