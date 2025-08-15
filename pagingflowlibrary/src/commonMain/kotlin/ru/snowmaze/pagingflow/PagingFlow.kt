@@ -135,17 +135,9 @@ open class PagingFlow<Key : Any, Data : Any>(
         invalidateBehavior: InvalidateBehavior?,
         removeCachedData: Boolean,
         awaitInvalidate: Boolean
-    ) {
-        if (awaitInvalidate) concatDataSource.invalidate(
-            removeCachedData = removeCachedData,
-            invalidateBehavior = invalidateBehavior,
-            awaitInvalidate = true
-        ) else config.coroutineScope.launch(config.processingContext) {
-            concatDataSource.invalidate(
-                removeCachedData = removeCachedData,
-                invalidateBehavior = invalidateBehavior,
-                awaitInvalidate = false
-            )
-        }
-    }
+    ) = concatDataSource.invalidate(
+        removeCachedData = removeCachedData,
+        invalidateBehavior = invalidateBehavior,
+        awaitInvalidate = awaitInvalidate
+    )
 }
