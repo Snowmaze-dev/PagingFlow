@@ -7,12 +7,13 @@ import kotlinx.coroutines.flow.stateIn
 
 class BasicStatePagingDataPresenter<Key : Any, Data : Any>(
     private val presenter: PagingDataPresenter<Key, Data>,
-    coroutineScope: CoroutineScope
+    coroutineScope: CoroutineScope,
+    sharingStarted: SharingStarted,
 ) : StatePagingDataPresenter<Key, Data> {
 
     override val latestDataFlow: StateFlow<LatestData<Data>> = presenter.latestDataFlow.stateIn(
         scope = coroutineScope,
-        started = SharingStarted.Eagerly,
+        started = sharingStarted,
         initialValue = LatestData(emptyList())
     )
 

@@ -3,7 +3,6 @@ package ru.snowmaze.pagingflow
 import ru.snowmaze.pagingflow.errorshandler.DefaultPagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.errorshandler.PagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.source.ConcatPagingSource
-import ru.snowmaze.pagingflow.source.PageLoaderConfig
 import ru.snowmaze.pagingflow.source.PagingSource
 
 /**
@@ -32,14 +31,7 @@ fun <Key : Any, Data : Any> buildPagingFlow(
     builder: PagingFlow<Key, Data>.() -> Unit = {}
 ) = PagingFlow<Key, Data>(
     ConcatPagingSource(
-        PageLoaderConfig(
-            defaultParamsProvider = configuration.defaultParamsProvider,
-            maxItemsConfiguration = configuration.maxItemsConfiguration,
-            processingDispatcher = configuration.processingDispatcher,
-            coroutineScope = configuration.coroutineScope,
-            storePageItems = configuration.storePageItems,
-            collectOnlyLatest = configuration.collectOnlyLatest
-        ),
+        configuration,
         pagingUnhandledErrorsHandler = pagingUnhandledErrorsHandler
     ),
     configuration,

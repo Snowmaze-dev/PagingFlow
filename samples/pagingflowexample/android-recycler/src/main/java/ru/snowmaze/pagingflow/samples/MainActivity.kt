@@ -17,16 +17,16 @@ import ru.snowmaze.samples.pagingflow.R
 
 class MainActivity : AppCompatActivity() {
 
-    // TODO сделать пример отображения заглушек, тип возвращаем Flow с айтемами типа Stub, а потом когда подгрузятся элементы возвращаем в эту Flow уже нормальный список
     val viewModel by viewModels<TestViewModel>()
-    private val recyclerAdapter by lazy {
+    private val recyclerAdapter: TestAdapter by lazy {
         TestAdapter(
             PagingTrigger(
                 pagingFlow = { viewModel.pagingFlow },
                 prefetchDownDistance = PREFETCH_DISTANCE,
-                coroutineScope = lifecycleScope
+                coroutineScope = lifecycleScope,
+                throttleTimeMillis = 50,
             ),
-            pagingDataChangesMedium = viewModel.pagingDataChangesMedium
+            pagingEventsMedium = viewModel.pagingEventsMedium
         )
     }
 

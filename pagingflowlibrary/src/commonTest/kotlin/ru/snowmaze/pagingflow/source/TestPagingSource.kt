@@ -1,16 +1,19 @@
 package ru.snowmaze.pagingflow.source
 
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flow
 import ru.snowmaze.pagingflow.LoadParams
+import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.result.LoadResult
 import ru.snowmaze.pagingflow.result.result
 
 class TestPagingSource(
     override val totalCount: Int,
     private val flowDelayProvider: () -> Long = { 0L },
-    private val loadDelay: () -> Long = { 0L},
+    private val loadDelay: () -> Long = { 0L },
     private val isReversed: Boolean = false,
+    private val onNewLoadChannel: Channel<LoadParams<Int>>? = null,
     startFrom: Int = 0
 ) : SegmentedPagingSource<String>() {
 
@@ -32,15 +35,17 @@ class TestPagingSource(
         startIndex: Int,
         endIndex: Int
     ): LoadResult<Int, String> {
+        onNewLoadChannel?.send(loadParams)
         val exception = currentException
         if (exception != null) throw exception
         delay(loadDelay())
         val delay = flowDelayProvider()
         val list = items.subList(startIndex, endIndex)
         val finalList = if (isReversed) list.asReversed() else list
-        return if (delay == 0L) result(finalList) else result(dataFlow = flow {
+        return if (delay == 0L) result(finalList, cachedResult = MutablePagingParams())
+        else result(dataFlow = flow {
             delay(delay)
             emit(finalList)
-        })
+        }, cachedResult = MutablePagingParams())
     }
 }

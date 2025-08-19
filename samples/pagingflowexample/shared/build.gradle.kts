@@ -6,16 +6,17 @@ plugins {
 kotlin {
 //  targetHierarchy.default()
 
-  jvm()
+    jvm()
 
-  sourceSets {
-    val commonMain by getting {
-      dependencies {
-        api(projects.pagingflowlibrary)
-        api(libs.kotlinx.coroutines.core)
-        implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
-        api("dev.icerock.moko:mvvm-core:0.16.1")
-      }
+    sourceSets {
+        commonMain.dependencies {
+            api(projects.pagingflowlibrary)
+            api(libs.kotlinx.coroutines.core)
+            implementation("org.jetbrains.kotlinx:kotlinx-datetime:0.4.0")
+            api("dev.icerock.moko:mvvm-core:0.16.1")
+        }
+        commonTest.dependencies {
+            implementation(libs.kotlin.test)
+        }
     }
-  }
 }

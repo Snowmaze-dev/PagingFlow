@@ -1,7 +1,7 @@
 package ru.snowmaze.pagingflow.presenters.list
 
 import androidx.collection.MutableScatterMap
-import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.handle
 import ru.snowmaze.pagingflow.params.MutablePagingParams
@@ -20,7 +20,7 @@ class ListByPagesBuildStrategy<Key : Any, Data : Any> : ListBuildStrategy<Key, D
      * Flattens [indexedPages] Map to list
      */
     override fun buildList(
-        events: List<DataChangedEvent<Key, Data>>,
+        events: List<PagingEvent<Key, Data>>,
         onInvalidate: (InvalidateBehavior?) -> Unit
     ): List<Data?> {
         val newRecentLoadData = ArrayList<MutablePagingParams>(
@@ -51,7 +51,6 @@ class ListByPagesBuildStrategy<Key : Any, Data : Any> : ListBuildStrategy<Key, D
         for (pageIndex in indexes) {
             listSize += indexedPages[pageIndex]?.items?.size ?: 0
         }
-        startPageIndex = newStartIndex
         recentLoadData = newRecentLoadData
         return buildList(listSize) {
             for (pageIndex in indexes) {
@@ -61,6 +60,7 @@ class ListByPagesBuildStrategy<Key : Any, Data : Any> : ListBuildStrategy<Key, D
                 }
                 addAll(page.items)
             }
+            startPageIndex = newStartIndex
         }
     }
 

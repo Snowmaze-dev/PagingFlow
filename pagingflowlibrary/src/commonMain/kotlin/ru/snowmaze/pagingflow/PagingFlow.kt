@@ -1,7 +1,8 @@
 package ru.snowmaze.pagingflow
 
-import ru.snowmaze.pagingflow.diff.DataChangedCallback
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import kotlinx.coroutines.launch
+import ru.snowmaze.pagingflow.diff.PagingEventsListener
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.params.MutablePagingParams
 import ru.snowmaze.pagingflow.params.PagingParams
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
@@ -20,10 +21,10 @@ import ru.snowmaze.pagingflow.utils.DiffOperation
  * You can use extension [pagingDataPresenter] on paging flow to get simply presenter
  * You can also create mapping presenter with [mapDataPresenter]
  */
-class PagingFlow<Key : Any, Data : Any>(
+open class PagingFlow<Key : Any, Data : Any>(
     private val concatDataSource: ConcatPagingSource<Key, Data>,
     override val pagingFlowConfiguration: PagingFlowConfiguration<Key>
-) : PagingDataChangesMedium<Key, Data>, PagingFlowLoader<Key> {
+) : PagingEventsMedium<Key, Data>, PagingFlowLoader<Key> {
 
     override val upPagingStatus = concatDataSource.upPagingStatus
     override val downPagingStatus = concatDataSource.downPagingStatus
@@ -73,17 +74,17 @@ class PagingFlow<Key : Any, Data : Any>(
     )
 
     /**
-     * @see [ConcatPagingSource.addDataChangedCallback]
+     * @see [ConcatPagingSource.addPagingEventsListener]
      */
-    override fun addDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
-        concatDataSource.addDataChangedCallback(callback)
+    override fun addPagingEventsListener(listener: PagingEventsListener<Key, Data>) {
+        concatDataSource.addPagingEventsListener(listener)
     }
 
     /**
-     * @see [ConcatPagingSource.removeDataChangedCallback]
+     * @see [ConcatPagingSource.removePagingEventsListener]
      */
-    override fun removeDataChangedCallback(callback: DataChangedCallback<Key, Data>): Boolean {
-        return concatDataSource.removeDataChangedCallback(callback)
+    override fun removePagingEventsListener(listener: PagingEventsListener<Key, Data>): Boolean {
+        return concatDataSource.removePagingEventsListener(listener)
     }
 
     /**
@@ -133,8 +134,10 @@ class PagingFlow<Key : Any, Data : Any>(
     override suspend fun invalidate(
         invalidateBehavior: InvalidateBehavior?,
         removeCachedData: Boolean,
+        awaitInvalidate: Boolean
     ) = concatDataSource.invalidate(
         removeCachedData = removeCachedData,
-        invalidateBehavior = invalidateBehavior
+        invalidateBehavior = invalidateBehavior,
+        awaitInvalidate = awaitInvalidate
     )
 }
