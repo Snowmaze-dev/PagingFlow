@@ -9,7 +9,7 @@ suspend fun PagingFlow<*, *>.setPagingSourcesWithDiff(sources: List<PagingSource
     setPagingSources(sources as List<Nothing>) { oldList, newList ->
         val difference = differenceOf(oldList, newList)
         buildList {
-            val added = MutableScatterMap<Int, Int>().asMutableMap()
+            val added = MutableScatterMap<Int, Int>()
             fun remove(index: Int, count: Int) {
                 add(DiffOperation.Remove(index, count))
             }
@@ -67,6 +67,10 @@ suspend fun PagingFlow<*, *>.setPagingSourcesWithDiff(sources: List<PagingSource
         } as List<Nothing>
     }
 
-private fun calculateRelativeIndex(added: Map<Int, Int>, index: Int): Int {
-    return index + added.filterKeys { index >= it }.map { it.value }.sum()
+private inline fun calculateRelativeIndex(added: MutableScatterMap<Int, Int>, index: Int): Int {
+    var sum = 0
+    added.forEach { key, value ->
+        if (index >= key) sum =+ value
+    }
+    return index + sum
 }

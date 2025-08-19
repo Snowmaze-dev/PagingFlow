@@ -1,6 +1,7 @@
 package ru.snowmaze.pagingflow.source
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.asStateFlow
@@ -9,9 +10,11 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import ru.snowmaze.pagingflow.LoadParams
+import ru.snowmaze.pagingflow.PaginationDirection
+import ru.snowmaze.pagingflow.PagingFlowConfiguration
 import ru.snowmaze.pagingflow.PagingStatus
-import ru.snowmaze.pagingflow.diff.DataChangedCallback
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import ru.snowmaze.pagingflow.diff.PagingEventsListener
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.errorshandler.DefaultPagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.errorshandler.PagingUnhandledErrorsHandler
 import ru.snowmaze.pagingflow.internal.DataPagesManager
@@ -20,30 +23,49 @@ import ru.snowmaze.pagingflow.internal.PagingSourcesHelper
 import ru.snowmaze.pagingflow.internal.PagingSourcesManager
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.utils.DiffOperation
-import ru.snowmaze.pagingflow.utils.fastFirstOrNull
 import ru.snowmaze.pagingflow.utils.mapHasNext
 import ru.snowmaze.pagingflow.utils.toInfo
+import kotlin.coroutines.ContinuationInterceptor
 
-class ConcatPagingSource<Key : Any, Data : Any>(
-    private val concatDataSourceConfig: PageLoaderConfig<Key>,
+typealias ConcatPagingSourceConfig<Key> = PagingFlowConfiguration<Key>
+
+open class ConcatPagingSource<Key : Any, Data : Any>(
+    private val concatPagingSourceConfig: ConcatPagingSourceConfig<Key>,
     override val pagingUnhandledErrorsHandler: PagingUnhandledErrorsHandler<Key, Data> =
         DefaultPagingUnhandledErrorsHandler()
-) : PagingSource<Key, Data>, PagingDataChangesMedium<Key, Data> {
+) : PagingSource<Key, Data>, PagingEventsMedium<Key, Data> {
 
     private val loadDataMutex = Mutex()
 
     private val pagingSourcesManager = PagingSourcesManager<Key, Data>()
 
-    private val dataPagesManager = DataPagesManager(
-        pageLoaderConfig = concatDataSourceConfig,
+    private val dataPagesManager: DataPagesManager<Key, Data> = DataPagesManager(
+        pageLoaderConfig = concatPagingSourceConfig,
         setDataMutex = loadDataMutex,
-        pagingSourcesManager = pagingSourcesManager
+        pagingSourcesManager = pagingSourcesManager,
+        onLastPageNextKeyChanged = { pagingSourceWithIndex, newNextKey, isDown ->
+            pageLoader.changeHasNextStatus(
+                isPaginationDown = isDown,
+                hasNext = newNextKey != null || pagingSourcesManager.findNextPagingSource(
+                    currentPagingSource = pagingSourceWithIndex,
+                    isThereKey = false,
+                    paginationDirection = if (isDown) PaginationDirection.DOWN
+                    else PaginationDirection.UP
+                ) != null
+            )
+        },
+        onPageRemoved = { inBeginning: Boolean, pageIndex: Int ->
+            pageLoader.changeHasNextStatus(
+                isPaginationDown = !inBeginning,
+                hasNext = true
+            )
+        }
     )
 
     val firstPageInfo
-        get() = dataPagesManager.dataPages.fastFirstOrNull { !it.isNullified }?.toInfo()
+        get() = dataPagesManager.dataPages.firstOrNull { !it.isNullified }?.toInfo()
     val lastPageInfo get() = dataPagesManager.dataPages.lastOrNull()?.toInfo()
-    val pagesInfo get() = dataPagesManager.dataPages.map { it.toInfo() }
+    val pagesInfo get() = dataPagesManager.dataPagesList.map { it.toInfo() }
 
     val notNullifiedPagesCount get() = dataPagesManager.dataPages.count { !it.isNullified }
 
@@ -52,7 +74,7 @@ class ConcatPagingSource<Key : Any, Data : Any>(
     private val pageLoader = PageLoader(
         pagingSourcesManager = pagingSourcesManager,
         dataPagesManager = dataPagesManager,
-        pageLoaderConfig = concatDataSourceConfig,
+        pageLoaderConfig = concatPagingSourceConfig,
         pagingUnhandledErrorsHandler = pagingUnhandledErrorsHandler,
         defaultLoadParams = defaultLoadParams
     )
@@ -71,7 +93,8 @@ class ConcatPagingSource<Key : Any, Data : Any>(
     )
 
     init {
-        val coroutineScope = CoroutineScope(config.processingDispatcher + SupervisorJob())
+        val context = config.processingContext[ContinuationInterceptor] ?: config.processingContext
+        val coroutineScope = CoroutineScope(context + SupervisorJob())
         config.coroutineScope.launch {
             try {
                 awaitCancellation()
@@ -79,19 +102,20 @@ class ConcatPagingSource<Key : Any, Data : Any>(
                 coroutineScope.launch {
                     invalidate(
                         invalidateBehavior = InvalidateBehavior.INVALIDATE_IMMEDIATELY,
-                        removeCachedData = true
+                        removeCachedData = true,
+                        awaitInvalidate = false
                     )
                 }
             }
         }
     }
 
-    override fun addDataChangedCallback(callback: DataChangedCallback<Key, Data>) {
-        dataPagesManager.addDataChangedCallback(callback)
+    override fun addPagingEventsListener(listener: PagingEventsListener<Key, Data>) {
+        dataPagesManager.addPagingEventsListener(listener)
     }
 
-    override fun removeDataChangedCallback(callback: DataChangedCallback<Key, Data>): Boolean {
-        return dataPagesManager.removeDataChangedCallback(callback)
+    override fun removePagingEventsListener(listener: PagingEventsListener<Key, Data>): Boolean {
+        return dataPagesManager.removePagingEventsListener(listener)
     }
 
     fun addDownPagingSource(pagingSource: PagingSource<Key, out Data>) {
@@ -113,7 +137,7 @@ class ConcatPagingSource<Key : Any, Data : Any>(
     }
 
     fun removePagingSource(dataSourceIndex: Int) {
-        concatDataSourceConfig.coroutineScope.launch {
+        concatPagingSourceConfig.coroutineScope.launch {
             loadDataMutex.withLock {
                 dataSourcesHelper.remove(dataSourceIndex)
             }
@@ -130,7 +154,7 @@ class ConcatPagingSource<Key : Any, Data : Any>(
 
     suspend fun invalidateAndSetPagingSources(pagingSourceList: List<PagingSource<Key, out Data>>) {
         loadDataMutex.withLock {
-            withContext(concatDataSourceConfig.processingDispatcher) {
+            withContext(concatPagingSourceConfig.processingContext) {
                 dataPagesManager.invalidate(removeCachedData = true)
                 pagingSourcesManager.replacePagingSources(
                     pagingSourceList as List<PagingSource<Key, Data>>
@@ -145,18 +169,21 @@ class ConcatPagingSource<Key : Any, Data : Any>(
     ) = loadDataMutex.withLock { pageLoader.loadData(loadParams) }
 
     /**
-     * Deletes all pages
+     * Deletes all pages and resets data
      * @param removeCachedData should also remove cached data for pages?
      * @param invalidateBehavior see [InvalidateBehavior]
+     * @param awaitInvalidate should await for invalidate event to reach presenter or not
      */
     suspend fun invalidate(
         invalidateBehavior: InvalidateBehavior?,
         removeCachedData: Boolean = false,
+        awaitInvalidate: Boolean
     ) = loadDataMutex.withLock {
-        withContext(concatDataSourceConfig.processingDispatcher) {
+        withContext(concatPagingSourceConfig.processingContext + NonCancellable) {
             dataPagesManager.invalidate(
                 removeCachedData = removeCachedData,
                 invalidateBehavior = invalidateBehavior,
+                awaitInvalidate = awaitInvalidate
             )
             pageLoader.downPagingStatus.value = PagingStatus.Initial(
                 hasNextPage = pagingSourcesManager.downPagingSources.isNotEmpty()

@@ -1,29 +1,36 @@
 package ru.snowmaze.pagingflow.diff.mediums.composite
 
+import androidx.collection.MutableObjectList
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.channels.ProducerScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.FlowCollector
-import kotlinx.coroutines.flow.flow
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
-import ru.snowmaze.pagingflow.diff.mediums.DataChangesMediumConfig
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.collectLatest
+import ru.snowmaze.pagingflow.ExperimentalPagingApi
+import ru.snowmaze.pagingflow.diff.PageChangedEvent
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMediumConfig
 
+@ExperimentalPagingApi
 class CompositePagingDataChangesMediumBuilder<Key : Any, Data : Any, NewData : Any>(
-    private val pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
-    private val config: DataChangesMediumConfig = pagingDataChangesMedium.config
+    private val pagingEventsMedium: PagingEventsMedium<Key, Data>,
+    private val config: PagingEventsMediumConfig = pagingEventsMedium.config
 ) {
 
     companion object {
 
+        @ExperimentalPagingApi
         fun <Key : Any, Data : Any, NewData : Any> build(
-            pagingDataChangesMedium: PagingDataChangesMedium<Key, Data>,
-            config: DataChangesMediumConfig = pagingDataChangesMedium.config,
+            pagingEventsMedium: PagingEventsMedium<Key, Data>,
+            config: PagingEventsMediumConfig = pagingEventsMedium.config,
             builder: CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.() -> Unit
         ) = CompositePagingDataChangesMediumBuilder<Key, Data, NewData>(
-            pagingDataChangesMedium = pagingDataChangesMedium,
+            pagingEventsMedium = pagingEventsMedium,
             config = config
         ).apply(builder).build()
     }
 
-    private val sections = mutableListOf<CompositePresenterSection<Key, Data, NewData>>()
+    private val sections = MutableObjectList<CompositePresenterSection<Key, Data, NewData>>()
 
     /**
      * Adds simple section
@@ -32,36 +39,53 @@ class CompositePagingDataChangesMediumBuilder<Key : Any, Data : Any, NewData : A
      */
     fun section(
         updateWhenDataUpdated: Boolean = false,
-        itemsProvider: () -> List<NewData>
+        itemsProvider: () -> List<NewData?>
     ) {
         sections.add(CompositePresenterSection.SimpleSection(updateWhenDataUpdated, itemsProvider))
     }
 
-    fun flowSection(itemsProvider: Flow<List<NewData>>) {
+    fun flowSection(itemsProvider: Flow<List<NewData?>>) {
         sections.add(CompositePresenterSection.FlowSection(itemsProvider))
     }
 
     fun dataSourceSection(
-        dataSourceIndex: Int, mapper: (List<Data>) -> List<NewData>
+        dataSourceIndex: Int, mapper: (PageChangedEvent<Key, Data>) -> List<NewData?>
     ) {
         sections.add(CompositePresenterSection.DataSourceSection(dataSourceIndex, mapper))
     }
 
-    fun build() = CompositePagingDataChangesMedium(
-        pagingDataChangesMedium = pagingDataChangesMedium,
+    fun build() = CompositePagingEventsMedium(
+        pagingEventsMedium = pagingEventsMedium,
         sections = sections,
         config = config
     )
 }
 
-fun <Key : Any, Data : Any, NewData : Any> CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.flowSection(
-    flowCollector: FlowCollector<List<NewData>>.() -> Unit
-) = flowSection(flow(flowCollector))
+@OptIn(ExperimentalPagingApi::class)
+inline fun <Key : Any, Data : Any, NewData : Any, T> CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.mapFlowSection(
+    flow: Flow<T>, crossinline mapper: (T) -> List<NewData>?
+) = flowSection(callbackFlow {
+    flow.collectLatest {
+        val mapped = mapper(it)
+        if (mapped != null) send(mapped)
+    }
+    awaitCancellation()
+})
 
+@OptIn(ExperimentalPagingApi::class)
+inline fun <Key : Any, Data : Any, NewData : Any> CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.flowSection(
+    crossinline flowCollector: suspend ProducerScope<List<NewData>>.() -> Unit
+) = flowSection(callbackFlow {
+    flowCollector()
+    awaitCancellation()
+})
+
+@OptIn(ExperimentalPagingApi::class)
 fun <Key : Any, Data : Any, NewData : Any> CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.dataSourceSectionMapped(
     dataSourceIndex: Int
 ) = dataSourceSection(dataSourceIndex) { it as List<NewData> }
 
+@OptIn(ExperimentalPagingApi::class)
 fun <Key : Any, Data : Any, NewData : Any> CompositePagingDataChangesMediumBuilder<Key, Data, NewData>.section(
     items: List<NewData>
 ) = section(updateWhenDataUpdated = false) { items }

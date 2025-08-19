@@ -44,11 +44,19 @@ suspend fun PagingFlow<Int, String>.testLoadEverything(
         currentLoadSize = (currentTotalCount - currentSourceLoadedCount).coerceAtMost(pageSize)
         if (shouldTestItems) {
             var testItems: List<String?> = loadingSources.mapIndexed { index, testDataSource ->
-                testDataSource.getItems(
-                    if (index == loadingSources.lastIndex) {
-                        currentSourceLoadedCount
-                    } else testDataSource.totalCount
-                )
+                try {
+                    testDataSource.getItems(
+                        if (index == loadingSources.lastIndex) {
+                            currentSourceLoadedCount
+                        } else testDataSource.totalCount
+                    )
+                } catch (e: IndexOutOfBoundsException) {
+                    e.printStackTrace()
+                    println("currentTotalCount $currentTotalCount")
+                    println("currentLoadSize $currentLoadSize")
+                    println("currentSourceLoadedCount $currentSourceLoadedCount")
+                    throw e
+                }
             }.flatten()
             val maxItemsConfiguration = pagingFlowConfiguration.maxItemsConfiguration
             val maxItemsOffset = maxItemsConfiguration?.maxItemsCount
@@ -57,7 +65,7 @@ suspend fun PagingFlow<Int, String>.testLoadEverything(
                     (overallLoadedCount - maxItemsOffset)
                         .coerceAtLeast(0) / pageSize.toDouble()
                 ) * pageSize).toInt()
-                testItems = if (maxItemsConfiguration.enableDroppedPagesNullPlaceholders) {
+                testItems = if (maxItemsConfiguration.maxDroppedPagesItemsCount != null) {
                     testItems.mapIndexed { index, item ->
                         if (removeItemsCount > index) null
                         else item
@@ -71,7 +79,7 @@ suspend fun PagingFlow<Int, String>.testLoadEverything(
                 pagingPresenter.data
             )
         }
-        if (currentLoadSize == 0) {
+        if (currentLoadSize <= 0) {
             currentDataSource = dataSources.getOrNull(++dataSourceIndex) ?: break
             currentSourceLoadedCount = 0
             currentTotalCount = currentDataSource.totalCount
@@ -93,7 +101,8 @@ suspend inline fun <T> Flow<T>.firstEqualsWithTimeout(
     value: T,
     timeout: Long = 1000
 ) = firstWithTimeout(timeout, {
-    "expected $value but was $it"
+    """expected $value
+        |actual $it""".trimMargin()
 }) {
     value == it
 }

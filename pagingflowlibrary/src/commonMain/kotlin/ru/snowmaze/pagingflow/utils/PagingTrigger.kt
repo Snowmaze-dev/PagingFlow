@@ -19,7 +19,7 @@ class PagingTrigger(
     private val onEndReached: suspend (PaginationDirection) -> Unit,
     var itemCount: () -> Int,
     val pageSize: () -> Int,
-    var currentStartIndexProvider: () -> Int = { 0 },
+    var currentStartIndexProvider: (PaginationDirection) -> Int = { 0 },
     val maxItemsCount: () -> Int? = { null },
     val prefetchDownDistance: Int = 1,
     val prefetchUpDistance: Int = prefetchDownDistance,
@@ -29,15 +29,13 @@ class PagingTrigger(
     private val shouldTryPaginateBackOnMaxItemsOffset: Boolean = false,
     private val saveLastThrottledEvent: Boolean = true,
     private val coroutineScope: CoroutineScope,
-    var currentTimeMillisProvider: () -> Long = {
-        Clock.System.now().toEpochMilliseconds()
-    },
+    var currentTimeMillisProvider: () -> Long = { Clock.System.now().toEpochMilliseconds() },
 ) {
 
     constructor(
         pagingFlow: () -> PagingFlowLoader<*>,
         itemCount: () -> Int = { 0 },
-        currentStartIndex: () -> Int = { 0 },
+        currentStartIndex: (PaginationDirection) -> Int = { 0 },
         prefetchDownDistance: Int = 1,
         prefetchUpDistance: Int = prefetchDownDistance,
         throttleTimeMillis: Int = 500,
@@ -107,9 +105,9 @@ class PagingTrigger(
         val direction = if (paginationDownEnabled && index >= (itemCount - prefetchDownDistance)) {
             PaginationDirection.DOWN
         } else if (paginationUpEnabled) {
-            val relativeStartIndex = if (maxItemsCount == null) index else {
-                index - currentStartIndexProvider()
-            }
+            val startIndex = currentStartIndexProvider(PaginationDirection.UP)
+            val relativeStartIndex = if (maxItemsCount == null) index
+            else index - startIndex
             val shouldLoadUp = if (shouldTryPaginateBackOnMaxItemsOffset && maxItemsCount != null) {
                 val pageSize = pageSize()
                 prefetchUpDistance * ((maxItemsCount / pageSize) - 1) >= relativeStartIndex

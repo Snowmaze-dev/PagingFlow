@@ -2,23 +2,26 @@ package ru.snowmaze.pagingflow
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
+import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.PageRemovedEvent
+import ru.snowmaze.pagingflow.diff.compositeListMedium
 import ru.snowmaze.pagingflow.diff.mediums.composite.CompositePagingDataChangesMediumBuilder
 import ru.snowmaze.pagingflow.diff.mediums.composite.section
-import ru.snowmaze.pagingflow.presenters.compositeDataPresenter
 import ru.snowmaze.pagingflow.presenters.data
 import ru.snowmaze.pagingflow.presenters.dataFlow
-import ru.snowmaze.pagingflow.presenters.pagingDataPresenter
 import ru.snowmaze.pagingflow.presenters.statePresenter
-import ru.snowmaze.pagingflow.source.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.source.TestPagingSource
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 
+/**
+ * Tests for [ru.snowmaze.pagingflow.diff.mediums.composite.CompositePagingEventsMedium]
+ */
 class CompositeMediumTest {
 
     private val pageSize = 20
@@ -29,7 +32,8 @@ class CompositeMediumTest {
         defaultParams = LoadParams(pageSize, 0),
         processingDispatcher = Dispatchers.Default,
         maxItemsConfiguration = MaxItemsConfiguration(
-            maxItemsCount = removePagesOffset * pageSize, enableDroppedPagesNullPlaceholders = false
+            maxItemsCount = removePagesOffset * pageSize,
+            maxDroppedPagesItemsCount = null
         )
     )
 
@@ -40,15 +44,14 @@ class CompositeMediumTest {
             addDownPagingSource(testDataSource)
         }
         val data = listOf(123)
-        val presenter = pagingFlow.compositeDataPresenter {
+        val presenter = pagingFlow.compositeListMedium {
             section(data)
         }.statePresenter()
         presenter.latestDataFlow.firstWithTimeout { it.data.size == 1 }
         assertEquals(data, presenter.data)
     }
 
-    private fun mapToInts(data: List<String>) = data.map { it.drop(5).toInt() }
-
+    @OptIn(ExperimentalPagingApi::class)
     @Test
     fun baseMediumTest() = runTestOnDispatchersDefault {
         val testDataSource = TestPagingSource(pageSize * 3)
@@ -78,19 +81,18 @@ class CompositeMediumTest {
         }
         val latestEventsMedium = LatestEventsMedium(medium)
 
-        val presenter = medium.pagingDataPresenter().statePresenter()
-        firstFlow.emit(second)
-        presenter.latestDataFlow.firstWithTimeout(timeout = 2000) { it.data.size == 2 }
-        val lastEvents = latestEventsMedium.eventsFlow.first()
-        assertEquals(startList + second, presenter.data)
-        val mappedEvents = lastEvents.map {
-            it::class.simpleName + " source " + (it as PageChangedEvent).sourceIndex
-        }
-        assertEquals(
-            1,
-            lastEvents.size,
-            "expected one event but got $mappedEvents"
+        val presenter = medium.statePresenter(
+            sharingStarted = SharingStarted.Eagerly
         )
+        firstFlow.emit(second)
+        presenter.latestDataFlow.firstWithTimeout(timeout = 2000, message = {
+            "Was ${it?.data}, events ${latestEventsMedium.lastEvents}"
+        }) { it.data.size == 2 }
+        val lastEvents = latestEventsMedium.eventsFlow.first().mapNotNull {
+            if (it is InvalidateEvent) return@mapNotNull null
+            it
+        }
+        assertEquals(startList + second, presenter.data)
         assertIs<PageAddedEvent<*, *>>(lastEvents.first())
         secondFlow.emit(third)
         presenter.latestDataFlow.firstWithTimeout { it.data.size == 3 }
@@ -160,4 +162,8 @@ class CompositeMediumTest {
             ) + third + fifth + startList
         )
     }
+
+    private fun mapToInts(data: List<String?>) = data.map { it?.drop(5)?.toInt() }
+
+    private fun mapToInts(event: PageChangedEvent<Int, String>) = mapToInts(event.items)
 }

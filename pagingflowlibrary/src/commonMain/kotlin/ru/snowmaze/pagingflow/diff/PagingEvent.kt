@@ -8,7 +8,7 @@ import kotlin.contracts.ExperimentalContracts
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
-open class DataChangedEvent<Key : Any, Data : Any>
+open class PagingEvent<Key : Any, Data : Any>
 
 internal interface EventFromDataSource<Key : Any, Data : Any> {
 
@@ -22,7 +22,7 @@ internal interface EventFromDataSource<Key : Any, Data : Any> {
         sourceIndex: Int,
         pageIndex: Int,
         pageIndexInSource: Int = this.pageIndexInSource
-    ): DataChangedEvent<Key, Data>
+    ): PagingEvent<Key, Data>
 }
 
 /**
@@ -38,7 +38,7 @@ open class PageChangedEvent<Key : Any, Data : Any>(
     val items: List<Data?>,
     val changeType: ChangeType = ChangeType.COMMON_CHANGE,
     val params: MutablePagingParams? = null,
-) : DataChangedEvent<Key, Data>(), EventFromDataSource<Key, Data> {
+) : PagingEvent<Key, Data>(), EventFromDataSource<Key, Data> {
 
     inline val notNullItems get() = items as List<Data>
 
@@ -73,6 +73,7 @@ class PageAddedEvent<Key : Any, Data : Any>(
     pageIndexInSource: Int,
     items: List<Data?>,
     params: MutablePagingParams? = null,
+    changeType: ChangeType = ChangeType.COMMON_CHANGE
 ) : PageChangedEvent<Key, Data>(
     key = key,
     pageIndex = pageIndex,
@@ -81,6 +82,7 @@ class PageAddedEvent<Key : Any, Data : Any>(
     previousList = null,
     items = items,
     params = params,
+    changeType = changeType,
     previousItemCount = 0
 ) {
 
@@ -94,6 +96,7 @@ class PageAddedEvent<Key : Any, Data : Any>(
         pageIndex = pageIndex,
         items = items as List<Data>,
         params = params,
+        changeType = changeType,
         pageIndexInSource = pageIndexInSource
     )
 }
@@ -104,7 +107,7 @@ class PageRemovedEvent<Key : Any, Data : Any>(
     override val pageIndex: Int,
     override val pageIndexInSource: Int,
     val itemsCount: Int,
-) : DataChangedEvent<Key, Data>(), EventFromDataSource<Key, Data> {
+) : PagingEvent<Key, Data>(), EventFromDataSource<Key, Data> {
 
     override fun copyWithNewPositionData(
         sourceIndex: Int,
@@ -124,23 +127,23 @@ class PageRemovedEvent<Key : Any, Data : Any>(
  */
 class InvalidateEvent<Key : Any, Data : Any>(
     val invalidateBehavior: InvalidateBehavior?
-) : DataChangedEvent<Key, Data>()
+) : PagingEvent<Key, Data>()
 
 class AwaitDataSetEvent<Key : Any, Data : Any>(
-    val callback: () -> Unit
-) : DataChangedEvent<Key, Data>()
+    val callback: suspend () -> Unit
+) : PagingEvent<Key, Data>()
 
 class OnDataLoaded<Key : Any, Data : Any>(
     val params: PagingParams?
-) : DataChangedEvent<Key, Data>()
+) : PagingEvent<Key, Data>()
 
 @OptIn(ExperimentalContracts::class)
-inline fun <Key : Any, Data : Any, T : Any> DataChangedEvent<Key, Data>.handle(
+inline fun <Key : Any, Data : Any, T : Any> PagingEvent<Key, Data>.handle(
     onPageAdded: (PageAddedEvent<Key, Data>) -> T?,
     onPageChanged: (PageChangedEvent<Key, Data>) -> T?,
     onPageRemovedEvent: (PageRemovedEvent<Key, Data>) -> T?,
     onInvalidate: (InvalidateEvent<Key, Data>) -> T?,
-    onElse: ((DataChangedEvent<Key, Data>) -> T?)
+    onElse: ((PagingEvent<Key, Data>) -> T?)
 ): T? {
     contract {
         callsInPlace(onPageAdded, InvocationKind.AT_MOST_ONCE)
@@ -157,4 +160,10 @@ inline fun <Key : Any, Data : Any, T : Any> DataChangedEvent<Key, Data>.handle(
         is InvalidateEvent -> onInvalidate(this)
         else -> onElse(this)
     }
+}
+
+inline fun <Key : Any, Data : Any, T : Any> PageChangedEvent<Key, Data>.map(
+    transform: (Data?) -> T?
+): List<T?> {
+    return items.map(transform)
 }

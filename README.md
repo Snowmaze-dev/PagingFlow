@@ -10,9 +10,9 @@ Its also provides the capabilities for custom argument passing and setting custo
 class ExamplePagingSource(
     private val networkSource: NetworkSource,
     private val databaseSource: DatabaseSource
-) : PagingSource<Int, String, Any> {
+) : PagingSource<Int, String> {
 
-    override suspend fun load(loadParams: LoadParams<Int>): LoadResult<Int, String, Any> {
+    override suspend fun load(loadParams: LoadParams<Int>): LoadResult<Int, String> {
         val offset = loadParams.key ?: 0
         val response = try {
             networkSource.getData(offset)
@@ -55,3 +55,7 @@ viewLifecycleOwner.coroutineScope.launch {
    }
 }
 ```
+
+### Architecture
+
+[<img width="3881" height="1080" alt="PagingFlow drawio" src="https://github.com/user-attachments/assets/dd54e981-635f-4985-9ad2-aec059897323" />](https://viewer.diagrams.net/?tags=%7B%7D&lightbox=1&highlight=0000ff&edit=_blank&layers=1&nav=1&title=PagingFlow.drawio&dark=auto#Uhttps%3A%2F%2Fdrive.google.com%2Fuc%3Fid%3D1D6pVE357gAQaY_nuGQvC8gNb2GdWj03z%26export%3Ddownload)

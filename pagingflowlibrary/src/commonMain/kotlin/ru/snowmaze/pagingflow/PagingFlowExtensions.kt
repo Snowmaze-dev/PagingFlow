@@ -19,7 +19,7 @@ import ru.snowmaze.pagingflow.utils.fastForEach
 suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPageWithResult(
     paginationDirection: PaginationDirection? = null,
     pagingParams: MutablePagingParams? = null
-) = withContext(pagingFlowConfiguration.processingDispatcher) {
+) = withContext(pagingFlowConfiguration.processingContext) {
     load(paginationDirection, pagingParams)
 }
 
@@ -30,7 +30,7 @@ suspend fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPageWithResult
 fun <Key : Any, Data : Any> PagingFlow<Key, Data>.loadNextPage(
     paginationDirection: PaginationDirection? = null,
     pagingParams: MutablePagingParams? = null
-) = pagingFlowConfiguration.coroutineScope.launch(pagingFlowConfiguration.processingDispatcher) {
+) = pagingFlowConfiguration.coroutineScope.launch(pagingFlowConfiguration.processingContext) {
     load(paginationDirection, pagingParams)
 }
 
@@ -140,7 +140,7 @@ suspend fun <Key : Any> PagingFlowLoader<Key>.loadNextPageAndAwaitDataSet(
 suspend fun <Key : Any> PagingFlowLoader<Key>.loadNextPageWithResult(
     paginationDirection: PaginationDirection? = null,
     pagingParams: MutablePagingParams? = null
-) = withContext(pagingFlowConfiguration.processingDispatcher) {
+) = withContext(pagingFlowConfiguration.processingContext) {
     (this@loadNextPageWithResult as PagingFlow<Key, Any>).load(paginationDirection, pagingParams)
 }
 
@@ -151,7 +151,7 @@ suspend fun <Key : Any> PagingFlowLoader<Key>.loadNextPageWithResult(
 fun <Key : Any> PagingFlowLoader<Key>.loadNextPage(
     paginationDirection: PaginationDirection? = null,
     pagingParams: MutablePagingParams? = null
-) = pagingFlowConfiguration.coroutineScope.launch(pagingFlowConfiguration.processingDispatcher) {
+) = pagingFlowConfiguration.coroutineScope.launch(pagingFlowConfiguration.processingContext) {
     (this@loadNextPage as PagingFlow<Key, Any>).load(paginationDirection, pagingParams)
 }
 

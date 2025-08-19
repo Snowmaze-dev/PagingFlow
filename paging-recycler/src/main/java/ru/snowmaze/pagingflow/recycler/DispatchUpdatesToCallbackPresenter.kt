@@ -5,11 +5,12 @@ import androidx.recyclerview.widget.ListUpdateCallback
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import ru.snowmaze.pagingflow.diff.DataChangedEvent
+import ru.snowmaze.pagingflow.diff.PagingEvent
 import ru.snowmaze.pagingflow.diff.PageChangedEvent
 import ru.snowmaze.pagingflow.diff.handle
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
 import ru.snowmaze.pagingflow.presenters.LatestData
 import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
@@ -19,13 +20,14 @@ import ru.snowmaze.pagingflow.utils.fastForEach
 class DispatchUpdatesToCallbackPresenter<Data : Any>(
     private val listUpdateCallback: ListUpdateCallback,
     private val offsetListUpdateCallbackProvider: (Int) -> OffsetListUpdateCallback,
-    private val pagingMedium: PagingDataChangesMedium<out Any, Data>,
+    private val pagingMedium: PagingEventsMedium<out Any, Data>,
     private val itemCallback: DiffUtil.ItemCallback<Data>,
-    invalidateBehavior: InvalidateBehavior,
-    private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main
+    private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main.immediate,
+    private val presenterConfiguration: BasicPresenterConfiguration<out Any, Data>,
+    private val setNewItems: (List<Data?>) -> Unit,
 ) : BasicBuildListPagingPresenter<Any, Data>(
-    pagingDataChangesMedium = pagingMedium as PagingDataChangesMedium<Any, Data>,
-    presenterConfiguration = BasicPresenterConfiguration(invalidateBehavior = invalidateBehavior)
+    pagingEventsMedium = pagingMedium as PagingEventsMedium<Any, Data>,
+    presenterConfiguration = presenterConfiguration as BasicPresenterConfiguration<Any, Data>
 ) {
 
     private val pagesIndexes = mutableMapOf<Int, List<Data?>>()
@@ -33,12 +35,22 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
     private var wasInvalidated = false
     private var currentData = LatestData<Data>(emptyList(), emptyList())
 
+    override suspend fun onEvent(event: PagingEvent<Any, Data>) {
+        withContext(processingContext) {
+            mutex.withLock {
+                buildList(listOf(event))
+            }
+        }
+    }
+
     override suspend fun onItemsSet(
-        events: List<DataChangedEvent<Any, Data>>,
+        events: List<PagingEvent<Any, Data>>,
         currentData: LatestData<Data>
     ) {
-        this.currentData = currentData
         coroutineScope.launch(mainDispatcher) {
+            this@DispatchUpdatesToCallbackPresenter.currentData = currentData
+            setNewItems(currentData.data)
+            // TODO make that cycle in background thread creating diff changes and then dispatch these updates in main thread
             events.fastForEach { event ->
                 event.handle(
                     onPageAdded = {
@@ -60,32 +72,37 @@ class DispatchUpdatesToCallbackPresenter<Data : Any>(
                             list?.size ?: 0
                         )
                     },
-                    onInvalidate = {},
+                    onInvalidate = {
+                    },
                     onElse = {}
                 )
             }
-        }
+        }.join()
     }
 
-    private fun onPageChanged(event: PageChangedEvent<*, Data>) {
-        val offsetListUpdateCallback = offsetListUpdateCallbackProvider(
-            calculatePageStartItemIndex(event.pageIndex)
-        )
+    private inline fun onPageChanged(event: PageChangedEvent<*, Data>) {
+        val startIndex = calculatePageStartItemIndex(event.pageIndex)
+        val offsetListUpdateCallback = offsetListUpdateCallbackProvider(startIndex)
+
         when (event.changeType) {
-            PageChangedEvent.ChangeType.COMMON_CHANGE -> coroutineScope.launch(
-                pagingMedium.config.processingDispatcher
-            ) {
+            PageChangedEvent.ChangeType.COMMON_CHANGE -> {
                 val diffResult = PagingDiffUtil.calculateDiff(
-                    oldList = pagesIndexes.getValue(event.pageIndex) as List<Data>,
+                    oldList = pagesIndexes[event.pageIndex] as? List<Data> ?: emptyList(),
                     newList = event.items as List<Data>,
                     diffCallback = itemCallback,
                 )
-                withContext(mainDispatcher) {
-                    diffResult.dispatchUpdatesTo(offsetListUpdateCallback)
-                }
+                diffResult.dispatchUpdatesTo(offsetListUpdateCallback)
             }
 
-            else -> offsetListUpdateCallback.onChanged(0, event.items.size, null)
+            else -> {
+                offsetListUpdateCallback.onChanged(0, event.items.size, null)
+                if (event.previousItemCount > event.items.size) {
+                    offsetListUpdateCallback.onRemoved(
+                        event.items.size,
+                        event.previousItemCount - event.items.size
+                    )
+                }
+            }
         }
         pagesIndexes[event.pageIndex] = event.items
     }

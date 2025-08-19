@@ -1,5 +1,6 @@
 package ru.snowmaze.pagingflow
 
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import ru.snowmaze.pagingflow.presenters.StatePagingDataPresenter
@@ -21,9 +22,10 @@ import kotlin.test.assertContentEquals
 
 class SetDataSourcesTest {
 
+    private val testDispatcher = UnconfinedTestDispatcher()
+
     @Test
-    fun setDataSourcesTest() = runTest {
-        val testDispatcher = UnconfinedTestDispatcher()
+    fun setDataSourcesTest() = runTest(testDispatcher) {
         val firstDataSource = DefinedItemsTestPagingSource("1", listOf(1))
         val secondDataSource = DefinedItemsTestPagingSource("2", listOf(2))
         val thirdDataSource = DefinedItemsTestPagingSource("3", listOf(3))
@@ -38,7 +40,9 @@ class SetDataSourcesTest {
             addDownPagingSource(fourthDataSource)
         }
 
-        val presenter = pagingFlow.pagingDataPresenter().statePresenter()
+        val presenter = pagingFlow.pagingDataPresenter().statePresenter(
+            sharingStarted = SharingStarted.Eagerly
+        )
         while ((pagingFlow.loadNextPageWithResult() as LoadNextPageResult.Success).hasNext) {
         }
         assertContentEquals(

@@ -6,49 +6,47 @@ import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.ListUpdateCallback
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import ru.snowmaze.pagingflow.diff.mediums.PagingDataChangesMedium
+import kotlinx.coroutines.flow.SharingStarted
+import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
+import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.InvalidateBehavior
-import ru.snowmaze.pagingflow.presenters.dataFlow
+import ru.snowmaze.pagingflow.presenters.statePresenter
 import ru.snowmaze.pagingflow.utils.PagingTrigger
 
 /**
  * RecyclerView.Adapter base class which can listen paging data changes callback, calculate diffs on background thread and notify adapter of changes
  * This class wraps [DispatchUpdatesToCallbackPresenter] which listens events and dispatches updates to adapter through [ListUpdateCallback]
  * @see PagingTrigger
- * @see PagingDataChangesMedium
+ * @see PagingEventsMedium
  * @see InvalidateBehavior
  */
 abstract class PagingFlowAdapter<Data : Any, VH : ViewHolder>(
     itemCallback: DiffUtil.ItemCallback<Data>,
-    pagingDataChangesMedium: PagingDataChangesMedium<out Any, Data>,
+    pagingEventsMedium: PagingEventsMedium<out Any, Data>,
     private val pagingTrigger: PagingTrigger,
-    invalidateBehavior: InvalidateBehavior = InvalidateBehavior.WAIT_FOR_NEW_LIST,
-    mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
+    presenterConfiguration: BasicPresenterConfiguration<out Any, Data> =
+        BasicPresenterConfiguration()
 ) : RecyclerView.Adapter<VH>() {
 
     @Suppress("LeakingThis")
-    private val dispatchUpdatesToCallbackPresenter = DispatchUpdatesToCallbackPresenter(
+    protected val dispatchUpdatesToCallbackPresenter = DispatchUpdatesToCallbackPresenter(
         listUpdateCallback = AdapterListUpdateCallback(this),
         offsetListUpdateCallbackProvider = { offset: Int ->
             OffsetListUpdateCallback(this, offset)
         },
-        pagingMedium = pagingDataChangesMedium,
+        pagingMedium = pagingEventsMedium,
         itemCallback = itemCallback,
-        invalidateBehavior = invalidateBehavior
-    )
+        presenterConfiguration = presenterConfiguration
+    ) {
+        items = it
+        onNewItems(it)
+    }.statePresenter(sharingStarted = SharingStarted.Eagerly)
     private var items = emptyList<Data?>()
+    val startIndex get() = dispatchUpdatesToCallbackPresenter.startIndex
 
     init {
-        pagingDataChangesMedium.config.coroutineScope.launch(mainDispatcher) {
-            dispatchUpdatesToCallbackPresenter.dataFlow.collect {
-                items = it
-            }
-        }
         pagingTrigger.currentStartIndexProvider = { dispatchUpdatesToCallbackPresenter.startIndex }
-        pagingTrigger.itemCount = { itemCount }
+        pagingTrigger.itemCount = { items.size }
         pagingTrigger.currentTimeMillisProvider = { System.currentTimeMillis() }
     }
 
@@ -60,5 +58,9 @@ abstract class PagingFlowAdapter<Data : Any, VH : ViewHolder>(
 
     override fun getItemCount() = items.size
 
-    fun getItem(index: Int) = items[index]
+    fun getNullable(index: Int) = items[index]
+
+    operator fun get(index: Int) = items[index] as Data
+
+    open fun onNewItems(items: List<Data?>) {}
 }
