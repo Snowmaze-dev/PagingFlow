@@ -17,7 +17,7 @@ class MapFlowPagingEventsMedium<Key : Any, Data : Any, NewData : Any>(
     pagingEventsMedium: PagingEventsMedium<Key, Data>,
     override val config: PagingEventsMediumConfig = pagingEventsMedium.config,
     private val transformOtherEvents: (
-        (PagingEvent<Key, Data>) -> EventsMapper<Key, NewData>
+        (PagingEvent<Key, Data>) -> EventsMapper<Key, NewData>?
     )? = null,
     private val transform: (PageChangedEvent<Key, Data>) -> Flow<List<NewData?>>,
 ) : SubscribeForChangesEventsMedium<Key, Data, NewData>(pagingEventsMedium) {
@@ -89,14 +89,15 @@ class MapFlowPagingEventsMedium<Key : Any, Data : Any, NewData : Any>(
                 onElse = {
                     val transformOtherEvents = transformOtherEvents
                     if (transformOtherEvents != null) {
-                        val eventsMapper = transformOtherEvents(it)
+                        val eventsMapper = transformOtherEvents(it) ?: return@handle null
                         otherEventsListeners.remove(eventsMapper.listenerId)?.cancelAndJoin()
                         otherEventsListeners[eventsMapper.listenerId] = config.coroutineScope.launch {
                             eventsMapper.eventFlow.collect { mapped ->
                                 notifyOnEvent(mapped)
                             }
                         }
-                    }
+                    } else (it as? PagingEvent<Key, NewData>)?.let { event -> notifyOnEvent(event) }
+                    null
                 }
             )
         }
