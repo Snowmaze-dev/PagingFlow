@@ -12,8 +12,7 @@ class MapPagingEventsMedium<Key : Any, Data : Any, NewData : Any>(
     pagingEventsMedium: PagingEventsMedium<Key, Data>,
     override val config: PagingEventsMediumConfig = pagingEventsMedium.config,
     private val transformOtherEvents: (
-        suspend (PagingEvent<Key, Data>) -> PagingEvent<Key, NewData>?
-    )? = null,
+    suspend (PagingEvent<Key, Data>) -> PagingEvent<Key, NewData>?)? = null,
     private val transform: suspend (PageChangedEvent<Key, Data>) -> List<NewData?>,
 ) : SubscribeForChangesEventsMedium<Key, Data, NewData>(pagingEventsMedium),
     PagingEventsListener<Key, Data> {
@@ -58,6 +57,9 @@ class MapPagingEventsMedium<Key : Any, Data : Any, NewData : Any>(
         },
         onPageRemovedEvent = { it as PageRemovedEvent<Key, NewData> },
         onInvalidate = { it as InvalidateEvent<Key, NewData> },
-        onElse = { transformOtherEvents?.invoke(it) }
+        onElse = {
+            if (transformOtherEvents != null) transformOtherEvents.invoke(it)
+            else it as? PagingEvent<Key, NewData>
+        }
     )
 }
