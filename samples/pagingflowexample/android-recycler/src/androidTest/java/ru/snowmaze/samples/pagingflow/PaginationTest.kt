@@ -14,9 +14,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
-import ru.snowmaze.pagingflow.samples.MainActivity
-import ru.snowmaze.pagingflow.samples.TestViewModel.Companion.EXAMPLE_LOAD_SIZE
-import ru.snowmaze.pagingflow.samples.TestViewModel.Companion.REMOVE_PAGE_OFFSET
+import ru.snowmaze.pagingflow.sample.MainActivity
 import java.util.concurrent.TimeUnit
 
 class PaginationTest {

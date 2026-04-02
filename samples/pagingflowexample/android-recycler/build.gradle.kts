@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "ru.snowmaze.samples.pagingflow"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "ru.snowmaze.samples.pagingflow.recycler"
         minSdk = 21
-        targetSdk = 34
+        targetSdk = 36
         versionCode = 2
         versionName = "1.0.1"
 
@@ -27,7 +27,7 @@ android {
         }
     }
     kotlin {
-        jvmToolchain(17)
+        jvmToolchain(libs.versions.java.get().toInt())
     }
 }
 
@@ -38,9 +38,9 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.6.2")
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.constraintlayout)
-    implementation(libs.lifecycleRuntimeKtx)
     implementation(libs.androidx.espresso.contrib)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

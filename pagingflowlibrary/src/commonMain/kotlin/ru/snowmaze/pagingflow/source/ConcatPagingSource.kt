@@ -89,7 +89,8 @@ open class ConcatPagingSource<Key : Any, Data : Any>(
         pagingSourcesManager = pagingSourcesManager,
         dataPagesManager = dataPagesManager,
         pageLoader = pageLoader,
-        loadDataMutex = loadDataMutex
+        loadDataMutex = loadDataMutex,
+        processingContext = config.processingContext
     )
 
     init {

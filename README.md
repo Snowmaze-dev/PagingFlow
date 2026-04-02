@@ -22,8 +22,7 @@ class ExamplePagingSource(
 
         return result(
             dataFlow = databaseSource.getUsersFlow(response.userIds),
-            nextPageKey = positiveOffset(
-                paginationDirection = loadParams.paginationDirection,
+            nextPageKey = loadParams.positiveOffset(
                 currentOffset = offset,
                 pageSize = response.userIds.size,
                 hasNextPage = response.hasNext
@@ -39,15 +38,15 @@ val pagingFlow = buildPagingFlow(
     PagingFlowConfiguration(
         LoadParams(pageSize = 50),
         maxPagesCount = 3
-    )
+    ),
+    loadFirstPage = true
 ) {
-    addPagingSource(ExamplePagingSource(networkSource, databaseSource))
-    loadNextPage()
+    addDownPagingSource(ExamplePagingSource(networkSource, databaseSource))
 }
 val pagingDataPresenter = pagingFlow.pagingDataPresenter()
 ```
 
-### Submitting data in android
+### Submitting data to Android Recycler View
 ```kotlin
 viewLifecycleOwner.coroutineScope.launch {
    viewModel.pagingDataPresenter.dataFlow.collect { dataList ->
@@ -55,6 +54,13 @@ viewLifecycleOwner.coroutineScope.launch {
    }
 }
 ```
+
+### Getting paged data in Compose
+```kotlin
+val items by pagingDataPresenter.dataFlow.collectAsStateWithLifecycle(emptyList())
+```
+
+### [Samples](samples/pagingflowexample)
 
 ### Architecture
 

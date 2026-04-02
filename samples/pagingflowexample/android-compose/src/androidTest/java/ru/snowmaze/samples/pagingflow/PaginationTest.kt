@@ -4,7 +4,7 @@ import androidx.test.ext.junit.rules.ActivityScenarioRule
 import kotlinx.coroutines.runBlocking
 import org.junit.Rule
 import org.junit.Test
-import ru.snowmaze.pagingflow.samples.MainActivity
+import ru.snowmaze.pagingflow.sample.MainActivity
 
 class PaginationTest {
 
