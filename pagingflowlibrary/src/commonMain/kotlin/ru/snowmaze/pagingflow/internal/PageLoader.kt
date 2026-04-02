@@ -29,9 +29,6 @@ import ru.snowmaze.pagingflow.source.ConcatPagingSourceConfig
 import ru.snowmaze.pagingflow.source.ConcatSourceData
 import ru.snowmaze.pagingflow.source.PagingSource
 import ru.snowmaze.pagingflow.utils.elementAtOrNull
-import ru.snowmaze.pagingflow.utils.fastFirstOrNull
-import ru.snowmaze.pagingflow.utils.fastIndexOfFirst
-import ru.snowmaze.pagingflow.utils.fastIndexOfLast
 import ru.snowmaze.pagingflow.utils.mapHasNext
 
 internal class PageLoader<Key : Any, Data : Any>(

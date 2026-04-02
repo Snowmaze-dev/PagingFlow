@@ -1,3 +1,8 @@
+@file:OptIn(ExperimentalKotlinGradlePluginApi::class, ExperimentalWasmDsl::class)
+
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
@@ -5,10 +10,8 @@ plugins {
 }
 
 kotlin {
-    jvmToolchain(17)
-    androidTarget {
-        publishAllLibraryVariants()
-    }
+    jvmToolchain(libs.versions.java.get().toInt())
+    androidTarget { publishLibraryVariants() }
     jvm()
 
     applyHierarchyTemplate {
@@ -25,18 +28,21 @@ kotlin {
         }
     }
 
-    js(IR) {
-        browser {
+    listOf(
+        wasmJs(),
+        js(IR)
+    ).forEach {
+        it.browser {
             testTask {
                 enabled = false
             }
         }
-        binaries.executable()
+        it.binaries.executable()
     }
 
     listOf(
-        iosX64(),
         iosArm64(),
+        iosSimulatorArm64(),
     ).forEach {
         it.binaries.framework {
             baseName = "pagingflowlibrary"
@@ -46,24 +52,20 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.kotlinx.datetime)
-            implementation(libs.androidx.collection)
+            api(libs.kotlinx.coroutines.core)
+            api(libs.androidx.collection)
+            api(libs.difference)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
-            implementation(libs.kotlinx.datetime)
         }
         jsMain.dependencies {
-            implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.kotlinx.datetime)
         }
         val commonJvmMain = getByName("commonJvmMain") {
             kotlin.srcDir("src/commonJvmMain/kotlin")
         }
         commonJvmMain.dependencies {
-            implementation(libs.difference)
         }
         val commonJvmTest = getByName("commonJvmTest") {
             kotlin.srcDir("src/commonJvmTest/kotlin")
@@ -74,6 +76,8 @@ kotlin {
         val nonJvmMain = getByName("nonJvmMain") {
             kotlin.srcDir("src/nonJvmMain/kotlin")
         }
+        nonJvmMain.dependencies {
+        }
     }
 }
 
@@ -81,7 +85,7 @@ afterEvaluate {
     publishing {
         publications {
             withType<MavenPublication> {
-                version = "1.1.4"
+                version = "1.1.5-alpha1"
                 group = "ru.snowmaze.pagingflow"
                 artifactId = if (name == "kotlinMultiplatform") "common" else name
             }
@@ -91,11 +95,9 @@ afterEvaluate {
 
 android {
     namespace = "ru.snowmaze.pagingflow"
-    compileSdk = 34
-    defaultConfig {
-        minSdk = 21
-    }
+    compileSdk = 36
+    defaultConfig { minSdk = 21 }
     kotlin {
-        jvmToolchain(17)
+        jvmToolchain(libs.versions.java.get().toInt())
     }
 }

@@ -88,7 +88,9 @@ class CompositeMediumTest {
         presenter.latestDataFlow.firstWithTimeout(timeout = 2000, message = {
             "Was ${it?.data}, events ${latestEventsMedium.lastEvents}"
         }) { it.data.size == 2 }
-        val lastEvents = latestEventsMedium.eventsFlow.first().mapNotNull {
+        val lastEvents = latestEventsMedium.eventsFlow.firstWithTimeout(message = {
+            "List is empty"
+        }) { it.isNotEmpty() }.mapNotNull {
             if (it is InvalidateEvent) return@mapNotNull null
             it
         }

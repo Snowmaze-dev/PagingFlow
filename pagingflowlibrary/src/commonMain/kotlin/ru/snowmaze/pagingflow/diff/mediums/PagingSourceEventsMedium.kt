@@ -2,7 +2,7 @@ package ru.snowmaze.pagingflow.diff.mediums
 
 import ru.snowmaze.pagingflow.diff.PagingEventsListener
 import ru.snowmaze.pagingflow.diff.PagingEvent
-import ru.snowmaze.pagingflow.diff.EventFromDataSource
+import ru.snowmaze.pagingflow.diff.EventFromPagingSource
 
 class PagingSourceEventsMedium<Key : Any, Data : Any, NewData : Any>(
     dataChangesMedium: PagingEventsMedium<Key, Data>,
@@ -16,7 +16,7 @@ class PagingSourceEventsMedium<Key : Any, Data : Any, NewData : Any>(
     private fun mapEvent(
         event: PagingEvent<Key, Data>
     ): PagingEvent<Key, NewData>? {
-        return (if (event is EventFromDataSource<*, *> &&
+        return (if (event is EventFromPagingSource<*, *> &&
             event.sourceIndex == dataSourceIndex
         ) {
             event.copyWithNewPositionData(
@@ -24,13 +24,13 @@ class PagingSourceEventsMedium<Key : Any, Data : Any, NewData : Any>(
                 pageIndex = event.pageIndexInSource,
                 pageIndexInSource = event.pageIndexInSource
             )
-        } else if (event !is EventFromDataSource<*, *>) event
+        } else if (event !is EventFromPagingSource<*, *>) event
         else null) as? PagingEvent<Key, NewData>
     }
 
     override suspend fun onEvents(events: List<PagingEvent<Key, Data>>) {
         notifyOnEvents(events.mapNotNullTo(ArrayList(events.count {
-            val event = it as? EventFromDataSource<*, *>
+            val event = it as? EventFromPagingSource<*, *>
             event == null || event.sourceIndex == dataSourceIndex
         })) { mapEvent(it) })
     }
