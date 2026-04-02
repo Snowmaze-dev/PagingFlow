@@ -17,7 +17,7 @@ import ru.snowmaze.pagingflow.MaxItemsConfiguration
 import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.UpdatableData
 import ru.snowmaze.pagingflow.diff.AwaitDataSetEvent
-import ru.snowmaze.pagingflow.diff.EventFromDataSource
+import ru.snowmaze.pagingflow.diff.EventFromPagingSource
 import ru.snowmaze.pagingflow.diff.InvalidateEvent
 import ru.snowmaze.pagingflow.diff.OnDataLoaded
 import ru.snowmaze.pagingflow.diff.PageAddedEvent
@@ -188,9 +188,10 @@ internal class DataPagesManager<Key : Any, Data : Any>(
 
         val firstFromIndex =
             _dataPages.indexOfFirst { it.dataSourceIndex == fromDataSourceIndex }
-        val firstToIndex =
-            _dataPages.indexOfLast { it.dataSourceIndex == toDataSourceIndex }.coerceAtLeast(0)
-        repeat(fromPages.size) { _dataPages.removeAt(firstFromIndex) }
+        _dataPages.removeRange(firstFromIndex, firstFromIndex + fromPages.size)
+        val firstToIndex = toDataSourceIndex
+            .coerceAtLeast(0)
+            .coerceAtMost(_dataPages.size)
         _dataPages.addAll(firstToIndex, fromPages)
         updateIndexes()
     }
@@ -495,7 +496,7 @@ internal class DataPagesManager<Key : Any, Data : Any>(
      */
     private fun trimPages(
         isPaginationDown: Boolean, currentPage: DataPage<Key, Data>
-    ): List<EventFromDataSource<Key, Data>>? {
+    ): List<EventFromPagingSource<Key, Data>>? {
         val trimConfig = pageLoaderConfig.maxItemsConfiguration ?: return null
         val maxItemsCount = trimConfig.maxItemsCount
         if (itemsCount > maxItemsCount) {

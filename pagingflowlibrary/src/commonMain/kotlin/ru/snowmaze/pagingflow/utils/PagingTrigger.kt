@@ -5,11 +5,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.datetime.Clock
 import ru.snowmaze.pagingflow.PaginationDirection
 import ru.snowmaze.pagingflow.PagingFlowLoader
 import ru.snowmaze.pagingflow.isLoading
 import ru.snowmaze.pagingflow.loadNextPageWithResult
+import kotlin.time.Clock
 
 /**
  * The helper class which calls pagination when end of page reached.

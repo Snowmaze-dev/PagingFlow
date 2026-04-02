@@ -67,7 +67,8 @@ internal class PagingSourcesManager<Key : Any, Data : Any> {
 
     fun movePagingSource(oldIndex: Int, newIndex: Int) {
         val old = downPagingSources.elementAtOrNull(oldIndex) ?: return
+        val toIndex = newIndex
         _downPagingSources.removeAt(oldIndex)
-        _downPagingSources.add(newIndex.coerceAtMost(downPagingSources.size), old)
+        _downPagingSources.add(toIndex.coerceAtMost(downPagingSources.size), old)
     }
 }

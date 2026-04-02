@@ -43,7 +43,7 @@ class SpecificPagingSourceMediumTest {
         )
         pagingFlow.loadNextPageAndAwaitDataSet()
         presenterForSecond.dataFlow.firstEqualsWithTimeout(emptyList())
-        assertEquals(testPagingSource.getItems(20), presenterForFirst.data)
+        presenterForFirst.dataFlow.firstEqualsWithTimeout(testPagingSource.getItems(20))
         pagingFlow.loadNextPageAndAwaitDataSet()
         presenterForFirst.dataFlow.firstEqualsWithTimeout(testPagingSource.getItems(40))
         presenterForSecond.dataFlow.firstEqualsWithTimeout(emptyList())
