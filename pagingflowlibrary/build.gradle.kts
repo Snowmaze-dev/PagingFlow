@@ -85,7 +85,7 @@ afterEvaluate {
     publishing {
         publications {
             withType<MavenPublication> {
-                version = "1.1.5-alpha1"
+                version = "1.1.5"
                 group = "ru.snowmaze.pagingflow"
                 artifactId = if (name == "kotlinMultiplatform") "common" else name
             }
