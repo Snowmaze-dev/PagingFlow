@@ -1,4 +1,4 @@
-package ru.snowmaze.pagingflow.samples
+package ru.snowmaze.pagingflow.sample
 
 import android.os.Bundle
 import android.view.View
@@ -12,7 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.launch
 import ru.snowmaze.pagingflow.utils.PagingTrigger
-import ru.snowmaze.pagingflow.samples.TestViewModel.Companion.PREFETCH_DISTANCE
+import ru.snowmaze.pagingflow.sample.TestViewModel.Companion.PREFETCH_DISTANCE
 import ru.snowmaze.samples.pagingflow.R
 
 class MainActivity : AppCompatActivity() {

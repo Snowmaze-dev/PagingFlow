@@ -1,4 +1,4 @@
-package ru.snowmaze.pagingflow.samples
+package ru.snowmaze.pagingflow.sample
 
 import androidx.recyclerview.widget.DiffUtil
 

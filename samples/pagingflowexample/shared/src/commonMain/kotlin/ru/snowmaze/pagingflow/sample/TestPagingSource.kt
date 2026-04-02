@@ -1,4 +1,4 @@
-package ru.snowmaze.pagingflow.samples
+package ru.snowmaze.pagingflow.sample
 
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.result.LoadResult

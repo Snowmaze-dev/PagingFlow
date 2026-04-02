@@ -1,4 +1,4 @@
-package ru.snowmaze.pagingflow.samples
+package ru.snowmaze.pagingflow.sample
 
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable

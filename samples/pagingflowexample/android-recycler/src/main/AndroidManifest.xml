@@ -9,7 +9,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.PagingFlow">
         <activity
-            android:name="ru.snowmaze.pagingflow.samples.MainActivity"
+            android:name="ru.snowmaze.pagingflow.sample.MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />

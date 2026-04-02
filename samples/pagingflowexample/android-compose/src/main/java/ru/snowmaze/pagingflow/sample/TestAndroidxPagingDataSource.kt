@@ -1,10 +1,10 @@
-package ru.snowmaze.pagingflow.samples
+package ru.snowmaze.pagingflow.sample
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import ru.snowmaze.pagingflow.LoadParams
 
-class TestPagingDataSource(itemsCount: Int) : PagingSource<Int, String>() {
+class TestAndroidxPagingDataSource(itemsCount: Int) : PagingSource<Int, String>() {
 
     private val testDataSource = TestPagingSource(itemsCount)
 

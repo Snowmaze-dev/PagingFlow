@@ -1,4 +1,4 @@
-package ru.snowmaze.pagingflow.samples.ui.theme
+package ru.snowmaze.pagingflow.sample.ui.theme
 
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme

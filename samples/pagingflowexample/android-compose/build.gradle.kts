@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "ru.snowmaze.samples.pagingflow"
+    namespace = "ru.snowmaze.pagingflow.sample"
     compileSdk = 36
 
     defaultConfig {
@@ -32,7 +32,7 @@ android {
         }
     }
     kotlin {
-        jvmToolchain(17)
+        jvmToolchain(libs.versions.java.get().toInt())
     }
     buildFeatures {
         compose = true
@@ -45,24 +45,22 @@ android {
 }
 
 dependencies {
-
     implementation(libs.androidx.paging.runtime)
     implementation(libs.androidx.paging.compose)
     implementation(projects.samples.pagingflowexample.shared)
+    implementation(projects.samples.pagingflowexample.sharedCompose)
     implementation(libs.androidx.core.ktx)
-    implementation(libs.lifecycleRuntimeKtx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.lifecycle.viewmodel.compose)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-//    androidTestImplementation(platform(libs.androidx.compose.bom))
-//    androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 }

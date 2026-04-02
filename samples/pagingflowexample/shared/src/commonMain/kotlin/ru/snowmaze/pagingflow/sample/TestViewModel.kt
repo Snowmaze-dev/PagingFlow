@@ -1,6 +1,10 @@
-package ru.snowmaze.pagingflow.samples
+package ru.snowmaze.pagingflow.sample
 
-import dev.icerock.moko.mvvm.viewmodel.ViewModel
+import androidx.lifecycle.ViewModel
+import dev.zacsweers.metro.AppScope
+import dev.zacsweers.metro.ContributesIntoMap
+import dev.zacsweers.metro.Inject
+import dev.zacsweers.metrox.viewmodel.ViewModelKey
 import ru.snowmaze.pagingflow.ExperimentalPagingApi
 import ru.snowmaze.pagingflow.LoadParams
 import ru.snowmaze.pagingflow.MaxItemsConfiguration
@@ -12,6 +16,9 @@ import ru.snowmaze.pagingflow.diff.map
 import ru.snowmaze.pagingflow.diff.mediums.PagingEventsMedium
 import ru.snowmaze.pagingflow.diff.mediums.composite.mapFlowSection
 
+@Inject
+@ViewModelKey(TestViewModel::class)
+@ContributesIntoMap(AppScope::class)
 class TestViewModel : ViewModel() {
 
     companion object {
@@ -38,11 +45,6 @@ class TestViewModel : ViewModel() {
     )
 
     @OptIn(ExperimentalPagingApi::class)
-//    val pagingEventsMedium: PagingEventsMedium<Int, TestItem> = pagingFlow.mapDataMedium {
-//        it.map { item ->
-//            if (item == null) null else TestItem.Item(item)
-//        }
-//    }
     val pagingEventsMedium: PagingEventsMedium<Int, TestItem> = pagingFlow.compositeListMedium {
         dataSourceSection(0) {
             it.map { item ->

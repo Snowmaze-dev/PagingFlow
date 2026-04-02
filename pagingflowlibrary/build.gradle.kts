@@ -1,3 +1,8 @@
+@file:OptIn(ExperimentalKotlinGradlePluginApi::class, ExperimentalWasmDsl::class)
+
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
+
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
     alias(libs.plugins.androidLibrary)
@@ -5,7 +10,7 @@ plugins {
 }
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(libs.versions.java.get().toInt())
     androidTarget { publishLibraryVariants() }
     jvm()
 
@@ -47,16 +52,15 @@ kotlin {
 
     sourceSets {
         commonMain.dependencies {
-            implementation(libs.kotlinx.coroutines.core)
-            implementation(libs.androidx.collection)
-            implementation(libs.difference)
+            api(libs.kotlinx.coroutines.core)
+            api(libs.androidx.collection)
+            api(libs.difference)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
             implementation(libs.kotlinx.coroutines.test)
         }
         jsMain.dependencies {
-            implementation(libs.kotlinx.coroutines.core)
         }
         val commonJvmMain = getByName("commonJvmMain") {
             kotlin.srcDir("src/commonJvmMain/kotlin")
@@ -71,6 +75,8 @@ kotlin {
         }
         val nonJvmMain = getByName("nonJvmMain") {
             kotlin.srcDir("src/nonJvmMain/kotlin")
+        }
+        nonJvmMain.dependencies {
         }
     }
 }
@@ -89,11 +95,9 @@ afterEvaluate {
 
 android {
     namespace = "ru.snowmaze.pagingflow"
-    compileSdk = 34
-    defaultConfig {
-        minSdk = 21
-    }
+    compileSdk = 36
+    defaultConfig { minSdk = 21 }
     kotlin {
-        jvmToolchain(17)
+        jvmToolchain(libs.versions.java.get().toInt())
     }
 }

@@ -14,10 +14,10 @@ import ru.snowmaze.pagingflow.presenters.BasicPresenterConfiguration
 import ru.snowmaze.pagingflow.presenters.dataFlow
 import ru.snowmaze.pagingflow.presenters.statePresenter
 import ru.snowmaze.pagingflow.result.LoadNextPageResult
-import ru.snowmaze.pagingflow.samples.TestItem
-import ru.snowmaze.pagingflow.samples.TestViewModel
-import ru.snowmaze.pagingflow.samples.TestViewModel.Companion.EXAMPLE_LOAD_SIZE
-import ru.snowmaze.pagingflow.samples.TestViewModel.Companion.REMOVE_PAGE_OFFSET
+import ru.snowmaze.pagingflow.sample.TestItem
+import ru.snowmaze.pagingflow.sample.TestViewModel
+import ru.snowmaze.pagingflow.sample.TestViewModel.Companion.EXAMPLE_LOAD_SIZE
+import ru.snowmaze.pagingflow.sample.TestViewModel.Companion.REMOVE_PAGE_OFFSET
 import kotlin.test.Test
 
 class PagingTest {
